@@ -450,7 +450,8 @@ if __name__ == '__main__':
         
         while address is False:
             try:
-                address = socket.gethostbyname(hostname+".local")
+                #address = socket.gethostbyname(hostname+".local")
+                address = socket.gethostbyname(hostname)
                 #this returns something like '192.168.1.4' - when both connected, ethernet IP has priority over wifi IP
             except:
                 pass
