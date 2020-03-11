@@ -357,9 +357,9 @@ class PiFrameGrabber(multiprocessing.Process):
                 #however setting this to off would have to be coupled with custom gains
                 #some suggestion on how to set the gains can be found here: https://picamera.readthedocs.io/en/release-1.12/recipes1.html
                 #and here: https://github.com/waveform80/picamera/issues/182
-                #capture.awb_mode = 'off'
-                #capture.awb_gains = (1.8, 1.5)
-                capture.awb_mode = 'auto'
+                capture.awb_mode = 'off'
+                capture.awb_gains = (1.8, 1.5)
+                #capture.awb_mode = 'auto'
 
                 capture.framerate = self._target_fps
                 raw_capture = PiRGBArray(capture, size=self._target_resolution)
