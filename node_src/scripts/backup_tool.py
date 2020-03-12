@@ -54,16 +54,22 @@ if __name__ == '__main__':
         server = option_dict["server"]
 
         if ethoscope:
-            ethoscope = int(ethoscope)
-            print ("Forcing backup for ethoscope %03d" % ethoscope)
             all_devices = receive_devices(server)
-            
             bj = None
-            for devID in all_devices:
-                if all_devices[devID]['name'] == ("ETHOSCOPE_%03d" % ethoscope) and all_devices[devID]['status'] != "offline":
-                    bj = backup_job((all_devices[devID], RESULTS_DIR))
-            if bj == None: exit("ETHOSCOPE_%03d is not online or not detected" % ethoscope)
+                
 
+            for devID in all_devices:
+                try:
+                    ethoscope = int(ethoscope)
+                    condition = all_devices[devID]['name'] == ("ETHOSCOPE_%03d" % ethoscope) and all_devices[devID]['status'] != "offline"
+                except ValueError as e:
+                    condition = all_devices[devID]['name'] == (f"ETHOSCOPE_{ethoscope}") and all_devices[devID]['status'] != "offline"
+                
+                if condition:
+                    print(f"Forcing backup for ethoscope ETHOSCOPE_{ethoscope}")
+                    bj = backup_job((all_devices[devID], RESULTS_DIR))
+            if bj == None: exit(f"ETHOSCOPE_{ethoscope} is not online or not detected")
+    
         else:
         
             gbw = GenericBackupWrapper(backup_job,
