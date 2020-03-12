@@ -1,5 +1,6 @@
 (function(){
-    var app = angular.module('flyApp', ['ngRoute','daterangepicker']);
+    var app = angular.module('flyApp', ['ngRoute', 'daterangepicker', 'angularUtils.directives.dirPagination']);
+    
     app.filter("toArray", function(){
         return function(obj) {
             var result = [];
@@ -8,6 +9,20 @@
             });
             return result;
         };
+    });
+
+    app.filter('orderObjectBy', function() {
+      return function(items, field, reverse) {
+        var filtered = [];
+        angular.forEach(items, function(item) {
+          filtered.push(item);
+        });
+        filtered.sort(function (a, b) {
+          return (a[field] > b[field] ? 1 : -1);
+        });
+        if(reverse) filtered.reverse();
+        return filtered;
+      };
     });
 
     // configure our routes
@@ -30,8 +45,22 @@
             // route for the management page
             .when('/more/:option', {
                 templateUrl : '/static/pages/more.html',
-                controller  : 'moreController as ctrl',
+                controller  : 'moreController',
             })
+
+            // route for the experiments database page
+            .when('/experiments', {
+                templateUrl : '/static/pages/experiments.html',
+                controller  : 'experimentsController',
+            })
+
+            // route for the experiments database page
+            .when('/resources', {
+                templateUrl : '/static/pages/resources.html',
+                controller  : 'resourcesController',
+            })
+
+
             // route for the help page
             /*.when('/help', {
                 templateUrl : '/static/pages/help.html',
@@ -53,19 +82,24 @@
 //            t = new Date(data.time);
 //            $scope.time = t.toString();
 //        });
-        $http.get('/devices_list').success(function(data){
+
+        $http.get('/devices').success(function(data){
             $scope.devices = data;
-            
+        });
+
+        $http.get('/sensors').success(function(data){
+            $scope.sensors = data;
+            $scope.has_sensors = Object.keys($scope.sensors).length;
         });
         
 
-        var get_date = function(){
+        var update_local_times = function(){
             $http.get('/node/time').success(function(data){
-            t = new Date(data.time);
-            $scope.time = t.toString();
-            });
-            var t= new Date();
-            $scope.localtime =t.toString();
+                t = new Date(data.time);
+                $scope.time = t.toString();
+                });
+            var t = new Date();
+            $scope.localtime = t.toString();
         };
 
         $scope.get_devices = function(){
@@ -95,7 +129,8 @@
             })
         };
         $scope.secToDate = function(secs){
-            d = new Date(secs*1000);
+            d = new Date (isNaN(secs) ? secs : secs * 1000 );
+
             return d.toString();
         };
         $scope.elapsedtime = function(t){
@@ -159,22 +194,22 @@
         $scope.$on('$viewContentLoaded',$scope.get_devices);
 
 
-        var refresh = function(){
+       var refresh_platform = function(){
+            if (document.visibilityState=="visible"){
+                    $scope.get_devices();
+                    update_local_times();
+                    //console.log("refresh platform", new Date());
+            }
+       };
 
-            $scope.get_devices();
-            get_date();
-            console.log("refresh");
-       }
-
-       refresh_data = $interval(refresh, 3000);
+       // refresh every 5 seconds
+       refresh_data = $interval(refresh_platform, 5 * 1000);
+        
         //clear interval when scope is destroyed
         $scope.$on("$destroy", function(){
             $interval.cancel(refresh_data);
             //clearInterval(refresh_data);
         });
-
-
     });
-
 }
 )()

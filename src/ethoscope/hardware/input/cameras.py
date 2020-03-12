@@ -39,6 +39,7 @@ class BaseCamera(object):
     def __exit__(self):
         logging.info("Closing camera")
         self._close()
+        
     def _close(self):
         pass
 
@@ -121,7 +122,7 @@ class BaseCamera(object):
 class MovieVirtualCamera(BaseCamera):
     _description = {"overview":  "Class to acquire frames from a video file.",
                     "arguments": [
-                                    {"type": "filepath", "name": "path", "description": "The path to the video file to use as virtual camera","default":"/home/gg/Desktop/demo_monitor_x5.avi.mp4"},
+                                    {"type": "filepath", "name": "path", "description": "The *LOCAL* path to the video file to use as virtual camera","default":""},
                                    ]}
                                    
 
@@ -144,7 +145,7 @@ class MovieVirtualCamera(BaseCamera):
         self._use_wall_clock = use_wall_clock
 
 
-        if not (isinstance(path, str) or isinstance(path, unicode)):
+        if not (isinstance(path, str) or isinstance(path, str)):
             raise EthoscopeException("path to video must be a string")
         if not os.path.exists(path):
             raise EthoscopeException("'%s' does not exist. No such file" % path)
@@ -341,18 +342,24 @@ class PiFrameGrabber(multiprocessing.Process):
         Run stops if the _stop_queue is not empty.
         """
 
-        # lazy import should only use those on devices
-        # from picamera.array import PiRGBArray
-        # from picamera import PiCamera
-
         try:
             # lazy import should only use those on devices
+            
+            # Warning: the following causes a major issue with Python 3.8.1
+            # https://www.bountysource.com/issues/86094172-python-3-8-1-typeerror-vc_dispmanx_element_add-argtypes-item-9-in-_argtypes_-passes-a-union-by-value-which-is-unsupported
             from picamera.array import PiRGBArray
             from picamera import PiCamera
 
             with  PiCamera() as capture:
                 logging.warning(capture)
                 capture.resolution = self._target_resolution
+                #disable auto white balance to address the following issue: https://github.com/raspberrypi/firmware/issues/1167
+                #however setting this to off would have to be coupled with custom gains
+                #some suggestion on how to set the gains can be found here: https://picamera.readthedocs.io/en/release-1.12/recipes1.html
+                #and here: https://github.com/waveform80/picamera/issues/182
+                capture.awb_mode = 'off'
+                capture.awb_gains = (1.8, 1.5)
+                #capture.awb_mode = 'auto'
 
                 capture.framerate = self._target_fps
                 raw_capture = PiRGBArray(capture, size=self._target_resolution)
@@ -489,7 +496,7 @@ class OurPiCameraAsync(BaseCamera):
             cv2.cvtColor(g,cv2.COLOR_GRAY2BGR,self._frame)
             return self._frame
         except Exception as e:
-            raise EthoscopeException("Could not get frame from camera\n%s", traceback.format_exc(e))
+            raise EthoscopeException("Could not get frame from camera\n%s", traceback.format_exc())
 
 
 class DummyFrameGrabber(multiprocessing.Process):

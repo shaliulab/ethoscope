@@ -10,8 +10,7 @@ import traceback
 
 class DeviceUpdater(object):
 
-    def __init__(self,
-                 git_working_dir):
+    def __init__(self, git_working_dir):
         self._git_working_dir = git_working_dir
         self._working_repo = Repo(git_working_dir)
         self._origin = self._working_repo.remotes.origin
@@ -98,7 +97,7 @@ class BareRepoUpdater(object):
                 out[key]=True
                 one_success = True
             except GitCommandError as e:
-                logging.error(traceback.format_exc(e))
+                logging.error(traceback.format_exc())
 
         if not one_success:
             raise Exception("Could not update any branch. Are you connected to internet?")
@@ -119,7 +118,7 @@ class BareRepoUpdater(object):
         try:
             self.update_branch("*")
         except GitCommandError as e:
-            logging.error(traceback.format_exc(e))
+            logging.error(traceback.format_exc())
 
         return self.update_all_visible_branches()
 
