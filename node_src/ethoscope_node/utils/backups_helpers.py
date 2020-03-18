@@ -1,20 +1,15 @@
 from ethoscope_node.utils.device_scanner import EthoscopeScanner
 from ethoscope_node.utils.mysql_backup import MySQLdbToSQlite, DBNotReadyError
+from ethoscope_node.utils.utils import filter_by_regex
 
 import os
 import logging
 import time
 import multiprocessing
-import re
 import traceback
 
 import urllib.request
 import json
-
-def filter_by_regex(all_known_ethoscopes, regex):
-    pattern = re.compile(regex)
-    all_known_ethoscopes = [e for e in all_known_ethoscopes if pattern.match(e["ethoscope_name"]) is not None]
-    return all_known_ethoscopes
 
 def receive_devices(server = "localhost", regex=None):
     '''

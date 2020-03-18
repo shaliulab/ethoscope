@@ -35,7 +35,7 @@ import multiprocessing
 import sqlite3
 import datetime
 import logging, traceback
-from ethoscope_node.utils.backups_helpers import filter_by_regex
+from ethoscope_node.utils.utils import filter_by_regex
 
 
 class ExperimentalDB(multiprocessing.Process):
