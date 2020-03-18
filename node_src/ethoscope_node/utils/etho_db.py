@@ -293,7 +293,7 @@ class ExperimentalDB(multiprocessing.Process):
         row = self.executeSQL(sql_get_ethoscope)
 
         if regex is not None:
-            pattern = re.compile(self._regex)
+            pattern = re.compile(regex)
             all_known_ethoscopes = [e for e in all_known_ethoscopes if pattern.match(e["ethoscope_name"]) is not None]
         
         if row == 0:
