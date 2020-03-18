@@ -276,7 +276,7 @@ class ExperimentalDB(multiprocessing.Process):
         else:
             return row
     
-    def getEthoscope (self, ethoscope_id, regex=None asdict=False):
+    def getEthoscope (self, ethoscope_id, regex=None, asdict=False):
         """
         Gather ethoscope with given ID if provided, if experiment_id equals 'all', it will collect all available ethoscopes
         :param ethoscope_id: the ID of the ethoscope to be interrogated
