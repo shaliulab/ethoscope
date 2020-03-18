@@ -6,6 +6,7 @@ import json
 import time
 import logging
 import traceback
+import threading
 from functools import wraps
 import socket
 from zeroconf import ServiceBrowser, Zeroconf
@@ -527,7 +528,7 @@ class Ethoscope(Thread):
         self._is_online = False
 
 
-class DeviceScanner(object):
+class DeviceScanner():
     """
     Uses zeroconf (aka Bonjour, aka Avahi etc) to passively listen for ethoscope devices registering themselves on the network.
     From: https://github.com/jstasiak/python-zeroconf
@@ -546,9 +547,21 @@ class DeviceScanner(object):
         self.device_refresh_period = device_refresh_period
         self._Device = deviceClass
         
+    def target(self):
+
+        while True:
+            time.sleep(30)
+            devices = self.get_all_devices_info()
+            dev_list = str([d for d in sorted(devices.keys())])
+            dev_list_id = [d[0] for d in devices.items()]
+            logging.info("device map is: %s" % dev_list_id)
+        
     def start(self):
         # Use self as the listener class because I have add_service and remove_service methods
         self.browser = ServiceBrowser(self._zeroconf, self._service_type, self)
+        thread = threading.Thread(target=self.target)
+        thread.daemon = True
+        thread.start()
         
     def stop(self):
         self._zeroconf.close()

@@ -16,7 +16,6 @@ cpu_available = multiprocessing.cpu_count()
 
 def filter_by_regex(devices, regex):
     pattern = re.compile(regex)
-    #ipdb.set_trace()
     if type(devices) is dict:
         new_devices = {}
         for key, value in devices.items():
@@ -40,9 +39,9 @@ def receive_devices(server = "localhost", regex=None):
     success = False
     trials = 1
 
-    while not success or trials < 6:
+    while not success or trials < 5:
         try:
-            req = urllib.request.Request(url, headers={'Content-Type': 'application/json'}
+            req = urllib.request.Request(url, headers={'Content-Type': 'application/json'})
             success = True
             f = urllib.request.urlopen(req, timeout=5)
             devices = json.load(f)
@@ -52,7 +51,7 @@ def receive_devices(server = "localhost", regex=None):
             logging.warning("The node ethoscope server %s is not running or cannot be reached. A list of available ethoscopes could not be found." % server)
             #logging.error(traceback.format_exc())
             trials += 1
-            logging.warning("Trying again {trials}/5")
+            logging.warning(f"Trying again {trials}/5...")
     return
 
 class BackupClass(object):
@@ -124,9 +123,8 @@ class GenericBackupWrapper(object):
     def run(self):
         try:
             devices = receive_devices(self._server)
-            if self._regex is not None:
+            if self._regex is not None and devices:
                 devices = filter_by_regex(devices, self._regex)
-
 
             if not devices:
                 logging.info("Using Ethoscope Scanner to look for devices")
@@ -149,8 +147,9 @@ class GenericBackupWrapper(object):
                     if self._regex is not None:
                         devices = filter_by_regex(devices, self._regex)
 
+
                 dev_list = str([d for d in sorted(devices.keys())])
-                logging.info("device map is: %s" %dev_list)
+                logging.info("device map is: %s" % dev_list)
 
                 args = []
                 for d in list(devices.values()):
@@ -165,7 +164,11 @@ class GenericBackupWrapper(object):
 
                     #map(self._backup_job, args)
                 else:
-                    pool = multiprocessing.Pool(int(cpu_available * 0.75))
+                    cpus_used = int(cpu_available * 0.75)
+                    logging.warning("########################################################")
+                    logging.warning(f"PLEASE NOTE: Backups will use {cpus_used} CPUs in parallel")
+                    logging.warning("########################################################")
+                    pool = multiprocessing.Pool(cpus_used)
                     _ = pool.map(self._backup_job, args)
                     logging.info("Pool mapped")
                     pool.close()

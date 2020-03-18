@@ -7,7 +7,7 @@ After=ntpd.service clock.service
 [Service]
 Type=simple
 WorkingDirectory=/opt/ethoscope-node/node_src/scripts/
-ExecStart=/home/vibflysleep/anaconda3/envs/ethoscope3.7/bin/python /opt/ethoscope-node/node_src/scripts/backup_tool.py --regex ETHOSCOPE_\\d{3} -r /ethoscope_results --server node
+ExecStart=/home/vibflysleep/anaconda3/envs/ethoscope3.7/bin/python /opt/ethoscope-node/node_src/scripts/backup_tool.py --regex ETHOSCOPE_\\d{3} -r /ethoscope_results --serve localhost
 RestartSec=5
 Restart=always
 

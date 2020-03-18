@@ -27,7 +27,7 @@ class EthoscopeConfiguration(object):
                         
                   'sensors' : {},
 
-                  'io': {'max_n_rows_to_write': 30000}
+                  'io': {'max_n_rows_to_insert': 30000}
                                     
                         }
 

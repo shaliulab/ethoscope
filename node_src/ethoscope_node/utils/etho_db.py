@@ -79,6 +79,7 @@ class ExperimentalDB(multiprocessing.Process):
 
             except Exception as e:
                 logging.error(traceback.format_exc())
+                logging.error(f"command is set to {command}")
                 return -1
 
         except:
