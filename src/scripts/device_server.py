@@ -290,7 +290,7 @@ def info(id):
         
     info["current_timestamp"] = bottle.time.time()
     info["CPU_temp"] = get_core_temperature()
-    info["loadavg"] = get_loadvg()
+    info["loadavg"] = get_loadavg()
     return info
 
 @api.get('/user_options/<id>')
