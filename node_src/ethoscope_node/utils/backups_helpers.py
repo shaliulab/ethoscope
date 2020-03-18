@@ -5,12 +5,18 @@ import os
 import logging
 import time
 import multiprocessing
+import re
 import traceback
 
 import urllib.request
 import json
 
-def receive_devices(server = "localhost"):
+def filter_by_regex(all_known_ethoscopes, regex):
+    pattern = re.compile(regex)
+    all_known_ethoscopes = [e for e in all_known_ethoscopes if pattern.match(e["ethoscope_name"]) is not None]
+    return all_known_ethoscopes
+
+def receive_devices(server = "localhost", regex=None):
     '''
     Interrogates the NODE on its current knowledge of devices, then extracts from the JSON record
     only the IPs
@@ -22,6 +28,9 @@ def receive_devices(server = "localhost"):
         req = urllib.request.Request(url, headers={'Content-Type': 'application/json'})            
         f = urllib.request.urlopen(req, timeout=10)
         devices = json.load(f)
+        if regex is not None:
+            devices = filter_by_regex(devices, regex)        
+
         return devices
 
     except:
@@ -88,6 +97,7 @@ class GenericBackupWrapper(object):
         self._safe = safe
         self._backup_job = backup_job
         self._server = server
+        self._regex = regex
 
         # for safety, starts device scanner too in case the node will go down at later stage
         self._device_scanner = EthoscopeScanner(results_dir = results_dir, regex = regex)
@@ -97,7 +107,8 @@ class GenericBackupWrapper(object):
 
     def run(self):
         try:
-            devices = receive_devices(self._server)
+            devices = receive_devices(self._server, self._regex)
+
             
             if not devices:
                 logging.info("Using Ethoscope Scanner to look for devices")

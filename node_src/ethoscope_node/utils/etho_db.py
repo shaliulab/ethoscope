@@ -26,15 +26,17 @@ import string
 import random
 import pickle
 import os
-import re
 import secrets
 
 
 __author__ = 'giorgio'
+
 import multiprocessing
 import sqlite3
 import datetime
 import logging, traceback
+from ethoscope_node.utils.backups_helpers import filter_by_regex
+
 
 class ExperimentalDB(multiprocessing.Process):
     
@@ -294,9 +296,8 @@ class ExperimentalDB(multiprocessing.Process):
         row = self.executeSQL(sql_get_ethoscope)
 
         if regex is not None:
-            pattern = re.compile(regex)
-            all_known_ethoscopes = [e for e in all_known_ethoscopes if pattern.match(e["ethoscope_name"]) is not None]
-        
+            all_known_ethoscopes = filter_by_regex(all_known_ethoscopes, regex)
+
         if row == 0:
             return {}
         
