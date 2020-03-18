@@ -35,8 +35,6 @@ import multiprocessing
 import sqlite3
 import datetime
 import logging, traceback
-from ethoscope_node.utils.utils import filter_by_regex
-
 
 class ExperimentalDB(multiprocessing.Process):
     
@@ -279,7 +277,7 @@ class ExperimentalDB(multiprocessing.Process):
         else:
             return row
     
-    def getEthoscope (self, ethoscope_id, regex=None, asdict=False):
+    def getEthoscope (self, ethoscope_id, asdict=False):
         """
         Gather ethoscope with given ID if provided, if experiment_id equals 'all', it will collect all available ethoscopes
         :param ethoscope_id: the ID of the ethoscope to be interrogated
@@ -292,11 +290,7 @@ class ExperimentalDB(multiprocessing.Process):
         else:
             sql_get_ethoscope = "SELECT * FROM %s WHERE ethoscope_id = '%s'" % (self._ethoscopes_table_name, ethoscope_id)
 
-        
         row = self.executeSQL(sql_get_ethoscope)
-
-        if regex is not None:
-            row = filter_by_regex(devices = row, regex=regex)
 
         if row == 0:
             return {}

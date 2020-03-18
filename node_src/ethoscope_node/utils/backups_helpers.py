@@ -1,6 +1,5 @@
 from ethoscope_node.utils.device_scanner import EthoscopeScanner
 from ethoscope_node.utils.mysql_backup import MySQLdbToSQlite, DBNotReadyError
-from ethoscope_node.utils.utils import filter_by_regex
 
 import os
 import logging
@@ -10,6 +9,26 @@ import traceback
 
 import urllib.request
 import json
+
+import re
+
+cpu_available = multiprocessing.cpu_count()
+
+def filter_by_regex(devices, regex):
+    pattern = re.compile(regex)
+    #ipdb.set_trace()
+    if type(devices) is dict:
+        new_devices = {}
+        for key, value in devices.items():
+            if pattern.match(value["name"]) is not None:
+                new_devices[key] = value
+
+        devices = new_devices
+        return devices
+
+    else:
+        devices = [e for e in devices if pattern.match(e["ethoscope_name"]) is not None]
+        return devices
 
 def receive_devices(server = "localhost", regex=None):
     '''
@@ -23,9 +42,6 @@ def receive_devices(server = "localhost", regex=None):
         req = urllib.request.Request(url, headers={'Content-Type': 'application/json'})            
         f = urllib.request.urlopen(req, timeout=10)
         devices = json.load(f)
-        if regex is not None:
-            devices = filter_by_regex(devices, regex)        
-
         return devices
 
     except:
@@ -102,9 +118,11 @@ class GenericBackupWrapper(object):
 
     def run(self):
         try:
-            devices = receive_devices(self._server, self._regex)
+            devices = receive_devices(self._server)
+            if self._regex is not None:
+                devices = filter_by_regex(devices, self._regex)
 
-            
+
             if not devices:
                 logging.info("Using Ethoscope Scanner to look for devices")
                 self._device_scanner.start()
@@ -123,6 +141,8 @@ class GenericBackupWrapper(object):
 
                 if not devices:
                     devices = self._device_scanner.get_all_devices_info()
+                    if self._regex is not None:
+                        devices = filter_by_regex(devices, self._regex)
 
                 dev_list = str([d for d in sorted(devices.keys())])
                 logging.info("device map is: %s" %dev_list)
@@ -140,7 +160,7 @@ class GenericBackupWrapper(object):
 
                     #map(self._backup_job, args)
                 else:
-                    pool = multiprocessing.Pool(4)
+                    pool = multiprocessing.Pool(int(cpu_available * 0.75))
                     _ = pool.map(self._backup_job, args)
                     logging.info("Pool mapped")
                     pool.close()

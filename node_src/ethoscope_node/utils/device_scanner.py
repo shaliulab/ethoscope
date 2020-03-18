@@ -669,7 +669,7 @@ class EthoscopeScanner(DeviceScanner):
         out = {}
 
         # First we generate a dictionary of active ethoscopes in the database. In this way we account for those that are in use but are actually offline
-        all_known_ethoscopes = self._edb.getEthoscope ('all', regex = self._regex, asdict=True)
+        all_known_ethoscopes = self._edb.getEthoscope ('all', asdict=True)
 
         for dv_db in all_known_ethoscopes:
             ethoscope = all_known_ethoscopes[dv_db]
