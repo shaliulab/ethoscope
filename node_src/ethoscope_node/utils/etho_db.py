@@ -286,6 +286,9 @@ class ExperimentalDB(multiprocessing.Process):
 
         if ethoscope_id == 'all':
             sql_get_ethoscope = "SELECT * FROM %s" % (self._ethoscopes_table_name)
+        else:
+            sql_get_ethoscope = "SELECT * FROM %s WHERE ethoscope_id = '%s'" % (self._ethoscopes_table_name, ethoscope_id)
+
         
         row = self.executeSQL(sql_get_ethoscope)
         
