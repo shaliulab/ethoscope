@@ -37,18 +37,23 @@ def receive_devices(server = "localhost", regex=None):
     '''
     url = "http://%s/devices" % server
     devices = []
-    
-    try:
-        req = urllib.request.Request(url, headers={'Content-Type': 'application/json'})            
-        f = urllib.request.urlopen(req, timeout=10)
-        devices = json.load(f)
-        return devices
+    success = False
+    trials = 1
 
-    except:
-        logging.error("The node ethoscope server %s is not running or cannot be reached. A list of available ethoscopes could not be found." % server)
-        return
-        #logging.error(traceback.format_exc())
-        
+    while not success or trials < 6:
+        try:
+            req = urllib.request.Request(url, headers={'Content-Type': 'application/json'}
+            success = True
+            f = urllib.request.urlopen(req, timeout=5)
+            devices = json.load(f)
+            return devices
+
+        except:
+            logging.warning("The node ethoscope server %s is not running or cannot be reached. A list of available ethoscopes could not be found." % server)
+            #logging.error(traceback.format_exc())
+            trials += 1
+            logging.warning("Trying again {trials}/5")
+    return
 
 class BackupClass(object):
     _db_credentials = {

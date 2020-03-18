@@ -25,7 +25,9 @@ class EthoscopeConfiguration(object):
                                     'incubator 1' : {'id' : 1, 'name' : 'Incubator 1', 'location' : '', 'owner' : '', 'description' : ''}
                         },
                         
-                  'sensors' : {} 
+                  'sensors' : {},
+
+                  'io': {'max_n_rows_to_write': 30000}
                                     
                         }
 
