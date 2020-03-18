@@ -54,6 +54,10 @@ if __name__ == '__main__':
         server = option_dict["server"]
         regex = option_dict["regex"]
 
+        logging.warning("####################################################")
+        logging.warning(f"PLEASE NOTE: ETHOSCOPE_DIR is set to {RESULTS_DIR}")
+        logging.warning("####################################################")
+
         if ethoscope:
             all_devices = receive_devices(server)
             bj = None
