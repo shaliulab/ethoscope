@@ -81,7 +81,7 @@ class BackupClass(object):
 
 
 class GenericBackupWrapper(object):
-    def __init__(self, backup_job, results_dir, safe, server):
+    def __init__(self, backup_job, results_dir, safe, server, regex=None):
         self._TICK = 1.0  # s
         self._BACKUP_DT = 5 * 60  # 5min
         self._results_dir = results_dir
@@ -90,7 +90,7 @@ class GenericBackupWrapper(object):
         self._server = server
 
         # for safety, starts device scanner too in case the node will go down at later stage
-        self._device_scanner = EthoscopeScanner(results_dir = results_dir)
+        self._device_scanner = EthoscopeScanner(results_dir = results_dir, regex = regex)
             
             
 

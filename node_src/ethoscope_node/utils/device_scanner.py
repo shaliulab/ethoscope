@@ -5,6 +5,7 @@ import datetime
 import json
 import time
 import logging
+import re
 import traceback
 from functools import wraps
 import socket
@@ -583,7 +584,7 @@ class DeviceScanner(object):
         Manually add a device to the list
         """
         
-        device = self._Device(ip, self.device_refresh_period, results_dir = self.results_dir )
+        device = self._Device(ip, self.device_refresh_period, results_dir = self.results_dir)
         if name: device.zeroconf_name = name
         
         device.start()
@@ -639,12 +640,13 @@ class EthoscopeScanner(DeviceScanner):
     _device_type = "ethoscope"
 
     
-    def __init__(self, device_refresh_period = 5, results_dir="/ethoscope_data/results", deviceClass=Ethoscope):
+    def __init__(self, device_refresh_period = 5, results_dir="/ethoscope_data/results", deviceClass=Ethoscope, regex=None):
         self._zeroconf = Zeroconf()
         self.devices = []
         self.device_refresh_period = device_refresh_period
         self.results_dir = results_dir
         self._Device = deviceClass
+        self._regex = regex
         
         self._edb = ExperimentalDB()
 
@@ -669,7 +671,11 @@ class EthoscopeScanner(DeviceScanner):
 
         # First we generate a dictionary of active ethoscopes in the database. In this way we account for those that are in use but are actually offline
         all_known_ethoscopes = self._edb.getEthoscope ('all', asdict=True)
-        
+
+        if self._regex is not None:
+            pattern = re.compile(self._regex)
+            all_known_ethoscopes = [e for e in all_known_ethoscopes if pattern.match(e["ethoscope_name"]) is not None]
+
         for dv_db in all_known_ethoscopes:
             ethoscope = all_known_ethoscopes[dv_db]
             if ethoscope['active'] == 1:
