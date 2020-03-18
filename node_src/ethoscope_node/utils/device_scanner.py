@@ -6,6 +6,7 @@ import json
 import time
 import logging
 import traceback
+import threading
 from functools import wraps
 import socket
 from zeroconf import ServiceBrowser, Zeroconf
@@ -527,7 +528,7 @@ class Ethoscope(Thread):
         self._is_online = False
 
 
-class DeviceScanner(object):
+class DeviceScanner():
     """
     Uses zeroconf (aka Bonjour, aka Avahi etc) to passively listen for ethoscope devices registering themselves on the network.
     From: https://github.com/jstasiak/python-zeroconf
@@ -546,9 +547,21 @@ class DeviceScanner(object):
         self.device_refresh_period = device_refresh_period
         self._Device = deviceClass
         
+    def target(self):
+
+        while True:
+            time.sleep(30)
+            devices = self.get_all_devices_info()
+            dev_list = str([d for d in sorted(devices.keys())])
+            dev_list_id = [d[0] for d in devices.items()]
+            logging.info("device map is: %s" % dev_list_id)
+        
     def start(self):
         # Use self as the listener class because I have add_service and remove_service methods
         self.browser = ServiceBrowser(self._zeroconf, self._service_type, self)
+        thread = threading.Thread(target=self.target)
+        thread.daemon = True
+        thread.start()
         
     def stop(self):
         self._zeroconf.close()
@@ -583,7 +596,7 @@ class DeviceScanner(object):
         Manually add a device to the list
         """
         
-        device = self._Device(ip, self.device_refresh_period, results_dir = self.results_dir )
+        device = self._Device(ip, self.device_refresh_period, results_dir = self.results_dir)
         if name: device.zeroconf_name = name
         
         device.start()
@@ -639,12 +652,13 @@ class EthoscopeScanner(DeviceScanner):
     _device_type = "ethoscope"
 
     
-    def __init__(self, device_refresh_period = 5, results_dir="/ethoscope_data/results", deviceClass=Ethoscope):
+    def __init__(self, device_refresh_period = 5, results_dir="/ethoscope_data/results", deviceClass=Ethoscope, regex=None):
         self._zeroconf = Zeroconf()
         self.devices = []
         self.device_refresh_period = device_refresh_period
         self.results_dir = results_dir
         self._Device = deviceClass
+        self._regex = regex
         
         self._edb = ExperimentalDB()
 
@@ -669,7 +683,7 @@ class EthoscopeScanner(DeviceScanner):
 
         # First we generate a dictionary of active ethoscopes in the database. In this way we account for those that are in use but are actually offline
         all_known_ethoscopes = self._edb.getEthoscope ('all', asdict=True)
-        
+
         for dv_db in all_known_ethoscopes:
             ethoscope = all_known_ethoscopes[dv_db]
             if ethoscope['active'] == 1:
