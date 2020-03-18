@@ -369,6 +369,9 @@ class Ethoscope(Thread):
 
     @retry(ScanException, tries=3, delay=1, backoff=1)
     def _get_json(self, url,timeout=5, post_data=None):
+        """
+        Ethoscope
+        """
 
         try:
             req = urllib.request.Request(url, data=post_data, headers={'Content-Type': 'application/json'})            
