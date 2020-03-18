@@ -296,7 +296,7 @@ class ExperimentalDB(multiprocessing.Process):
         row = self.executeSQL(sql_get_ethoscope)
 
         if regex is not None:
-            all_known_ethoscopes = filter_by_regex(all_known_ethoscopes, regex)
+            row = filter_by_regex(devices = row, regex=regex)
 
         if row == 0:
             return {}
