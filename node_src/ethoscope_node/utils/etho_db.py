@@ -276,7 +276,7 @@ class ExperimentalDB(multiprocessing.Process):
         else:
             return row
     
-    def getEthoscope (self, ethoscope_id, asdict=False):
+    def getEthoscope (self, ethoscope_id, regex=None asdict=False):
         """
         Gather ethoscope with given ID if provided, if experiment_id equals 'all', it will collect all available ethoscopes
         :param ethoscope_id: the ID of the ethoscope to be interrogated
@@ -291,6 +291,10 @@ class ExperimentalDB(multiprocessing.Process):
 
         
         row = self.executeSQL(sql_get_ethoscope)
+
+        if regex is not None:
+            pattern = re.compile(self._regex)
+            all_known_ethoscopes = [e for e in all_known_ethoscopes if pattern.match(e["ethoscope_name"]) is not None]
         
         if row == 0:
             return {}
