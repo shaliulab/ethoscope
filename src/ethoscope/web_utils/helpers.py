@@ -267,6 +267,19 @@ def get_etc_hostnames():
         hosts [ entries[1] ] = entries[0]
 
     return hosts
+
+def get_loadavg():
+    """
+    Returns the load average for the last 1 5 and 15 minutes
+    """
+
+    try:
+        with os.popen("cat /proc/loadavg") as df:
+            loadavg = df.read().strip("\n")[:3]
+        
+        return loadavg
+    except:
+        return [-1, -1, -1]
     
 def get_core_temperature():
     """

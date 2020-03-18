@@ -229,7 +229,9 @@ def list_data_files(category, id):
 @error_decorator
 def get_machine_info(id):
     """
-    This is information about the ethoscope that is not changing in time such as hardware specs and configuration parameters
+    This is information about the ethoscope that is not changing in time
+    such as hardware specs and configuration parameters
+    partitions includes the Use% of each partition in the RPi)
     """
 
     if id is not None and id != machine_id:
@@ -288,6 +290,7 @@ def info(id):
         
     info["current_timestamp"] = bottle.time.time()
     info["CPU_temp"] = get_core_temperature()
+    info["loadavg"] = get_loadvg()
     return info
 
 @api.get('/user_options/<id>')
