@@ -5,7 +5,6 @@ import datetime
 import json
 import time
 import logging
-import re
 import traceback
 from functools import wraps
 import socket
