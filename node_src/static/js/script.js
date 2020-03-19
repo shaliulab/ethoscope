@@ -72,7 +72,7 @@
     });
 
     // create the controller and inject Angular's $scope
-    app.controller('mainController', function($scope, $http, $interval, $timeout) {
+    app.controller('mainController', function($scope, $http, $interval, $timeout, $log) {
         $scope.sortType = 'name'; // set the default sort type
         $scope.sortReverse = false;  // set the default sort order
         $scope.filterEthoscopes = '';     // set the default search/filter term
@@ -102,16 +102,19 @@
             $scope.localtime = t.toString();
         };
 
-//	var update_load_avg = function() {
-//            $http.get('/devices').success(function(data){
-//		    for (device in data) {
-//		     device_id = device["id"];
-//	             console.log(device_id);
-//                     document.getElementById(device_id + "-1_min").style.width = device.loadavg[0] / 4 + "%";
-//
-//		    }
-//	  })
-//	}
+//	$scope.update_load_avg = function() {
+//            devices = $scope.devices;
+//		new_devices = [];
+//	    for (device in devices) {
+//	     if(device.loadavg === undefined) {
+//                device.loadavg = [undefined, undefined, undefined];
+//	     } else {
+//                device.loadavg = [100 * device.loadavg[0] / 4 + "%", 100 * device.loadavg[1] / 4 + "%", 100 * device.loadavg[2] / 4 + "%"];
+//	     }
+//	     new_devices.push(device);
+//	    }
+//	    $scope.devices = new_devices;
+//	};
 
         $scope.get_devices = function(){
             $http.get('/devices').success(function(data){
@@ -119,18 +122,23 @@
                 data_list = [];
 
                 for(d in data){
-                    data_list.push(data[d]);
-                    }
+                    dev = data[d];
+       	            if(dev.loadavg === undefined) {
+                      dev.loadavg = ["NA","NA","NA"];
+		      dev.color = "#add8e6";
+           	    } else {
+                       dev.loadavg = [Math.round(100 * dev.loadavg[0] / 4) + "%", Math.round(100 * dev.loadavg[1] / 4) + "%", Math.round(100 * dev.loadavg[2] / 4) + "%"];
+                       dev.color = "#f44336";
+           	    }
+                    data_list.push(dev);
+                 }
 
                 $scope.devices = data_list;
                 $scope.n_devices=$scope.devices.length;
                 status_summary = {};
 
                 for(d in $scope.devices){
-
-                    dev = $scope.devices[d]
-
-                    if(!(dev.status in status_summary))
+                     if(!(dev.status in status_summary))
                         status_summary[dev.status] = 0;
                      status_summary[dev.status] += 1;
                 }
@@ -209,6 +217,7 @@
             if (document.visibilityState=="visible"){
                     $scope.get_devices();
                     update_local_times();
+                    //$scope.update_load_avg();
 		    console.log("Refreshing");
 		    console.log($scope.devices[3]);
                     //console.log("refresh platform", new Date());
@@ -216,7 +225,7 @@
        };
 
        // refresh every 5 seconds
-       refresh_data = $interval(refresh_platform, 60 * 1000);
+       refresh_data = $interval(refresh_platform, 5 * 1000);
         
         //clear interval when scope is destroyed
         $scope.$on("$destroy", function(){

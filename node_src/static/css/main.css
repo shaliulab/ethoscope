@@ -461,9 +461,8 @@ custom-select-wrap .select-icon svg {
 .loadavg {
   width: 100%;
   text-align: right;
-  padding-top: 10px;
-  padding-bottom: 10px;
+  padding-top: 2px;
+  padding-bottom: 2px;
   color: white;
-  background-color: #2196F3; /* Blue */
-  height: 30%;
+  line-height: 30%;
 }
