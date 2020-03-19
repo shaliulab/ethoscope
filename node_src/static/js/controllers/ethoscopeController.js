@@ -390,7 +390,11 @@ app.controller('ethoscopeController', function($scope, $http, $routeParams, $int
                         $scope.delta_t_min = (node_t - data.current_timestamp) / 60;
                      });
                 }
-                
+
+                document.querySelector(".loadavg#1_min").style.width = $scope.device.loadavg[0] / 4;
+                document.querySelector(".loadavg#5_min").style.width = $scope.device.loadavg[1] / 4;
+                document.querySelector(".loadavg#15_min").style.width = $scope.device.loadavg[2] / 4;
+                                
                 $scope.device.url_img = "/device/"+ $scope.device.id  + "/last_img" + '?' + Math.floor(new Date().getTime()/1000.0);
                 $scope.device.url_stream = '/device/'+device_id+'/stream';
                 
