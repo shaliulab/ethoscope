@@ -126,7 +126,7 @@
             </th>
             <th>
                 <a href="#" ng-click="sortType = 'loadavg'; sortReverse = !sortReverse">
-                Load_avg
+                LoadAvg
                 <span ng-show="sortType == 'status' && !sortReverse" class="fa fa-caret-down"></span>
                 <span ng-show="sortType == 'status' && sortReverse" class="fa fa-caret-up"></span>
             </th>
@@ -185,19 +185,12 @@
                 <span ng-if="device.status == 'recording'" class="fa fa-play-circle color-red" title={{device.status}}></span>
                 <span ng-if="device.status == 'streaming'" class="fa fa-play-circle color-red" title={{device.status}}></span>
                 <span ng-if="device.status == 'stopped'" class="fa fa-stop-circle" title={{device.status}}></span></td>
-                <td>{{secToDate(device.time)}}</td>
                 <td>
-                  <div class="container">
-                    <div class="loadavg" id="1_min"></div>
-                  </div>
-                  <div class="container">
-                    <div class="loadavg" id="5_min"></div>
-                  </div>
-                  <div class="container">
-                    <div class="loadavg" id="15_min"></div>
+                  <div class="indicator_bar">
+			  <div class="loadavg" id="{{device.id}}-1_min"></div>
                   </div>
                 </td>
-                <!-- {{device.loadavg}} -->
+                <td>{{secToDate(device.time)}}</td>
                 <td>{{elapsedtime(device.time_since_backup)}}</td>
                 <td>{{device.experimental_info.name}}</td>
                 <td>{{device.experimental_info.location}}</td>

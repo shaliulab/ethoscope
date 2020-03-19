@@ -452,14 +452,16 @@ custom-select-wrap .select-icon svg {
 }
 
     
-.container {
+.indicator_bar {
   width: 100%;
-  background-color: #ddd;
+  margin: 5px;
 }
 
 .loadavg {
+  width: 0%;
   text-align: right;
   padding-top: 10px;
   padding-bottom: 10px;
   color: white;
+  background-color: #f44336;
 }

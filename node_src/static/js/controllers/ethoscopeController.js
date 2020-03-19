@@ -374,6 +374,7 @@ app.controller('ethoscopeController', function($scope, $http, $routeParams, $int
         };
 
         var refresh = function(){
+	console.log("Refreshing");
         if (document.visibilityState=="visible"){
             $http.get('/device/'+device_id+'/data')
              .success(function(data){
@@ -391,9 +392,10 @@ app.controller('ethoscopeController', function($scope, $http, $routeParams, $int
                      });
                 }
 
-                document.querySelector(".loadavg#1_min").style.width = $scope.device.loadavg[0] / 4;
-                document.querySelector(".loadavg#5_min").style.width = $scope.device.loadavg[1] / 4;
-                document.querySelector(".loadavg#15_min").style.width = $scope.device.loadavg[2] / 4;
+                document.getElementById(device_id + "-1_min").style.width = 100*$scope.device.loadavg[0] / 4 + "%"
+                document.getElementById(device_id + "-5_min").style.width = 100*$scope.device.loadavg[1] / 4 + "%"
+                document.getElementById(device_id + "-15_min").style.width = 100*$scope.device.loadavg[2] / 4 + "%"
+		console.log("load average of the last minute for ethoscope with id " + device_id + "is " + $scope.device.loadavg[0]);
                                 
                 $scope.device.url_img = "/device/"+ $scope.device.id  + "/last_img" + '?' + Math.floor(new Date().getTime()/1000.0);
                 $scope.device.url_stream = '/device/'+device_id+'/stream';
@@ -412,7 +414,7 @@ app.controller('ethoscopeController', function($scope, $http, $routeParams, $int
         }
         }
 
-        refresh_data = $interval(refresh, 3000);
+        refresh_data = $interval(refresh, 3000); // miliseconds
         //clear interval when scope is destroyed
         $scope.$on("$destroy", function(){
         $interval.cancel(refresh_data);
