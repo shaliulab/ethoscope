@@ -102,6 +102,17 @@
             $scope.localtime = t.toString();
         };
 
+//	var update_load_avg = function() {
+//            $http.get('/devices').success(function(data){
+//		    for (device in data) {
+//		     device_id = device["id"];
+//	             console.log(device_id);
+//                     document.getElementById(device_id + "-1_min").style.width = device.loadavg[0] / 4 + "%";
+//
+//		    }
+//	  })
+//	}
+
         $scope.get_devices = function(){
             $http.get('/devices').success(function(data){
 
@@ -198,12 +209,14 @@
             if (document.visibilityState=="visible"){
                     $scope.get_devices();
                     update_local_times();
+		    console.log("Refreshing");
+		    console.log($scope.devices[3]);
                     //console.log("refresh platform", new Date());
             }
        };
 
        // refresh every 5 seconds
-       refresh_data = $interval(refresh_platform, 5 * 1000);
+       refresh_data = $interval(refresh_platform, 60 * 1000);
         
         //clear interval when scope is destroyed
         $scope.$on("$destroy", function(){

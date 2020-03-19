@@ -392,11 +392,6 @@ app.controller('ethoscopeController', function($scope, $http, $routeParams, $int
                      });
                 }
 
-                document.getElementById(device_id + "-1_min").style.width = 100*$scope.device.loadavg[0] / 4 + "%"
-                document.getElementById(device_id + "-5_min").style.width = 100*$scope.device.loadavg[1] / 4 + "%"
-                document.getElementById(device_id + "-15_min").style.width = 100*$scope.device.loadavg[2] / 4 + "%"
-		console.log("load average of the last minute for ethoscope with id " + device_id + "is " + $scope.device.loadavg[0]);
-                                
                 $scope.device.url_img = "/device/"+ $scope.device.id  + "/last_img" + '?' + Math.floor(new Date().getTime()/1000.0);
                 $scope.device.url_stream = '/device/'+device_id+'/stream';
                 

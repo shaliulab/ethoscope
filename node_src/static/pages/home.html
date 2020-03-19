@@ -187,7 +187,30 @@
                 <span ng-if="device.status == 'stopped'" class="fa fa-stop-circle" title={{device.status}}></span></td>
                 <td>
                   <div class="indicator_bar">
-			  <div class="loadavg" id="{{device.id}}-1_min"></div>
+			  <div ng-if="device.loadavg[0] > 0">
+    			    <div class="loadavg" id="{{device.id}}-1_min" style="width:{{(device.loadavg[0] / 4) * 100}}%; background-color: #F44336"></div>
+			  </div>
+			  <div ng-if="device.loadavg[0] === 'undefined' ">
+    			    <div class="loadavg" id="{{device.id}}-1_min"></div>
+			  </div>
+        
+                  </div>
+                  <div class="indicator_bar">
+			  <div ng-if="device.loadavg[1] > 0">
+    			    <div class="loadavg" id="{{device.id}}-5_min" style="width:{{(device.loadavg[1] / 4) * 100}}%; background-color: #F44336"></div>
+			  </div>
+			  <div ng-if="device.loadavg[1] === 'undefined' ">
+    			    <div class="loadavg" id="{{device.id}}-5_min"></div>
+			  </div>
+        
+                  </div>
+                  <div class="indicator_bar">
+			  <div ng-if="device.loadavg[2] > 0">
+    			    <div class="loadavg" id="{{device.id}}-15_min" style="width:{{(device.loadavg[2] / 4) * 100}}%; background-color: #F44336"></div>
+			  </div>
+			  <div ng-if="device.loadavg[2] === 'undefined' ">
+    			    <div class="loadavg" id="{{device.id}}-15_min"></div>
+			  </div>
                   </div>
                 </td>
                 <td>{{secToDate(device.time)}}</td>
