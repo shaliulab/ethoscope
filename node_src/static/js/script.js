@@ -138,6 +138,7 @@
                 status_summary = {};
 
                 for(d in $scope.devices){
+		     dev = $scope.devices[d];
                      if(!(dev.status in status_summary))
                         status_summary[dev.status] = 0;
                      status_summary[dev.status] += 1;
@@ -218,8 +219,6 @@
                     $scope.get_devices();
                     update_local_times();
                     //$scope.update_load_avg();
-		    console.log("Refreshing");
-		    console.log($scope.devices[3]);
                     //console.log("refresh platform", new Date());
             }
        };

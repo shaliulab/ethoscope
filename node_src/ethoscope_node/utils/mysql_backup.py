@@ -253,7 +253,12 @@ class MySQLdbToSQlite(object):
             if len(to_insert) > self._max_n_rows_to_insert:
                 value_string = ",".join(to_insert)
                 dst_command = "INSERT INTO %s VALUES %s" % (table_name, value_string )
-                dst_cur.execute(dst_command)
+                try:
+                    dst_cur.execute(dst_command)
+                except Exception as e:
+                    logging.warning(e)
+                    logging.warning(f"Could not execute INSERT command in {self._remote_db_name}")
+
                 dst.commit()
                 to_insert = []
 
@@ -266,7 +271,13 @@ class MySQLdbToSQlite(object):
         if len(to_insert) > 0:
             value_string = ",".join(to_insert)
             dst_command = "INSERT INTO %s VALUES %s" % (table_name, value_string )
-            dst_cur.execute(dst_command)
+            try:
+                dst_cur.execute(dst_command)
+            except Exception as e:
+                logging.warning(e)
+                logging.warning(f"Could not execute INSERT command in {self._remote_db_name}")
+
+
         dst.commit()
 
 
