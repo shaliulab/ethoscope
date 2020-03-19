@@ -1,22 +1,23 @@
-# Test camera settings and relation between them
-preview_length = 100
-live_data = {attr: np.array([None,]*preview_length) for attr in attrs}
-filename = f'camera_stats_@{target_fps}fps_{args["resolution"]}_{shutter_speed}shutter_{iso}iso_{args["awb_gains"]}awb.txt'
-file_path = os.path.join('/root', filename)
 
-try:
-    os.remove(file_path)
-except FileNotFoundError:
-    pass
+def benchmark_camera(target_fps, target_resolution, awb_gains, awb_mode, shutter_speed, iso): 
 
-
-def benchmark_camera(target_fps, target_resolution, awb_gains, awb_mode, shutter_speed, iso, resolution): 
-
+    attrs = ['t','analog_gain', 'digital_gain', 'exposure_speed', 'shutter_speed', 'iso', 'framerate', 'resolution', 'awb_gains']
     i = 0
     j = 0
     t0 = time.time()
     row = [None] * len(attrs)
-    attrs = ['t','analog_gain', 'digital_gain', 'exposure_speed', 'shutter_speed', 'iso', 'framerate', 'resolution', 'awb_gains']
+
+    # Test camera settings and relation between them
+    preview_length = 100
+    live_data = {attr: np.array([None,]*preview_length) for attr in attrs}
+    filename = f'camera_stats_@{target_fps}fps_{args["resolution"]}_{shutter_speed}shutter_{iso}iso_{args["awb_gains"]}awb.txt'
+    file_path = os.path.join('/root', filename)
+
+    try:
+        os.remove(file_path)
+    except FileNotFoundError:
+        pass
+
 
     with open(file_path, 'a+') as fh:
         fh.write('t,analog_gain,digital_gain,exposure_speed,shutter_speed,iso,framerate,width,height,red,blue\n')
@@ -149,5 +150,5 @@ if __name__ == "__main__":
     else:
         exposure_mode = 'off'
 
-    benchmark_camera(target_fps, target_resolution, awb_gains, awb_mode, shutter_speed, iso, resolution )
+    benchmark_camera(target_fps, target_resolution, awb_gains, awb_mode, shutter_speed, iso)
 
