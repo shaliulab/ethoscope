@@ -10,25 +10,49 @@ import traceback
 import urllib.request
 import json
 
-def receive_devices(server = "localhost"):
+import re
+
+cpu_available = multiprocessing.cpu_count()
+
+def filter_by_regex(devices, regex):
+    pattern = re.compile(regex)
+    if type(devices) is dict:
+        new_devices = {}
+        for key, value in devices.items():
+            if pattern.match(value["name"]) is not None:
+                new_devices[key] = value
+
+        devices = new_devices
+        return devices
+
+    else:
+        devices = [e for e in devices if pattern.match(e["ethoscope_name"]) is not None]
+        return devices
+
+def receive_devices(server = "localhost", regex=None):
     '''
     Interrogates the NODE on its current knowledge of devices, then extracts from the JSON record
     only the IPs
     '''
     url = "http://%s/devices" % server
     devices = []
-    
-    try:
-        req = urllib.request.Request(url, headers={'Content-Type': 'application/json'})            
-        f = urllib.request.urlopen(req, timeout=10)
-        devices = json.load(f)
-        return devices
+    success = False
+    trials = 1
 
-    except:
-        logging.error("The node ethoscope server %s is not running or cannot be reached. A list of available ethoscopes could not be found." % server)
-        return
-        #logging.error(traceback.format_exc())
-        
+    while not success or trials < 5:
+        try:
+            req = urllib.request.Request(url, headers={'Content-Type': 'application/json'})
+            success = True
+            f = urllib.request.urlopen(req, timeout=5)
+            devices = json.load(f)
+            return devices
+
+        except:
+            logging.warning("The node ethoscope server %s is not running or cannot be reached. A list of available ethoscopes could not be found." % server)
+            #logging.error(traceback.format_exc())
+            trials += 1
+            logging.warning(f"Trying again {trials}/5...")
+    return
 
 class BackupClass(object):
     _db_credentials = {
@@ -81,16 +105,17 @@ class BackupClass(object):
 
 
 class GenericBackupWrapper(object):
-    def __init__(self, backup_job, results_dir, safe, server):
+    def __init__(self, backup_job, results_dir, safe, server, regex=None):
         self._TICK = 1.0  # s
         self._BACKUP_DT = 5 * 60  # 5min
         self._results_dir = results_dir
         self._safe = safe
         self._backup_job = backup_job
         self._server = server
+        self._regex = regex
 
         # for safety, starts device scanner too in case the node will go down at later stage
-        self._device_scanner = EthoscopeScanner(results_dir = results_dir)
+        self._device_scanner = EthoscopeScanner(results_dir = results_dir, regex = regex)
             
             
 
@@ -98,7 +123,9 @@ class GenericBackupWrapper(object):
     def run(self):
         try:
             devices = receive_devices(self._server)
-            
+            if self._regex is not None and devices:
+                devices = filter_by_regex(devices, self._regex)
+
             if not devices:
                 logging.info("Using Ethoscope Scanner to look for devices")
                 self._device_scanner.start()
@@ -117,9 +144,12 @@ class GenericBackupWrapper(object):
 
                 if not devices:
                     devices = self._device_scanner.get_all_devices_info()
+                    if self._regex is not None:
+                        devices = filter_by_regex(devices, self._regex)
+
 
                 dev_list = str([d for d in sorted(devices.keys())])
-                logging.info("device map is: %s" %dev_list)
+                logging.info("device map is: %s" % dev_list)
 
                 args = []
                 for d in list(devices.values()):
@@ -134,7 +164,11 @@ class GenericBackupWrapper(object):
 
                     #map(self._backup_job, args)
                 else:
-                    pool = multiprocessing.Pool(4)
+                    cpus_used = int(cpu_available * 0.75)
+                    logging.warning("########################################################")
+                    logging.warning(f"PLEASE NOTE: Backups will use {cpus_used} CPUs in parallel")
+                    logging.warning("########################################################")
+                    pool = multiprocessing.Pool(cpus_used)
                     _ = pool.map(self._backup_job, args)
                     logging.info("Pool mapped")
                     pool.close()

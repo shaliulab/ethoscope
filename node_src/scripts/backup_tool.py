@@ -1,6 +1,5 @@
 from ethoscope_node.utils.configuration import EthoscopeConfiguration
 from ethoscope_node.utils.backups_helpers import GenericBackupWrapper, BackupClass, receive_devices
-from ethoscope_node.utils.device_scanner import EthoscopeScanner
 
 import logging
 import optparse
@@ -45,13 +44,19 @@ if __name__ == '__main__':
         parser.add_option("-i", "--server", dest="server", default="localhost", help="The server on which the node is running will be interrogated first for the device list")
         parser.add_option("-s", "--safe", dest="safe", default=False, help="Set Safe mode ON", action="store_true")
         parser.add_option("-e", "--ethoscope", dest="ethoscope", help="Force backup of given ethoscope number (eg: 007)")
-        
+        parser.add_option("--regex", dest="regex", help="Only backup ethoscopes whose ethoscope_name matches this regex. All are matched by default. Example ^ETHOSCOPE_\d{3}$", default=None)
+
         (options, args) = parser.parse_args()
         option_dict = vars(options)
         RESULTS_DIR = option_dict["results_dir"] or CFG.content['folders']['results']['path']
         SAFE_MODE = option_dict["safe"]
         ethoscope = option_dict["ethoscope"]
         server = option_dict["server"]
+        regex = option_dict["regex"]
+
+        logging.warning("####################################################")
+        logging.warning(f"PLEASE NOTE: ETHOSCOPE_DIR is set to {RESULTS_DIR}")
+        logging.warning("####################################################")
 
         if ethoscope:
             all_devices = receive_devices(server)
@@ -75,7 +80,8 @@ if __name__ == '__main__':
             gbw = GenericBackupWrapper(backup_job,
                                        RESULTS_DIR,
                                        SAFE_MODE,
-                                       server)
+                                       server,
+                                       regex)
             gbw.run()
 
     except Exception as e:
