@@ -186,7 +186,18 @@
                 <span ng-if="device.status == 'streaming'" class="fa fa-play-circle color-red" title={{device.status}}></span>
                 <span ng-if="device.status == 'stopped'" class="fa fa-stop-circle" title={{device.status}}></span></td>
                 <td>{{secToDate(device.time)}}</td>
-                <td>{{device.loadavg}}</td>
+                <td>
+                  <div class="container">
+                    <div class="loadavg" id="1_min"></div>
+                  </div>
+                  <div class="container">
+                    <div class="loadavg" id="5_min"></div>
+                  </div>
+                  <div class="container">
+                    <div class="loadavg" id="15_min"></div>
+                  </div>
+                </td>
+                <!-- {{device.loadavg}} -->
                 <td>{{elapsedtime(device.time_since_backup)}}</td>
                 <td>{{device.experimental_info.name}}</td>
                 <td>{{device.experimental_info.location}}</td>
