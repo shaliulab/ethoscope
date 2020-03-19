@@ -275,7 +275,7 @@ def get_loadavg():
 
     try:
         with os.popen("cat /proc/loadavg") as df:
-            loadavg = df.read().strip("\n").split(" ")[:3]
+            loadavg = [float(e) for e in df.read().strip("\n").split(" ")[:3]]
         
         return loadavg
     except:
