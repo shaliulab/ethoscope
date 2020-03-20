@@ -1,0 +1,3 @@
+PYTHON=/home/vibflysleep/anaconda3/envs/ethoscope3.7/bin/python
+BACKUP_SCRIPT=/opt/ethoscope-node/node_src/scripts/backup_tool.py
+REGEX="ETHOSCOPE_\\d{3}"

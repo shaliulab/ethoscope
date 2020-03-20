@@ -1,0 +1,13 @@
+[Unit]
+Description=Ethoscope backups for %I lab
+Wants=ntpd.service clock.service
+After=ntpd.service clock.service
+
+[Service]
+EnvironmentFile=/etc/default/ethoscope_backup@%i
+ExecStart=/home/vibflysleep/anaconda3/envs/ethoscope3.7/bin/python ${BACKUP_SCRIPT} --regex ${REGEX}
+RestartSec=5
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
