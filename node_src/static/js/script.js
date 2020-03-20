@@ -102,19 +102,9 @@
             $scope.localtime = t.toString();
         };
 
-//	$scope.update_load_avg = function() {
-//            devices = $scope.devices;
-//		new_devices = [];
-//	    for (device in devices) {
-//	     if(device.loadavg === undefined) {
-//                device.loadavg = [undefined, undefined, undefined];
-//	     } else {
-//                device.loadavg = [100 * device.loadavg[0] / 4 + "%", 100 * device.loadavg[1] / 4 + "%", 100 * device.loadavg[2] / 4 + "%"];
-//	     }
-//	     new_devices.push(device);
-//	    }
-//	    $scope.devices = new_devices;
-//	};
+        $scope.restart = function() {
+            $http.post('/node-actions/restart')
+        };
 
         $scope.get_devices = function(){
             $http.get('/devices').success(function(data){

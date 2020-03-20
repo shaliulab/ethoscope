@@ -200,7 +200,13 @@
 
                 </td>
                 <td>{{secToDate(device.time)}}</td>
-                <td>{{elapsedtime(device.time_since_backup)}}</td>
+                <td>
+                <button type="button" class="btn btn-primary" ng-if="device.status == 'tracking'" ng-click="ethoscope.backup(device.id)" data-toggle="modal" >
+                {{elapsedtime(device.time_since_backup)}}
+                </button>
+                </td>
+                
+
                 <td>{{device.experimental_info.name}}</td>
                 <td>{{device.experimental_info.location}}</td>
                 <td>
