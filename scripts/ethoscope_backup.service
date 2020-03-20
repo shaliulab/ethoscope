@@ -6,8 +6,10 @@ After=ntpd.service clock.service
 
 [Service]
 Type=simple
+Environment=PYTHONPATH=/opt/ethoscope-node/node_src
 WorkingDirectory=/opt/ethoscope-node/node_src/scripts/
-ExecStart=/usr/bin/python /opt/ethoscope-node/node_src/scripts/backup_tool.py
+#ExecStart=/usr/bin/python /opt/ethoscope-node/node_src/scripts/backup_tool.py
+ExecStart=/home/luna.kuleuven.be/u0127714/anaconda3/envs/ethoscope3.7/bin/python /opt/ethoscope-node/node_src/scripts/backup_tool.py
 RestartSec=5
 Restart=always
 
