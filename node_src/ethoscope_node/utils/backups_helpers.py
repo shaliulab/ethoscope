@@ -12,7 +12,8 @@ import json
 
 import re
 
-cpu_available = multiprocessing.cpu_count()
+CPUS_AVAILABLE = multiprocessing.cpu_count()
+MINUTES_WAITING = 1
 
 def filter_by_regex(devices, regex):
     pattern = re.compile(regex)
@@ -107,7 +108,7 @@ class BackupClass(object):
 class GenericBackupWrapper(object):
     def __init__(self, backup_job, results_dir, safe, server, regex=None):
         self._TICK = 1.0  # s
-        self._BACKUP_DT = 5 * 60  # 5min
+        self._BACKUP_DT = MINUTES_WAITING * 60  # 5min
         self._results_dir = results_dir
         self._safe = safe
         self._backup_job = backup_job
@@ -164,7 +165,7 @@ class GenericBackupWrapper(object):
 
                     #map(self._backup_job, args)
                 else:
-                    cpus_used = int(cpu_available * 0.75)
+                    cpus_used = int(CPUS_AVAILABLE * 0.75)
                     logging.warning("########################################################")
                     logging.warning(f"PLEASE NOTE: Backups will use {cpus_used} CPUs in parallel")
                     logging.warning("########################################################")
