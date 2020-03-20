@@ -79,6 +79,7 @@ class DefaultROIBuilder(BaseROIBuilder):
     """
     The default ROI builder. It simply defines the entire image as a unique ROI.
     """
+    _description = {"overview": "The default ROI builder. It simply defines the entire image as a unique ROI.", "arguments": []}
 
 
     def _rois_from_img(self,img):

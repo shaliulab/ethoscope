@@ -30,6 +30,7 @@ import secrets
 
 
 __author__ = 'giorgio'
+
 import multiprocessing
 import sqlite3
 import datetime
@@ -78,6 +79,7 @@ class ExperimentalDB(multiprocessing.Process):
 
             except Exception as e:
                 logging.error(traceback.format_exc())
+                logging.error(f"command is set to {command}")
                 return -1
 
         except:
@@ -288,9 +290,9 @@ class ExperimentalDB(multiprocessing.Process):
             sql_get_ethoscope = "SELECT * FROM %s" % (self._ethoscopes_table_name)
         else:
             sql_get_ethoscope = "SELECT * FROM %s WHERE ethoscope_id = '%s'" % (self._ethoscopes_table_name, ethoscope_id)
-        
+
         row = self.executeSQL(sql_get_ethoscope)
-        
+
         if row == 0:
             return {}
         

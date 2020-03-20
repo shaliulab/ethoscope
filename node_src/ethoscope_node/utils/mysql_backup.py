@@ -5,12 +5,16 @@ import sqlite3
 import os
 import logging
 import traceback
+from ethoscope_node.utils.configuration import EthoscopeConfiguration
+
+CFG = EthoscopeConfiguration()
+
 
 class DBNotReadyError(Exception):
     pass
 
 class MySQLdbToSQlite(object):
-    _max_n_rows_to_insert = 10000
+    _max_n_rows_to_insert = CFG.content['io']['max_n_rows_to_insert'] or 10000
 
     def __init__(self,
                  dst_path,
