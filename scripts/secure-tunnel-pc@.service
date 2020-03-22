@@ -1,15 +1,17 @@
 [Unit]
 Description=Setup a secure tunnel to %I
 After=network.target
+After=pulse_client.service
+Wants=pulse_client.service
+Requisite=pulse_client.service
+PartOf=pulse_client.service
 
 [Service]
-Environment="LOCAL_ADDR=localhost"
-EnvironmentFile=/etc/default/secure-tunnel@%i
 ExecStart=/usr/bin/ssh -NT -o ServerAliveInterval=60 -o ExitOnForwardFailure=yes -L ${LOCAL_ADDR}:${LOCAL_PORT}:localhost:${REMOTE_PORT} ${TARGET}
-
 # Restart every >2 seconds to avoid StartLimitInterval failure
 RestartSec=5
 Restart=always
 
 [Install]
 WantedBy=multi-user.target
+WantedBy=pulse_client.service
