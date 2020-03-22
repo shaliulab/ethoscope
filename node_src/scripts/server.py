@@ -12,6 +12,7 @@ import tempfile
 import shutil
 import netifaces
 import json
+import sys
 
 from ethoscope_node.utils.device_scanner import EthoscopeScanner, SensorScanner
 from ethoscope_node.utils.configuration import EthoscopeConfiguration
@@ -439,13 +440,18 @@ def node_info(req):#, device):
 @error_decorator
 def node_actions():
     action = bottle.request.json
+    if action is None:
+        action = {"action": bottle.request.forms.get("action")}
+
+    logging.warning(action)
     
     if action['action'] == 'restart':
         logging.info('User requested a service restart.')
-        with os.popen("sleep 1; systemctl restart ethoscope_node.service") as po:
-            r = po.read()
-        
-        return r
+        # with os.popen("sleep 1; systemctl restart ethoscope_node.service") as po:
+            # r = po.read()
+        # return r
+        subprocess.Popen("sleep 1 && systemctl restart ethoscope_node.service", shell = True)
+        return ""
             
     elif action['action'] == 'close':
         close()

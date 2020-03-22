@@ -108,6 +108,10 @@ app.controller('ethoscopeController', function($scope, $http, $routeParams, $int
         });
 
 
+        $scope.ethoscope.force_backup = function(name) {
+            
+        }
+
         $scope.ethoscope.update_user_options = {};
 
         $scope.ethoscope.update_user_options.tracking = function(name){
