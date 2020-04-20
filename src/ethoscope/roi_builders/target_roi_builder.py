@@ -90,7 +90,7 @@ class TargetGridROIBuilder(BaseROIBuilder):
 
         super(TargetGridROIBuilder,self).__init__()
 
-    def _find_blobs(self, im, scoring_fun):
+    def _find_blobs_legacy(self, im, scoring_fun):
         grey= cv2.cvtColor(im,cv2.COLOR_BGR2GRAY)
         rad = int(self._adaptive_med_rad * im.shape[1])
         if rad % 2 == 0:
@@ -116,6 +116,62 @@ class TargetGridROIBuilder(BaseROIBuilder):
                 if score >0:
                     cv2.drawContours(bin,[c],0,score,-1)
             cv2.add(bin, score_map,score_map)
+        return score_map
+
+
+    def _find_blobs(self, im, scoring_fun):
+        # convert to gray
+        grey= cv2.cvtColor(im,cv2.COLOR_BGR2GRAY)
+        
+        # radius of dots is 0.1 * width of image
+        # units?
+        rad = int(self._adaptive_med_rad * im.shape[1])
+        # make sure it is an odd
+        if rad % 2 == 0:
+            rad += 1
+        
+        logging.warning(f"Radius: {rad}")
+
+        # make median intensity 255
+        med = np.median(grey)
+        scale = 255/(med)
+        cv2.multiply(grey,scale,dst=grey)
+        logging.warning(np.median(grey))        
+        bin = np.copy(grey)
+        score_map = np.zeros_like(bin)
+        for t in range(0, 255,5):
+            cv2.threshold(grey, t, 255,cv2.THRESH_BINARY_INV,bin)
+            
+            non_zero_pixels = np.count_nonzero(bin)           
+            if non_zero_pixels > 0.7 * im.shape[0] * im.shape[1]:
+                continue
+            if CV_VERSION == 3:
+                _, contours, h = cv2.findContours(bin,cv2.RETR_EXTERNAL,CHAIN_APPROX_SIMPLE)
+            else:
+                contours, h = cv2.findContours(bin,cv2.RETR_EXTERNAL,CHAIN_APPROX_SIMPLE)
+            
+            # if t % 10 == 0:
+            #     cv2.imshow(f"bin @ {t}", bin)
+            #     cv2.waitKey()
+            
+            
+            simple_bg = cv2.drawContours(grey.copy(), contours, -1, 255, -1)
+            _, th = cv2.threshold(simple_bg, 254, 255,cv2.THRESH_BINARY, simple_bg)
+            for i in range(10):
+                th = cv2.morphologyEx(th, cv2.MORPH_CLOSE, (5,5))
+
+            contours, h = cv2.findContours(th,cv2.RETR_EXTERNAL,CHAIN_APPROX_SIMPLE)
+            
+            bin.fill(0)
+
+            for c in contours:
+                score = scoring_fun(c)
+                if score > 0:
+                    # cv2.imshow("res", cv2.drawContours(bin.copy(),[c],-1,255*score,-1))
+                    # cv2.waitKey(0)
+                    cv2.drawContours(bin,[c],0,score,-1)
+            
+            score_map = cv2.add(bin, score_map)
         return score_map
 
     def _make_grid(self, n_col, n_row,
@@ -144,6 +200,22 @@ class TargetGridROIBuilder(BaseROIBuilder):
         x2 , y2  = pt2
         return np.sqrt((x1 - x2) ** 2 + (y1 - y2) ** 2)
 
+    def _score_circles(self, contour):
+
+        area = cv2.contourArea(contour)
+         
+        if area < 500 or area > 1000:
+            return 0
+
+        ((x, y), radius) = cv2.minEnclosingCircle(contour)
+        # if area was zero the functionw would have already returned                
+        ratio = np.pi*radius**2 / area
+       
+        if ratio > 1 and ratio < 1.5:
+            return 1
+        else:
+            return 0
+
     def _score_targets(self,contour, im):
 
         area = cv2.contourArea(contour)
@@ -158,7 +230,7 @@ class TargetGridROIBuilder(BaseROIBuilder):
         return 1
 
     def _find_target_coordinates(self, img):
-        map = self._find_blobs(img, self._score_targets)
+        map = self._find_blobs(img, self._score_circles)
         bin = np.zeros_like(map)
 
         # as soon as we have three objects, we stop
