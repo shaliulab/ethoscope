@@ -75,10 +75,10 @@ class BaseDrawer(object):
 
         if self._draw_frames:
             cv2.imshow(self._window_name, self._last_drawn_frame )
-            cv2.waitKey(1)
+            cv2.waitKey(0)
 
         if self._video_out is None:
-            return
+            return self._last_drawn_frame
 
         if self._video_writer is None:
             self._video_writer = cv2.VideoWriter(self._video_out, VideoWriter_fourcc(*self._video_out_fourcc),

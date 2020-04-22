@@ -11,7 +11,7 @@ class Monitor(object):
                  rois = None, stimulators=None,
                  *args, **kwargs  # extra arguments for the tracker objects
                  ):
-        r"""
+        """
         Class to orchestrate the tracking of multiple objects.
         It performs, in order, the following actions:
 
