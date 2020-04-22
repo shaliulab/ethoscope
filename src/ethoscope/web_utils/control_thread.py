@@ -440,7 +440,7 @@ class ControlThread(Thread):
                 if cam.canbepickled:
                     self._save_pickled_state(cam, rw, quality_controller, rois, TrackerClass, tracker_kwargs, hardware_connection, StimulatorClass, stimulator_kwargs, self._info)
                 
-                self._start_tracking(cam, result_writer, quality_controller rois, TrackerClass, tracker_kwargs,
+                self._start_tracking(cam, result_writer, quality_controller, rois, TrackerClass, tracker_kwargs,
                                      hardware_connection, StimulatorClass, stimulator_kwargs)
             self.stop()
 
