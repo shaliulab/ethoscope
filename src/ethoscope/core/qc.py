@@ -1,5 +1,5 @@
-from PIL import ImageStat
-
+from PIL import Image, ImageStat
+import logging
 
 class QualityControl:
 
@@ -17,9 +17,7 @@ class QualityControl:
 
     @staticmethod
     def image_stat(frame):
-        current_image = Image.open(frame)
-        logging.warning(current_image)
-        current_image.convert()
+        current_image = Image.fromarray(frame)
         logging.warning(current_image)
         return ImageStat.Stat(current_image)
 
@@ -27,12 +25,9 @@ class QualityControl:
         stat = self.image_stat(frame)
         return {"stat": stat}
 
-
-
-
     def write(self, t, qc):
-        command = "INSERT INTO \
-        QC (t, mean_read, mean_green, mean_blue, min_red, max_red, min_green, max_gren, min_blue, max_blue) \
+        command = f"INSERT INTO \
+        QC (t, mean_red, mean_green, mean_blue, min_red, max_red, min_green, max_green, min_blue, max_blue) \
         VALUES ({t}, {qc['stat'].mean[0]}, {qc['stat'].mean[1]}, {qc['stat'].mean[2]}, \
             {qc['stat'].extrema[0][0]}, {qc['stat'].extrema[0][1]}, {qc['stat'].extrema[1][0]}, \
             {qc['stat'].extrema[1][1]}, {qc['stat'].extrema[2][0]}, {qc['stat'].extrema[0][1]})"
@@ -41,4 +36,9 @@ class QualityControl:
             self.result_writer._insert_dict["QC"] = command
         else:
             self.result_writer._insert_dict["QC"] += command
+
+
+    def flush(self, t, frame):
+        print(f"ID in qc: {id(self.result_writer._queue)}")
+        self.result_writer.flush(t, frame)
 

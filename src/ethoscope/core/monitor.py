@@ -108,7 +108,7 @@ class Monitor(object):
 
                 if quality_controller is not None:
                     qc = quality_controller.qc(frame)
-                    quality_controller.write(qc)
+                    quality_controller.write(t, qc)
 
                 for j,track_u in enumerate(self._unit_trackers):
                     data_rows = track_u.track(t, frame)

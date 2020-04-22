@@ -35,6 +35,7 @@ class AsyncMySQLWriter(multiprocessing.Process):
     def _delete_my_sql_db(self):
         import mysql.connector
         try:
+            logging.warning(self._db_host)
             db = mysql.connector.connect(host=self._db_host,
                                          user=self._db_user_name,
                                          passwd=self._db_user_pass,
@@ -60,10 +61,10 @@ class AsyncMySQLWriter(multiprocessing.Process):
         c.execute(command)
 
         to_execute  = []
-        for t in c:
-            t = t[0]
-            command = "TRUNCATE TABLE %s" % t
-            to_execute.append(command)
+        # for t in c:
+        #     t = t[0]
+        #     command = "TRUNCATE TABLE %s" % t
+        #     to_execute.append(command)
 
 
         logging.info("Truncating all database tables")
@@ -132,9 +133,13 @@ class AsyncMySQLWriter(multiprocessing.Process):
                 self._create_mysql_db()
 
             db = self._get_connection()
+            i = 0
             while do_run:
+                print(i)
+                i += 1
                 try:
                     msg = self._queue.get()
+                    print(msg)
 
                     if (msg == 'DONE'):
                         do_run=False
@@ -154,6 +159,8 @@ class AsyncMySQLWriter(multiprocessing.Process):
                     do_run = False
                     try:
                         logging.error("Failed to run mysql command:\n%s" % command)
+                        logging.error(traceback.print_exc())
+
                     except:
                         logging.error("Did not retrieve queue value")
 
@@ -409,6 +416,7 @@ class ResultWriter(object):
         self._queue = multiprocessing.JoinableQueue()
         self._async_writer = self._async_writing_class(db_credentials, self._queue, erase_old_db)
         self._async_writer.start()
+
         self._last_t, self._last_flush_t, self._last_dam_t = [0] * 3
 
         self._metadata = metadata
@@ -679,6 +687,7 @@ class AsyncSQLiteWriter(multiprocessing.Process):
                     msg = self._queue.get()
 
                     if (msg == 'DONE'):
+                        print(msg)
                         do_run=False
                         continue
 
