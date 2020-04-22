@@ -8,9 +8,10 @@ class QualityControl:
         self.result_writer = result_writer
 
         result_writer._create_table(
-            "QC", "t INT, mean FLOAT, min FLOAT, max FLOAT
+            "QC", "t INT, mean FLOAT, min FLOAT, max FLOAT"
         )
 
+        
     @staticmethod
     def image_stat(frame):
         current_image = Image.fromarray(frame)
