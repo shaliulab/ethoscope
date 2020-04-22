@@ -26,17 +26,11 @@ class QualityControl:
 
     def write(self, t, qc):
         #(t, mean_red, mean_green, mean_blue, min_red, max_red, min_green, max_green, min_blue, max_blue) \
-        tp = (int(t), 0,0,0,0,0,0,0,0,0)
         command = f"INSERT INTO \
-            QC \
-            VALUES {str(tp)}"
-
-        print(command)
-        #command = f"INSERT INTO \
-        #QC \
-        #VALUES ({t}, {qc['stat'].mean[0]}, {qc['stat'].mean[1]}, {qc['stat'].mean[2]}, \
-        #    {qc['stat'].extrema[0][0]}, {qc['stat'].extrema[0][1]}, {qc['stat'].extrema[1][0]}, \
-        #    {qc['stat'].extrema[1][1]}, {qc['stat'].extrema[2][0]}, {qc['stat'].extrema[0][1]})"
+        QC \
+        VALUES ({t}, {qc['stat'].mean[0]}, {qc['stat'].mean[1]}, {qc['stat'].mean[2]}, \
+            {qc['stat'].extrema[0][0]}, {qc['stat'].extrema[0][1]}, {qc['stat'].extrema[1][0]}, \
+            {qc['stat'].extrema[1][1]}, {qc['stat'].extrema[2][0]}, {qc['stat'].extrema[0][1]})"
 
         if "QC" not in self.result_writer._insert_dict or self.result_writer._insert_dict == "":
             self.result_writer._insert_dict["QC"] = command
