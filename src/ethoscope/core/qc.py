@@ -18,7 +18,6 @@ class QualityControl:
     @staticmethod
     def image_stat(frame):
         current_image = Image.fromarray(frame)
-        logging.warning(current_image)
         return ImageStat.Stat(current_image)
 
     def qc(self, frame):
@@ -35,10 +34,9 @@ class QualityControl:
         if "QC" not in self.result_writer._insert_dict or self.result_writer._insert_dict == "":
             self.result_writer._insert_dict["QC"] = command
         else:
-            self.result_writer._insert_dict["QC"] += command
+            self.result_writer._insert_dict["QC"] += "," + command
 
-
+    # only unit testing
     def flush(self, t, frame):
-        print(f"ID in qc: {id(self.result_writer._queue)}")
         self.result_writer.flush(t, frame)
 
