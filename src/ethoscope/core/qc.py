@@ -8,11 +8,11 @@ class QualityControl:
         self.result_writer = result_writer
 
         result_writer._create_table(
-            "QC", "t INT",
-            "mean_red FLOAT", "mean_green FLOAT", "mean_blue FLOAT",
-            "min_red FLOAT", "max_red FLOAT",
-            "min_green FLOAT", "max_green FLOAT",
-            "min_blue FLOAT", "max_blue FLOAT"
+            "QC", "t INT, \
+            mean_red FLOAT, mean_green FLOAT, mean_blue FLOAT, \
+            min_red FLOAT, max_red FLOAT, \
+            min_green FLOAT, max_green FLOAT, \
+            min_blue FLOAT, max_blue FLOAT"
             )
 
     @staticmethod
