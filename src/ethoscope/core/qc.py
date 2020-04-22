@@ -27,7 +27,8 @@ class QualityControl:
 
         command = f"INSERT INTO QC VALUES {str(tp)}"
 
-        if "QC" not in self.result_writer._insert_dict or self.result_writer._insert_dict == "":
+        if "QC" not in self.result_writer._insert_dict or self.result_writer._insert_dict["QC"] == "":
+        # if "QC" not in self.result_writer._insert_dict or self.result_writer._insert_dict == "":
             self.result_writer._insert_dict["QC"] = command
         else:
             self.result_writer._insert_dict["QC"] += ("," + str(tp))

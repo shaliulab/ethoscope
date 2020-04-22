@@ -86,10 +86,10 @@ class TestQC(unittest.TestCase):
             qc = quality_controller.qc(img)
             t = time.time()
 
-            for i in range(10):
-                quality_controller.write(t, qc)
-            
-            quality_controller.flush(t, img)
+            for i in range(100):
+                quality_controller.write(t, qc)        
+                quality_controller.flush(t, img)
+
 
 
 
