@@ -71,8 +71,26 @@ class TestQC(unittest.TestCase):
                 quality_controller = QualityControl(rw)
                 qc = quality_controller.qc(img)
                 t = time.time()
+
                 quality_controller.write(t, qc)
                 quality_controller.flush(t, img)
-        
+
+    def test_pseudostream(self):
+        path = images["test_1"]
+
+        img = cv2.imread(path)
+        rois = self.roi_builder.build(img)
+        with ResultWriter(self._db_credentials, rois) as rw:
+            rw._max_insert_string_len = 1
+            quality_controller = QualityControl(rw)
+            qc = quality_controller.qc(img)
+            t = time.time()
+
+            for i in range(10):
+                quality_controller.write(t, qc)
+            
+            quality_controller.flush(t, img)
+
+
 
 

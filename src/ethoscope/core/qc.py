@@ -26,10 +26,12 @@ class QualityControl:
 
     def write(self, t, qc):
         #(t, mean_red, mean_green, mean_blue, min_red, max_red, min_green, max_green, min_blue, max_blue) \
+        tp = (int(t), 0,0,0,0,0,0,0,0,0)
         command = f"INSERT INTO \
-        QC \
-        VALUES ({t}, 0,0,0,0,0,0,0,0,0)
+            QC \
+            VALUES {str(tp)}"
 
+        print(command)
         #command = f"INSERT INTO \
         #QC \
         #VALUES ({t}, {qc['stat'].mean[0]}, {qc['stat'].mean[1]}, {qc['stat'].mean[2]}, \
@@ -39,7 +41,7 @@ class QualityControl:
         if "QC" not in self.result_writer._insert_dict or self.result_writer._insert_dict == "":
             self.result_writer._insert_dict["QC"] = command
         else:
-            self.result_writer._insert_dict["QC"] += ";" + command
+            self.result_writer._insert_dict["QC"] += ("," + str(tp))
 
     # only unit testing
     def flush(self, t, frame):
