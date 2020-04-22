@@ -16,14 +16,14 @@ class QualityControl:
             )
 
     @staticmethod
-    def qc(frame):
+    def image_stat(frame):
+        return ImageStat.Stat(frame)
+
+    def qc(self, frame):
         stat = self.image_stat(frame)
         return {"stat": stat}
 
 
-    @staticmethod
-    def image_stat(frame):
-        return ImageStat.Stat(frame)
 
 
     def write(self, t, qc):
