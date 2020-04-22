@@ -22,7 +22,7 @@ class QualityControl:
 
 
     @staticmethod
-    def stats(frame):
+    def image_stat(frame):
         return ImageStat.Stat(frame)
 
 
