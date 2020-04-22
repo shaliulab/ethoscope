@@ -27,6 +27,11 @@ class BaseROIBuilder(DescribedObject):
         :return: list(:class:`~ethoscope.core.roi.ROI`)
         """
 
+        # If input is an image, make a copy
+        # Otherwise it is assumed to be a camera object
+        # that returns frames upon iterating it.
+        # Capture 5 frames and take the median intensity for each pixel
+        # i.e. get an image that represents the median of 5 frames
         accum = []
         if isinstance(input, np.ndarray):
             accum = np.copy(input)

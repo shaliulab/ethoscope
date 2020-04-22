@@ -45,11 +45,16 @@ class TargetGridROIBuilder(BaseROIBuilder):
                                     {"type": "number", "min": 0.0, "max": 1.0, "step":.001, "name": "right_margin", "description": "Same as top_margin, but for the right.","default":0.0},
                                     {"type": "number", "min": 0.0, "max": 1.0, "step":.001, "name": "left_margin", "description": "Same as top_margin, but for the left.","default":0.0},
                                     {"type": "number", "min": 0.0, "max": 1.0, "step":.001, "name": "horizontal_fill", "description": "The proportion of the grid space used by the roi, horizontally.","default":0.90},
-                                    {"type": "number", "min": 0.0, "max": 1.0, "step":.001, "name": "vertical_fill", "description": "Same as horizontal_margin, but vertically.","default":0.90}
+                                    {"type": "number", "min": 0.0, "max": 1.0, "step":.001, "name": "vertical_fill", "description": "Same as horizontal_margin, but vertically.","default":0.90},
+                                    {"type": "number", "min": 0.0, "max": 1.0, "step":.001, "name": "horizontal_pad", "description": "The proportion of the grid that ROIs are displaced from the center, horizontally.","default":0.0},
+                                    {"type": "number", "min": 0.0, "max": 1.0, "step":.001, "name": "vertical_pad", "description": "Same as horizontal_pad, but vertically.","default":0.0}
                                    ]}
                                    
     def __init__(self, n_rows=1, n_cols=1, top_margin=0, bottom_margin=0,
-                 left_margin=0, right_margin=0, horizontal_fill=.9, vertical_fill=.9):
+                 left_margin=0, right_margin=0, horizontal_fill=.9, vertical_fill=.9,
+                 horizontal_pad = 0.0, vertical_pad = 0.0,
+                 horizontal_offset = 0.0, vertical_offset = 0.0, debug=False
+                 ):
         """
         This roi builder uses three black circles drawn on the arena (targets) to align a grid layout:
 
@@ -81,6 +86,12 @@ class TargetGridROIBuilder(BaseROIBuilder):
         self._right_margin = right_margin
         self._horizontal_fill = horizontal_fill
         self._vertical_fill = vertical_fill
+        self._horizontal_pad = horizontal_pad
+        self._vertical_pad = vertical_pad
+        self._horizontal_offset = horizontal_offset
+        self._vertical_offset = vertical_offset
+        self._debug = debug
+
         # if self._vertical_fill is None:
         #     self._vertical_fill = self._horizontal_fill
         # if self._right_margin is None:
@@ -90,7 +101,7 @@ class TargetGridROIBuilder(BaseROIBuilder):
 
         super(TargetGridROIBuilder,self).__init__()
 
-    def _find_blobs(self, im, scoring_fun):
+    def _find_blobs_legacy(self, im, scoring_fun):
         grey= cv2.cvtColor(im,cv2.COLOR_BGR2GRAY)
         rad = int(self._adaptive_med_rad * im.shape[1])
         if rad % 2 == 0:
@@ -118,22 +129,130 @@ class TargetGridROIBuilder(BaseROIBuilder):
             cv2.add(bin, score_map,score_map)
         return score_map
 
+
+    def _find_blobs(self, im, scoring_fun):
+        # convert to gray
+        grey= cv2.cvtColor(im,cv2.COLOR_BGR2GRAY)
+        
+        # radius of dots is 0.1 * width of image
+        # units?
+        rad = int(self._adaptive_med_rad * im.shape[1])
+        # make sure it is an odd
+        if rad % 2 == 0:
+            rad += 1
+        
+        logging.warning(f"Radius: {rad}")
+
+        # make median intensity 255
+        med = np.median(grey)
+        scale = 255/(med)
+        cv2.multiply(grey,scale,dst=grey)
+        logging.warning(np.median(grey))        
+        bin = np.copy(grey)
+        score_map = np.zeros_like(bin)
+        for t in range(0, 255,5):
+            cv2.threshold(grey, t, 255,cv2.THRESH_BINARY_INV,bin)
+            
+            non_zero_pixels = np.count_nonzero(bin)           
+            if non_zero_pixels > 0.7 * im.shape[0] * im.shape[1]:
+                continue
+            if CV_VERSION == 3:
+                _, contours, h = cv2.findContours(bin,cv2.RETR_EXTERNAL,CHAIN_APPROX_SIMPLE)
+            else:
+                contours, h = cv2.findContours(bin,cv2.RETR_EXTERNAL,CHAIN_APPROX_SIMPLE)
+            
+            # if t % 10 == 0:
+            #     cv2.imshow(f"bin @ {t}", bin)
+            #     cv2.waitKey()
+            
+            
+            simple_bg = cv2.drawContours(grey.copy(), contours, -1, 255, -1)
+            _, th = cv2.threshold(simple_bg, 254, 255,cv2.THRESH_BINARY, simple_bg)
+            for i in range(10):
+                th = cv2.morphologyEx(th, cv2.MORPH_CLOSE, (5,5))
+
+            contours, h = cv2.findContours(th,cv2.RETR_EXTERNAL,CHAIN_APPROX_SIMPLE)
+            
+            bin.fill(0)
+
+            for c in contours:
+                score = scoring_fun(c)
+                if score > 0:
+                    # cv2.imshow("res", cv2.drawContours(bin.copy(),[c],-1,255*score,-1))
+                    # cv2.waitKey(0)
+                    cv2.drawContours(bin,[c],0,score,-1)
+            
+            score_map = cv2.add(bin, score_map)
+        return score_map
+
+    @staticmethod
+    def _adjust(centres, n_col, n_row, pad, offset, axis):
+
+        if len(centres) != (n_col * n_row):
+            raise ValueError("Number of centres should be equal to n_col * n_row")
+
+
+        all_centres_sorted = sorted(centres, key=lambda x: x[axis])
+        index = -1
+        sign = -1
+        shape = [n_row, n_col]
+
+        for i, centre in enumerate(all_centres_sorted):
+
+            if i % shape[axis] == 0:
+                index += 1
+
+            if index == shape[1-axis] // 2 and shape[1-axis] % 2 != 0:
+                continue
+
+            if index >= shape[1-axis] // 2:
+                sign = 1
+
+            shift = np.array([sign * pad + index*offset,] * 2)
+
+            shift[1-axis] = 0
+
+            all_centres_sorted[i] = all_centres_sorted[i] + shift
+
+        return all_centres_sorted
+
     def _make_grid(self, n_col, n_row,
               top_margin=0.0, bottom_margin=0.0,
               left_margin=0.0, right_margin=0.0,
-              horizontal_fill = 1.0, vertical_fill=1.0):
+              horizontal_fill = 1.0, vertical_fill=1.0,
+              horizontal_pad = 0.0, vertical_pad = 0.0,
+              horizontal_offset = 0.0, vertical_offset = 0.0):
 
         y_positions = (np.arange(n_row) * 2.0 + 1) * (1-top_margin-bottom_margin)/(2*n_row) + top_margin
         x_positions = (np.arange(n_col) * 2.0 + 1) * (1-left_margin-right_margin)/(2*n_col) + left_margin
         all_centres = [np.array([x,y]) for x,y in itertools.product(x_positions, y_positions)]
+
+        # first adjust the axis 1 and then axiss 0
+        # as the program expects the ROIs to be sorted
+        # according to the value in 0th axis (X)
+        # i.e. column by column
+        all_centres = self._adjust(all_centres, n_col, n_row, vertical_pad, vertical_offset, 1)
+        all_centres = self._adjust(all_centres, n_col, n_row, horizontal_pad, horizontal_offset, 0)
+
+
+        grid_shape = (n_row*50, n_col*50)
+        print(grid_shape)
+        grid = np.zeros(grid_shape, dtype=np.uint8)
+        for c in all_centres:
+            print(c)
+            grid = cv2.circle(grid, tuple([int(c[0]*grid_shape[1]), int(c[1]*grid_shape[0])]), 2, 255, -1)
+
+        if self._debug:
+            cv2.imshow("grid", grid)
+            cv2.waitKey(0)
 
         sign_mat = np.array([
             [-1, -1],
             [+1, -1],
             [+1, +1],
             [-1, +1]
-
         ])
+
         xy_size_vec = np.array([horizontal_fill/float(n_col), vertical_fill/float(n_row)]) / 2.0
         rectangles = [sign_mat *xy_size_vec + c for c in all_centres]
         return rectangles
@@ -143,6 +262,22 @@ class TargetGridROIBuilder(BaseROIBuilder):
         x1 , y1  = pt1
         x2 , y2  = pt2
         return np.sqrt((x1 - x2) ** 2 + (y1 - y2) ** 2)
+
+    def _score_circles(self, contour):
+
+        area = cv2.contourArea(contour)
+         
+        if area < 500 or area > 1000:
+            return 0
+
+        ((x, y), radius) = cv2.minEnclosingCircle(contour)
+        # if area was zero the functionw would have already returned                
+        ratio = np.pi*radius**2 / area
+       
+        if ratio > 1 and ratio < 1.5:
+            return 1
+        else:
+            return 0
 
     def _score_targets(self,contour, im):
 
@@ -158,7 +293,7 @@ class TargetGridROIBuilder(BaseROIBuilder):
         return 1
 
     def _find_target_coordinates(self, img):
-        map = self._find_blobs(img, self._score_targets)
+        map = self._find_blobs(img, self._score_circles)
         bin = np.zeros_like(map)
 
         # as soon as we have three objects, we stop
@@ -219,6 +354,18 @@ class TargetGridROIBuilder(BaseROIBuilder):
 
     def _rois_from_img(self,img):
         sorted_src_pts = self._find_target_coordinates(img)
+        
+        
+        if self._debug:
+            coords = img.copy()
+            for pt in sorted_src_pts:
+                print(pt)
+                coords = cv2.circle(coords, tuple([int(e) for e in pt]), 25, 255, -1)
+        
+            cv2.imshow("coords",coords)
+            cv2.waitKey(0)
+
+
         dst_points = np.array([(0,-1),
                                (0,0),
                                (-1,0)], dtype=np.float32)
@@ -227,9 +374,13 @@ class TargetGridROIBuilder(BaseROIBuilder):
         rectangles = self._make_grid(self._n_cols, self._n_rows,
                                      self._top_margin, self._bottom_margin,
                                      self._left_margin,self._right_margin,
-                                     self._horizontal_fill, self._vertical_fill)
+                                     self._horizontal_fill, self._vertical_fill,
+                                     self._horizontal_pad, self._vertical_pad,
+                                     self._horizontal_offset, self._vertical_offset,
+                                     )
 
         shift = np.dot(wrap_mat, [1,1,0]) - sorted_src_pts[1] # point 1 is the ref, at 0,0
+
         rois = []
         for i,r in enumerate(rectangles):
             r = np.append(r, np.zeros((4,1)), axis=1)
@@ -239,8 +390,10 @@ class TargetGridROIBuilder(BaseROIBuilder):
             cv2.drawContours(img,[ct], -1, (255,0,0),1,LINE_AA)
             rois.append(ROI(ct, idx=i+1))
 
-            # cv2.imshow("dbg",img)
-            # cv2.waitKey(0)
+            if self._debug:
+                cv2.imshow("dbg",img)
+                cv2.waitKey(0)
+
         return rois
 
 
@@ -264,6 +417,31 @@ class ThirtyFliesMonitorWithTargetROIBuilder(TargetGridROIBuilder):
                                                                right_margin = -.033,
                                                                horizontal_fill = .975,
                                                                vertical_fill= .7
+                                                               )
+
+class FSLSleepMonitorWithTargetROIBuilder(TargetGridROIBuilder):
+    
+    _description = {"overview": "The default sleep monitor arena with ten rows of two tubes.",
+                    "arguments": []}
+
+    def __init__(self):
+        r"""
+        Class to build ROIs for a two-columns, ten-rows for the sleep monitor
+        (`see here <https://github.com/gilestrolab/ethoscope_hardware/tree/master/arenas/arena_10x2_shortTubes>`_).
+        """
+        #`sleep monitor tube holder arena <todo>`_
+
+        super(FSLSleepMonitorWithTargetROIBuilder, self).__init__(n_rows=10,
+                                                               n_cols=2,
+                                                               top_margin= 6.99 / 111.00,
+                                                               bottom_margin = 6.99 / 111.00,
+                                                               left_margin = -.033,
+                                                               right_margin = 0,
+                                                               horizontal_fill = .8,
+                                                               vertical_fill= .65,
+                                                               horizontal_pad = .05,
+                                                               vertical_pad = 0,
+                                                               vertical_offset = -.002
                                                                )
 
 class SleepMonitorWithTargetROIBuilder(TargetGridROIBuilder):
