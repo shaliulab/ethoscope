@@ -1,5 +1,6 @@
-from PIL import Image, ImageStat
+import numpy as np
 import logging
+import time
 
 class QualityControl:
 
@@ -14,8 +15,16 @@ class QualityControl:
         
     @staticmethod
     def image_stat(frame):
-        current_image = Image.fromarray(frame)
-        return ImageStat.Stat(current_image)
+
+        logging.debug("----")
+        logging.debug(time.time())
+        mean =  np.mean(frame)
+        minimum = np.min(frame)
+        maximum = np.max(frame)
+        logging.debug(time.time())
+        stats = {"mean": mean, "min": minimum, "max": maximum}
+        logging.debug("----")
+        return stats
 
     def qc(self, frame):
         stat = self.image_stat(frame)
@@ -23,7 +32,7 @@ class QualityControl:
 
     def write(self, t, qc):
         #(t, mean_red, mean_green, mean_blue, min_red, max_red, min_green, max_green, min_blue, max_blue) \
-        tp = (t, qc['stat'].mean[0], qc['stat'].extrema[0][0], qc['stat'].extrema[0][1])
+        tp = (t, qc['stat']['mean'], qc['stat']['min'], qc['stat']['max'])
 
         command = f"INSERT INTO QC VALUES {str(tp)}"
 
