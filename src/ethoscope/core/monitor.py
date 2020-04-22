@@ -7,7 +7,7 @@ import traceback
 class Monitor(object):
 
     def __init__(self, camera, tracker_class,
-                 rois = None, stimulators=None, qc = None
+                 rois = None, stimulators=None,
                  *args, **kwargs  # extra arguments for the tracker objects
                  ):
         """
