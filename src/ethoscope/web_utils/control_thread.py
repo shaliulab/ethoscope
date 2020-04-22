@@ -15,6 +15,7 @@ from ethoscope.hardware.input.cameras import OurPiCameraAsync, MovieVirtualCamer
 from ethoscope.roi_builders.target_roi_builder import OlfactionAssayROIBuilder, SleepMonitorWithTargetROIBuilder, TargetGridROIBuilder, ElectricShockAssayROIBuilder
 from ethoscope.roi_builders.roi_builders import  DefaultROIBuilder
 from ethoscope.core.monitor import Monitor
+from ethoscope.core.qc import QualityControl
 from ethoscope.drawers.drawers import NullDrawer, DefaultDrawer
 from ethoscope.trackers.adaptive_bg_tracker import AdaptiveBGModel
 from ethoscope.hardware.interfaces.interfaces import HardwareConnection, EthoscopeSensor
@@ -292,7 +293,7 @@ class ControlThread(Thread):
         self._last_info_frame_idx = frame_idx
 
 
-    def _start_tracking(self, camera, result_writer, rois, TrackerClass, tracker_kwargs,
+    def _start_tracking(self, camera, result_writer, quality_controller, rois, TrackerClass, tracker_kwargs,
                         hardware_connection, StimulatorClass, stimulator_kwargs):
 
         #Here the stimulator passes args. Hardware connection was previously open as thread.
@@ -309,7 +310,9 @@ class ControlThread(Thread):
         self._info["status"] = "running"
         logging.info("Setting monitor status as running: '%s'" % self._info["status"])
 
-        self._monit.run(result_writer, self._drawer)
+        quality_controller = QualityControl(result_writer)
+
+        self._monit.run(result_writer, self._drawer, quality_controller)
 
     def _has_pickle_file(self):
         """
@@ -435,9 +438,9 @@ class ControlThread(Thread):
             
             with rw as result_writer:
                 if cam.canbepickled:
-                    self._save_pickled_state(cam, rw, rois, TrackerClass, tracker_kwargs, hardware_connection, StimulatorClass, stimulator_kwargs, self._info)
+                    self._save_pickled_state(cam, rw, quality_controller, rois, TrackerClass, tracker_kwargs, hardware_connection, StimulatorClass, stimulator_kwargs, self._info)
                 
-                self._start_tracking(cam, result_writer, rois, TrackerClass, tracker_kwargs,
+                self._start_tracking(cam, result_writer, quality_controller rois, TrackerClass, tracker_kwargs,
                                      hardware_connection, StimulatorClass, stimulator_kwargs)
             self.stop()
 

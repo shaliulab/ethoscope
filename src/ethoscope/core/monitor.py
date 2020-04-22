@@ -4,14 +4,13 @@ from .tracking_unit import TrackingUnit
 import logging
 import traceback
 
-
 class Monitor(object):
 
     def __init__(self, camera, tracker_class,
-                 rois = None, stimulators=None,
+                 rois = None, stimulators=None, qc = None
                  *args, **kwargs  # extra arguments for the tracker objects
                  ):
-        r"""
+        """
         Class to orchestrate the tracking of multiple objects.
         It performs, in order, the following actions:
 
@@ -40,7 +39,6 @@ class Monitor(object):
         self._last_positions = {}
         self._last_time_stamp = 0
         self._is_running = False
-
 
         if rois is None:
             raise NotImplementedError("rois must exist (cannot be None)")
@@ -84,7 +82,7 @@ class Monitor(object):
         """
         self._force_stop = True
 
-    def run(self, result_writer = None, drawer = None):
+    def run(self, result_writer = None, drawer = None, quality_controller=None):
         """
         Runs the monitor indefinitely.
 
@@ -107,6 +105,10 @@ class Monitor(object):
                 self._last_frame_idx = i
                 self._last_time_stamp = t
                 self._frame_buffer = frame
+
+                if quality_controller is not None:
+                    qc = quality_controller.qc(frame)
+                    quality_controller.write(qc)
 
                 for j,track_u in enumerate(self._unit_trackers):
                     data_rows = track_u.track(t, frame)
