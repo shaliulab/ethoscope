@@ -293,7 +293,7 @@ class ControlThread(Thread):
         self._last_info_frame_idx = frame_idx
 
 
-    def _start_tracking(self, camera, result_writer, quality_controller, rois, TrackerClass, tracker_kwargs,
+    def _start_tracking(self, camera, result_writer, rois, TrackerClass, tracker_kwargs,
                         hardware_connection, StimulatorClass, stimulator_kwargs):
 
         #Here the stimulator passes args. Hardware connection was previously open as thread.
