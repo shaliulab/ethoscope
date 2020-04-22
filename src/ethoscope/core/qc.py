@@ -17,7 +17,8 @@ class QualityControl:
 
     @staticmethod
     def image_stat(frame):
-        return ImageStat.Stat(frame)
+        current_image = Image.open(frame)
+        return ImageStat.Stat(current_image)
 
     def qc(self, frame):
         stat = self.image_stat(frame)
