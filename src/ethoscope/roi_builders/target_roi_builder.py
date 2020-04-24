@@ -53,7 +53,7 @@ class TargetGridROIBuilder(BaseROIBuilder):
     def __init__(self, n_rows=1, n_cols=1, top_margin=0, bottom_margin=0,
                  left_margin=0, right_margin=0, horizontal_fill=.9, vertical_fill=.9,
                  horizontal_pad = 0.0, vertical_pad = 0.0,
-                 horizontal_offset = 0.0, vertical_offset = 0.0, debug=False
+                 horizontal_offset = 0.0, vertical_offset = 0.0, direction=1, debug=False
                  ):
         """
         This roi builder uses three black circles drawn on the arena (targets) to align a grid layout:
@@ -90,6 +90,7 @@ class TargetGridROIBuilder(BaseROIBuilder):
         self._vertical_pad = vertical_pad
         self._horizontal_offset = horizontal_offset
         self._vertical_offset = vertical_offset
+        self._direction = direction
         self._debug = debug
 
         # if self._vertical_fill is None:
@@ -101,7 +102,11 @@ class TargetGridROIBuilder(BaseROIBuilder):
 
         super(TargetGridROIBuilder,self).__init__()
 
-    def _find_blobs_legacy(self, im, scoring_fun):
+    def _find_blobs(self, im, scoring_fun=None):
+
+        if scoring_fun is None:
+            scoring_fun = self._score_targets
+
         grey= cv2.cvtColor(im,cv2.COLOR_BGR2GRAY)
         rad = int(self._adaptive_med_rad * im.shape[1])
         if rad % 2 == 0:
@@ -130,7 +135,11 @@ class TargetGridROIBuilder(BaseROIBuilder):
         return score_map
 
 
-    def _find_blobs(self, im, scoring_fun):
+    def _find_blobs_new(self, im, scoring_fun=None):
+
+        if scoring_fun is None:
+            scoring_fun = self._score_circles
+
         # convert to gray
         grey= cv2.cvtColor(im,cv2.COLOR_BGR2GRAY)
         
@@ -186,12 +195,17 @@ class TargetGridROIBuilder(BaseROIBuilder):
         return score_map
 
     @staticmethod
-    def _adjust(centres, n_col, n_row, pad, offset, axis):
+    def _adjust(centres, n_col, n_row, pad, offset, direction=1, axis=0):
 
         if len(centres) != (n_col * n_row):
             raise ValueError("Number of centres should be equal to n_col * n_row")
 
 
+        # sort the centers based on the value in the axis position
+        # i.e. if axis is 0, sort by the 0th value, which corresponds to the x dimension
+        # this results on a list with all centers in the first column, then the second, and so on
+        # i.e. if axis is 1, sort by the 1st value, which corresponds to the y dimension
+        # this results on a list with all centers in the first row, then the second, and so on
         all_centres_sorted = sorted(centres, key=lambda x: x[axis])
         index = -1
         sign = -1
@@ -208,7 +222,10 @@ class TargetGridROIBuilder(BaseROIBuilder):
             if index >= shape[1-axis] // 2:
                 sign = 1
 
-            shift = np.array([sign * pad + index*offset,] * 2)
+            offset_multiplier = -index + shape[1-axis] if direction == -1 else index
+
+            shift = np.array([sign * pad + direction* offset_multiplier * offset,] * 2)
+            #shift = np.array([sign * pad + index * offset,] * 2)
 
             shift[1-axis] = 0
 
@@ -231,8 +248,8 @@ class TargetGridROIBuilder(BaseROIBuilder):
         # as the program expects the ROIs to be sorted
         # according to the value in 0th axis (X)
         # i.e. column by column
-        all_centres = self._adjust(all_centres, n_col, n_row, vertical_pad, vertical_offset, 1)
-        all_centres = self._adjust(all_centres, n_col, n_row, horizontal_pad, horizontal_offset, 0)
+        all_centres = self._adjust(all_centres, n_col, n_row, vertical_pad, vertical_offset, direction=self._direction, axis=1)
+        all_centres = self._adjust(all_centres, n_col, n_row, horizontal_pad, horizontal_offset, axis=0)
 
 
         grid_shape = (n_row*50, n_col*50)
@@ -292,8 +309,10 @@ class TargetGridROIBuilder(BaseROIBuilder):
             return 0
         return 1
 
-    def _find_target_coordinates(self, img):
-        map = self._find_blobs(img, self._score_circles)
+    def _find_target_coordinates(self, img, blob_function):
+        
+        map = blob_function(img)
+
         bin = np.zeros_like(map)
 
         # as soon as we have three objects, we stop
@@ -353,9 +372,12 @@ class TargetGridROIBuilder(BaseROIBuilder):
         return sorted_src_pts
 
     def _rois_from_img(self,img):
-        sorted_src_pts = self._find_target_coordinates(img)
-        
-        
+
+        try:
+            sorted_src_pts = self._find_target_coordinates(img, self._find_blobs_new)
+        except EthoscopeException:
+            sorted_src_pts = self._find_target_coordinates(img, self._find_blobs)
+
         if self._debug:
             coords = img.copy()
             for pt in sorted_src_pts:
@@ -421,7 +443,7 @@ class ThirtyFliesMonitorWithTargetROIBuilder(TargetGridROIBuilder):
 
 class FSLSleepMonitorWithTargetROIBuilder(TargetGridROIBuilder):
     
-    _description = {"overview": "The default sleep monitor arena with ten rows of two tubes.",
+    _description = {"overview": "The default sleep monitor arena with ten rows of two tubes. ROIs adapted to FSL lab.",
                     "arguments": []}
 
     def __init__(self):
@@ -441,7 +463,8 @@ class FSLSleepMonitorWithTargetROIBuilder(TargetGridROIBuilder):
                                                                vertical_fill= .65,
                                                                horizontal_pad = .05,
                                                                vertical_pad = 0,
-                                                               vertical_offset = -.002
+                                                               vertical_offset = -0.002,
+                                                               direction=-1
                                                                )
 
 class SleepMonitorWithTargetROIBuilder(TargetGridROIBuilder):
