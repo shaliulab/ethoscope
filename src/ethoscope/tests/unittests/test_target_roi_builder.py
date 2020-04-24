@@ -7,6 +7,7 @@ import pickle
 import datetime
 import time
 import sys
+from ethoscope.utils.debug import EthoscopeException
 
 from ethoscope.roi_builders.target_roi_builder import FSLSleepMonitorWithTargetROIBuilder, SleepMonitorWithTargetROIBuilder, TargetGridROIBuilder
 print(os.getcwd())
@@ -39,18 +40,44 @@ class TestTargetROIBuilder(unittest.TestCase):
             cv2.drawContours(img,r.polygon,-1, (255,255,0), 2, LINE_AA)
 
 
-    def _test_one_img(self,path=None, out=None):
-        
-        try:
+
+    def _test_live(self):
+
+        if self._path is None:
+
             import picamera
+            import io
+            import numpy as np
+            from PIL import Image
+            stream = io.BytesIO()
+    
             with picamera.PiCamera() as cam:
-                now = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%s")
-                dst = os.path.join(LOG_DIR, f'{now}.png')
-                time.sleep(1)
-                cam.capture(dst)
-            img = cv2.imread(dst)
-        except ImportError:
-            img = cv2.imread(path)
+                cam.start_preview()
+                time.sleep(2)
+                cam.capture(stream, format='jpeg')
+                stream.seek(0)
+                image = Image.open(stream)
+                img = np.asarray(image)
+
+        else:
+            img = cv2.imread(self._path)
+
+        try:
+            rois = self.roi_builder.build(img)
+
+        except EthoscopeException:
+            cv2.imwrite(f'/tmp/fail_rois_{self.message}.png',img)
+            return
+
+        self._draw(img, rois)
+        cv2.imwrite(f'/tmp/rois_{self.message}.png',img)
+        self.assertEqual(len(rois),20)
+
+
+
+    def _test_one_img(self,path, out):
+        
+        img = cv2.imread(path)
 
         rois = self.roi_builder.build(img)
         pickle_file = os.path.join(LOG_DIR, self.class_name + "_rois.pickle")
@@ -60,7 +87,6 @@ class TestTargetROIBuilder(unittest.TestCase):
         if out is None:
             out = os.path.join(LOG_DIR, f'{now}_annot.png')
         cv2.imwrite(out,img)
-        cv2.imwrite(f'/tmp/rois_{self.message}.png',img)
         self.assertEqual(len(rois),20)
 
 
@@ -78,18 +104,20 @@ class TestFSLROIBuilder(TestTargetROIBuilder):
 
 
 
-
 if __name__ == '__main__':
     import argparse
     ap = argparse.ArgumentParser()
     ap.add_argument('-m', '--message', help='Message is written to the output file as a suffix')
+    ap.add_argument('-p', '--path', help='Path to image to test the ROI Builder against')
     args = vars(ap.parse_args())
     print(args)
     message = args['message']
     TestFSLROIBuilder.message = message
     test_instance = TestFSLROIBuilder()
+    if args['path'] is not None:
+        test_instance._path = args['path']
     test_instance.setUp()
-    test_instance._test_one_img()
+    test_instance._test_live()
 
     
 

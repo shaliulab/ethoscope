@@ -374,9 +374,9 @@ class TargetGridROIBuilder(BaseROIBuilder):
     def _rois_from_img(self,img):
 
         try:
-            sorted_src_pts = self._find_target_coordinates(img, self._find_blobs_new)
-        except EthoscopeException:
             sorted_src_pts = self._find_target_coordinates(img, self._find_blobs)
+        except EthoscopeException:
+            sorted_src_pts = self._find_target_coordinates(img, self._find_blobs_new)
 
         if self._debug:
             coords = img.copy()
@@ -463,7 +463,7 @@ class FSLSleepMonitorWithTargetROIBuilder(TargetGridROIBuilder):
                                                                vertical_fill= .65,
                                                                horizontal_pad = .05,
                                                                vertical_pad = 0,
-                                                               vertical_offset = -0.002,
+                                                               vertical_offset = -0.001,
                                                                direction=-1
                                                                )
 
