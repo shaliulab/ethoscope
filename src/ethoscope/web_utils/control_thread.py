@@ -366,7 +366,8 @@ class ControlThread(Thread):
         roi_builder = ROIBuilderClass(**roi_builder_kwargs)
         
         try:
-            rois = roi_builder.build(cam)
+            rois = arena, roi_builder.build(cam)
+            self._drawer.arena = arena
         except EthoscopeException as e:
             cam._close()
             raise e

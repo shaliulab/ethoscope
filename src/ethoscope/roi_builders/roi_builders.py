@@ -44,7 +44,7 @@ class BaseROIBuilder(DescribedObject):
 
             accum = np.median(np.array(accum),0).astype(np.uint8)
         try:
-            rois = self._rois_from_img(accum)
+            img, rois = self._rois_from_img_new(accum)
         except Exception as e:
             if not isinstance(input, np.ndarray):
                 del input
@@ -58,7 +58,7 @@ class BaseROIBuilder(DescribedObject):
         else:
             rois = self._value_sorting(rois)
 
-        return rois
+        return img, rois
 
 
 

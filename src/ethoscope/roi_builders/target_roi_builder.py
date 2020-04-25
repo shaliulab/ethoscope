@@ -16,6 +16,10 @@ except ImportError:
 
 import numpy as np
 import logging
+debug=False
+# level = CFG.content["logging"]["level"]
+level = logging.DEBUG
+logging.basicConfig(level=level)
 from ethoscope.roi_builders.roi_builders import BaseROIBuilder
 from ethoscope.core.roi import ROI
 from ethoscope.utils.debug import EthoscopeException
@@ -24,7 +28,7 @@ import itertools
 
 class TargetGridROIBuilder(BaseROIBuilder):
 
-    _adaptive_med_rad = 0.10
+    _adaptive_med_rad = 0.05
     _expected__min_target_dist = 10 # the minimal distance between two targets, in 'target diameter'
     _n_rows = 10
     _n_cols = 2
@@ -34,6 +38,14 @@ class TargetGridROIBuilder(BaseROIBuilder):
     _right_margin = None
     _horizontal_fill = 1
     _vertical_fill = None
+
+    _wrap_mat = None
+    _sorted_src_pts = None
+    _dst_points = None
+    _M = None
+    _invM = None
+    _angle = None
+
 
     _description = {"overview": "A flexible ROI builder that allows users to select parameters for the ROI layout."
                                "Lengths are relative to the distance between the two bottom targets (width)",
@@ -102,96 +114,120 @@ class TargetGridROIBuilder(BaseROIBuilder):
 
         super(TargetGridROIBuilder,self).__init__()
 
-    def _find_blobs(self, im, scoring_fun=None):
+    def _find_blobs(self, img, scoring_fun=None):
+
+        grey = img
 
         if scoring_fun is None:
             scoring_fun = self._score_targets
 
-        grey= cv2.cvtColor(im,cv2.COLOR_BGR2GRAY)
-        rad = int(self._adaptive_med_rad * im.shape[1])
+        rad = int(self._adaptive_med_rad * grey.shape[1])
         if rad % 2 == 0:
             rad += 1
 
         med = np.median(grey)
         scale = 255/(med)
-        cv2.multiply(grey,scale,dst=grey)
+        cv2.multiply(grey, scale, dst=grey)
         bin = np.copy(grey)
+        thresh = np.copy(grey)
         score_map = np.zeros_like(bin)
-        for t in range(0, 255,5):
-            cv2.threshold(grey, t, 255,cv2.THRESH_BINARY_INV,bin)
-            if np.count_nonzero(bin) > 0.7 * im.shape[0] * im.shape[1]:
+        grey_orig = grey.copy()
+
+        for t in range(0, 255, 5):
+            cv2.threshold(grey_orig, t, 255, cv2.THRESH_BINARY_INV, thresh)
+            if np.count_nonzero(thresh) > 0.7 * grey.shape[0] * grey.shape[1]:
                 continue
             if CV_VERSION == 3:
-                _, contours, h = cv2.findContours(bin,cv2.RETR_EXTERNAL,CHAIN_APPROX_SIMPLE)
+                _, contours, h = cv2.findContours(thresh, cv2.RETR_EXTERNAL, CHAIN_APPROX_SIMPLE)
             else:
-                contours, h = cv2.findContours(bin,cv2.RETR_EXTERNAL,CHAIN_APPROX_SIMPLE)
+                contours, h = cv2.findContours(thresh, cv2.RETR_EXTERNAL, CHAIN_APPROX_SIMPLE)
 
             bin.fill(0)
             for c in contours:
-                score = scoring_fun(c, im)
-                if score >0:
-                    cv2.drawContours(bin,[c],0,score,-1)
-            cv2.add(bin, score_map,score_map)
+                score = scoring_fun(c, grey)
+                if score > 0:
+                    cv2.drawContours(bin, [c], 0, score, -1)
+
+                # cv2.drawContours(grey, [c], -1, 255, 2)
+
+            # cv2.imshow("grey", grey)im
+            # cv2.waitKey(0)
+
+            cv2.add(bin, score_map, score_map)
+
         return score_map
 
 
-    def _find_blobs_new(self, im, scoring_fun=None):
+    def _find_blobs_new(self, img, scoring_fun=None):
 
+        grey = img
         if scoring_fun is None:
             scoring_fun = self._score_circles
 
-        # convert to gray
-        grey= cv2.cvtColor(im,cv2.COLOR_BGR2GRAY)
-        
         # radius of dots is 0.1 * width of image
         # units?
-        rad = int(self._adaptive_med_rad * im.shape[1])
+        rad = int(self._adaptive_med_rad * grey.shape[1])
         # make sure it is an odd
         if rad % 2 == 0:
             rad += 1
-        
+
         logging.warning(f"Radius: {rad}")
 
         # make median intensity 255
         med = np.median(grey)
         scale = 255/(med)
-        cv2.multiply(grey,scale,dst=grey)
-        logging.warning(np.median(grey))        
+        cv2.multiply(grey, scale, dst=grey)
+        logging.warning(np.median(grey))       
         bin = np.copy(grey)
         score_map = np.zeros_like(bin)
-        for t in range(0, 255,5):
-            cv2.threshold(grey, t, 255,cv2.THRESH_BINARY_INV,bin)
-            
-            non_zero_pixels = np.count_nonzero(bin)           
-            if non_zero_pixels > 0.7 * im.shape[0] * im.shape[1]:
-                continue
-            if CV_VERSION == 3:
-                _, contours, h = cv2.findContours(bin,cv2.RETR_EXTERNAL,CHAIN_APPROX_SIMPLE)
-            else:
-                contours, h = cv2.findContours(bin,cv2.RETR_EXTERNAL,CHAIN_APPROX_SIMPLE)
-            
-            # if t % 10 == 0:
-            #     cv2.imshow(f"bin @ {t}", bin)
-            #     cv2.waitKey()
-            
-            
-            simple_bg = cv2.drawContours(grey.copy(), contours, -1, 255, -1)
-            _, th = cv2.threshold(simple_bg, 254, 255,cv2.THRESH_BINARY, simple_bg)
-            for i in range(10):
-                th = cv2.morphologyEx(th, cv2.MORPH_CLOSE, (5,5))
+        grey_orig = grey.copy()
 
-            contours, h = cv2.findContours(th,cv2.RETR_EXTERNAL,CHAIN_APPROX_SIMPLE)
-            
+        for threshold in range(0, 255, 5):
+            cv2.threshold(grey, threshold, 255, cv2.THRESH_BINARY_INV, bin)
+            non_zero_pixels = np.count_nonzero(bin)
+            # if this threshold operation leaves
+            # more than 70% white pixels, continue
+            # until loop is over           
+            if non_zero_pixels > 0.7 * grey.shape[0] * grey.shape[1]:
+                continue
+
+            if CV_VERSION == 3:
+                _, contours, h = cv2.findContours(bin, cv2.RETR_EXTERNAL, CHAIN_APPROX_SIMPLE)
+            else:
+                contours, h = cv2.findContours(bin, cv2.RETR_EXTERNAL, CHAIN_APPROX_SIMPLE)
+
+            foreground_model = cv2.drawContours(grey.copy(), contours, -1, 255, -1)
+            _, foreground_model = cv2.threshold(foreground_model, 254, 255, cv2.THRESH_BINARY)
+            for i in range(10):
+                foreground_model = cv2.morphologyEx(foreground_model, cv2.MORPH_CLOSE, (5, 5))
+
+
+            if CV_VERSION == 3:
+                _, contours, h = cv2.findContours(foreground_model, cv2.RETR_EXTERNAL, CHAIN_APPROX_SIMPLE)
+            else:
+                contours, h = cv2.findContours(foreground_model, cv2.RETR_EXTERNAL, CHAIN_APPROX_SIMPLE)
+
+
             bin.fill(0)
 
             for c in contours:
                 score = scoring_fun(c)
                 if score > 0:
-                    # cv2.imshow("res", cv2.drawContours(bin.copy(),[c],-1,255*score,-1))
-                    # cv2.waitKey(0)
-                    cv2.drawContours(bin,[c],0,score,-1)
-            
+                    if (self._debug or debug):
+                        detected_contours = cv2.drawContours(grey.copy(), [c], -1, 255 -1)
+                        cv2.imshow("detected_contours", detected_contours)
+
+                    cv2.drawContours(bin, [c], 0, score, -1)
+
             score_map = cv2.add(bin, score_map)
+
+            if self._debug or debug:
+                cv2.imshow("bin_th", cv2.threshold(score_map, 1, 255, cv2.THRESH_BINARY)[1])
+                cv2.imshow("closing", foreground_model)
+                cv2.imshow("foreground_model", foreground_model)
+
+                cv2.waitKey(0)
+
         return score_map
 
     @staticmethod
@@ -236,13 +272,13 @@ class TargetGridROIBuilder(BaseROIBuilder):
     def _make_grid(self, n_col, n_row,
               top_margin=0.0, bottom_margin=0.0,
               left_margin=0.0, right_margin=0.0,
-              horizontal_fill = 1.0, vertical_fill=1.0,
-              horizontal_pad = 0.0, vertical_pad = 0.0,
-              horizontal_offset = 0.0, vertical_offset = 0.0):
+              horizontal_fill=1.0, vertical_fill=1.0,
+              horizontal_pad=0.0, vertical_pad=0.0,
+              horizontal_offset=0.0, vertical_offset=0.0):
 
         y_positions = (np.arange(n_row) * 2.0 + 1) * (1-top_margin-bottom_margin)/(2*n_row) + top_margin
         x_positions = (np.arange(n_col) * 2.0 + 1) * (1-left_margin-right_margin)/(2*n_col) + left_margin
-        all_centres = [np.array([x,y]) for x,y in itertools.product(x_positions, y_positions)]
+        all_centres = [np.array([x, y]) for x, y in itertools.product(x_positions, y_positions)]
 
         # first adjust the axis 1 and then axiss 0
         # as the program expects the ROIs to be sorted
@@ -283,13 +319,14 @@ class TargetGridROIBuilder(BaseROIBuilder):
     def _score_circles(self, contour):
 
         area = cv2.contourArea(contour)
-         
-        if area < 500 or area > 1000:
+
+        if area < 400 or area > 800:
             return 0
 
         ((x, y), radius) = cv2.minEnclosingCircle(contour)
         # if area was zero the functionw would have already returned                
         ratio = np.pi*radius**2 / area
+        # print(ratio)
        
         if ratio > 1 and ratio < 1.5:
             return 1
@@ -312,7 +349,12 @@ class TargetGridROIBuilder(BaseROIBuilder):
     def _find_target_coordinates(self, img, blob_function):
         
         map = blob_function(img)
-
+        
+        if self._debug or True:
+            thresh = cv2.threshold(map, 1, 255, cv2.THRESH_BINARY)[1]
+            cv2.imshow("map", thresh)
+            cv2.waitKey(0)
+        
         bin = np.zeros_like(map)
 
         # as soon as we have three objects, we stop
@@ -320,7 +362,7 @@ class TargetGridROIBuilder(BaseROIBuilder):
         for t in range(0, 255,1):
             cv2.threshold(map, t, 255,cv2.THRESH_BINARY  ,bin)
             if CV_VERSION == 3:
-                _, contours, h = cv2.findContours(bin,cv2.RETR_EXTERNAL, CHAIN_APPROX_SIMPLE)
+                _, contours, h = cv2.findContours(bin, cv2.RETR_EXTERNAL, CHAIN_APPROX_SIMPLE)
             else:
                 contours, h = cv2.findContours(bin, cv2.RETR_EXTERNAL, CHAIN_APPROX_SIMPLE)
 
@@ -341,10 +383,19 @@ class TargetGridROIBuilder(BaseROIBuilder):
         src_points = []
         for c in contours:
             moms = cv2.moments(c)
-            x , y = moms["m10"]/moms["m00"],  moms["m01"]/moms["m00"]
-            src_points.append((x,y))
+            x, y = moms["m10"]/moms["m00"],  moms["m01"]/moms["m00"]
+            src_points.append((x, y))
 
-        a ,b, c = src_points
+        a, b, c = src_points
+
+        if self._debug:
+            for pt in src_points:
+                pt = tuple((int(e) for e in pt))
+                thresh = cv2.circle(thresh, pt, 5, 0, -1)
+
+            cv2.imshow("blobs", thresh)
+            cv2.waitKey(0)
+
         pairs = [(a,b), (b,c), (a,c)]
 
         dists = [self._points_distance(*p) for p in pairs]
@@ -371,13 +422,148 @@ class TargetGridROIBuilder(BaseROIBuilder):
         sorted_src_pts = np.array([sorted_a, sorted_b, sorted_c], dtype=np.float32)
         return sorted_src_pts
 
-    def _rois_from_img(self,img):
+    def _rois_from_img(self, img):
 
-        try:
-            sorted_src_pts = self._find_target_coordinates(img, self._find_blobs)
-        except EthoscopeException:
-            sorted_src_pts = self._find_target_coordinates(img, self._find_blobs_new)
+        sorted_src_pts = self._find_target_coordinates(img)
+        dst_points = np.array([(0,-1),
+                               (0,0),
+                               (-1,0)], dtype=np.float32)
+        wrap_mat = cv2.getAffineTransform(dst_points, sorted_src_pts)
 
+        rectangles = self._make_grid(self._n_cols, self._n_rows,
+                                     self._top_margin, self._bottom_margin,
+                                     self._left_margin,self._right_margin,
+                                     self._horizontal_fill, self._vertical_fill)
+
+        shift = np.dot(wrap_mat, [1,1,0]) - sorted_src_pts[1] # point 1 is the ref, at 0,0
+        rois = []
+        for i,r in enumerate(rectangles):
+            r = np.append(r, np.zeros((4,1)), axis=1)
+            mapped_rectangle = np.dot(wrap_mat, r.T).T
+            mapped_rectangle -= shift
+            ct = mapped_rectangle.reshape((1,4,2)).astype(np.int32)
+            cv2.drawContours(img,[ct], -1, (255,0,0),1,LINE_AA)
+            rois.append(ROI(ct, idx=i+1))
+
+            # cv2.imshow("dbg",img)
+            # cv2.waitKey(0)
+        return rois
+
+
+    def _rois_from_img_new(self, img):
+        
+        rotated = self._rotate_img(img)
+        cv2.imshow("img_rotated", rotated)
+        cv2.waitKey(0)
+        
+        bin_rotated = self._segment_rois(rotated)
+
+        if CV_VERSION == 3:
+            _, contours, _ = cv2.findContours(bin_rotated, cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)
+        else:
+            contours, _ = cv2.findContours(bin_rotated, cv2.RETR_EXTERNAL, CHAIN_APPROX_SIMPLE)
+        
+
+        print(f"Detected {len(contours)} contours")
+        rois = []
+        for i, ct in enumerate(contours):
+            rect = cv2.boundingRect(ct)
+            print(rect)
+            x,y,w,h = rect
+            tl = (x,y)
+            cv2.rectangle(bin_rotated,(x,y),(x+w,y+h), 128, 2)
+
+            roi = np.array([(x,y), (x+w, y), (x+w,y+h), (x, y+h)])
+            # roi = np.dot(np.linalg.inv(self._M), np.append(roi, np.zeros((roi.shape[0], 1)), axis=1).T).T
+            # roi = np.dot(self._invM, np.append(roi, np.zeros((roi.shape[0], 1)), axis=1).T).T
+
+            # top_inner = tl if tl[0] > arena_roi.shape[1]*0.4 else tl + np.array(w,0)
+            # compute the mean of the angles sampled from each rectangle
+            # and round to two decimal digits
+            ct = roi.reshape((1,4,2)).astype(np.int32)
+            cv2.drawContours(img,[ct], -1, (255,0,0),1,LINE_AA)
+            rois.append(ROI(ct, idx=i+1))
+
+
+        cv2.imshow("img_rotated", rotated)
+        cv2.imshow("bin_rotated", bin_rotated)
+        cv2.imshow("bin_rotated_contours", bin_rotated)
+        cv2.waitKey(0)
+        return rotated, rois            
+
+
+    def _rotate_img(self, img):
+
+        bin = self._segment_rois(img)
+        cv2.imshow("segmented_bin",bin)
+        cv2.waitKey(0)
+        
+        if CV_VERSION == 3:
+            _, contours, _ = cv2.findContours(bin, cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)
+        else:
+            contours, _ = cv2.findContours(bin, cv2.RETR_EXTERNAL, CHAIN_APPROX_SIMPLE)
+        
+
+        angle_sample = []
+        for ct in contours:
+            rect = cv2.minAreaRect(ct)
+            tl, wh, angle = rect
+            w, h = wh
+            # top_inner = tl if tl[0] > arena_roi.shape[1]*0.4 else tl + np.array(w,0)
+            # compute the mean of the angles sampled from each rectangle
+            # and round to two decimal digits
+            angle_sample.append(angle)
+
+
+        median_angle = np.round(np.median(np.array(angle_sample)), 2)
+        mean_angle = np.round(np.mean(np.array(angle_sample)), 2)
+        center = tuple(e/2 for e in img.shape[:2]) 
+        M = cv2.getRotationMatrix2D(center, median_angle, 1.0)
+        invM = cv2.getRotationMatrix2D(center, -median_angle, 1.0)
+        if abs(median_angle) > 10:
+            logging.warning("Please ensure correct orientation of the camera")
+            rotated = img
+            return img
+        else:
+            rotated = cv2.warpAffine(img, M, img.shape[:2][::-1], flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE)
+        logging.warning(f"Image rotated successfully with angle {median_angle}")
+        self._M = M
+        self._invM = invM
+        self._angle = median_angle
+        return rotated
+
+
+    def _segment_rois(self, img):
+
+        if self._sorted_src_pts is None:
+            try:
+                sorted_src_pts = self._find_target_coordinates(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY), self._find_blobs)
+            except EthoscopeException:
+                logging.warning("Fall back to find_blobs_new")
+                sorted_src_pts = self._find_target_coordinates(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY), self._find_blobs_new)
+            finally:
+                self._sorted_src_pts = sorted_src_pts
+                dst_points = np.array([
+                    (0,-1),
+                    (0,0),
+                    (-1,0)
+                ], dtype=np.float32)
+        
+                wrap_mat = cv2.getAffineTransform(dst_points, sorted_src_pts)
+                self._wrap_mat = wrap_mat
+                self._dst_points = dst_points
+
+        else:
+            dst_points = self._dst_points
+            wrap_mat = self._wrap_mat
+            M = self._M
+            if M is not None:
+                sorted_src_pts = np.dot(M, np.append(self._sorted_src_pts, np.zeros((self._sorted_src_pts.shape[0], 1)), axis=1).T).T
+            else:
+                sorted_src_pts = self._sorted_src_pts
+
+
+            
         if self._debug:
             coords = img.copy()
             for pt in sorted_src_pts:
@@ -388,35 +574,185 @@ class TargetGridROIBuilder(BaseROIBuilder):
             cv2.waitKey(0)
 
 
-        dst_points = np.array([(0,-1),
-                               (0,0),
-                               (-1,0)], dtype=np.float32)
-        wrap_mat = cv2.getAffineTransform(dst_points, sorted_src_pts)
+       
 
-        rectangles = self._make_grid(self._n_cols, self._n_rows,
-                                     self._top_margin, self._bottom_margin,
-                                     self._left_margin,self._right_margin,
-                                     self._horizontal_fill, self._vertical_fill,
-                                     self._horizontal_pad, self._vertical_pad,
-                                     self._horizontal_offset, self._vertical_offset,
-                                     )
+        ## ---- NEW
+        dst_points_no_shift = np.append(dst_points+1, np.zeros((3,1)), axis=1)
+        # dimensions x (points + 1)
+        # the last column is all zeros so the last row of the afine transformation is ignored
 
-        shift = np.dot(wrap_mat, [1,1,0]) - sorted_src_pts[1] # point 1 is the ref, at 0,0
+        arena = (np.dot(wrap_mat, dst_points_no_shift.T))
+        shift = arena[:,1] - sorted_src_pts[1] # point 1 is the ref, at 0,0
+        #shift = np.dot(wrap_mat, [1,1,0]) - sorted_src_pts[1] # point 1 is the ref, at 0,0
+        shift_rep = np.repeat(shift, 3).reshape((2,3))
+        arena -= shift_rep
 
-        rois = []
-        for i,r in enumerate(rectangles):
-            r = np.append(r, np.zeros((4,1)), axis=1)
-            mapped_rectangle = np.dot(wrap_mat, r.T).T
-            mapped_rectangle -= shift
-            ct = mapped_rectangle.reshape((1,4,2)).astype(np.int32)
-            cv2.drawContours(img,[ct], -1, (255,0,0),1,LINE_AA)
-            rois.append(ROI(ct, idx=i+1))
+        # assuming it was a rectangle
+        # tl = np.array([arena[0,2], arena[1,0]]).T.reshape(2,1)
+        # it actually is a trapezoid because there is some shear due to:
+        # * a non horizontal camera
+        # * non perpendicular walls
+        tl = np.array([-arena[0,1]+arena[0,0]+arena[0,2], -arena[1,1]+arena[1,0]+arena[1,2]]).T.reshape(2,1)
+     
+        arena = np.append(arena, tl, axis=1)
+        arena_int = arena.astype(np.int16)
 
-            if self._debug:
-                cv2.imshow("dbg",img)
-                cv2.waitKey(0)
+        #start_row:end_row, start_column:end_column
+        arena_roi= img[arena_int[1,3]:arena_int[1,1], arena_int[0,3]:arena_int[0,1]]
+        # print(arena_roi.dtype)
 
-        return rois
+        # start = (np.array(myroi.shape) // 3)[:2][::-1]
+        # end = (2 * np.array(myroi.shape) // 3)[:2][::-1]
+        kernel = (10,10)
+                
+        #blur = cv2.blur(arena_roi, kernel)
+        blur = cv2.bilateralFilter(arena_roi, 10, 150, 150)
+
+        bin = np.zeros((arena_roi.shape))
+
+        for t in range(120, 181, 5):
+            thresh = cv2.threshold(blur, t, 255, cv2.THRESH_BINARY)[1]
+        
+        # thresh1 = cv2.threshold(blur[0:4*blur.shape[0]//10,:], 160, 255, cv2.THRESH_BINARY)[1]
+        # thresh2 = cv2.threshold(blur[4*blur.shape[0]//10:5*blur.shape[0]//10,:], 140, 255, cv2.THRESH_BINARY)[1]
+        # thresh3 = cv2.threshold(blur[5*blur.shape[0]//10:10*blur.shape[0]//10,:], 120, 255, cv2.THRESH_BINARY)[1]
+        # thresh = np.append(thresh1, thresh2, axis=0)
+        # thresh = np.append(thresh, thresh3, axis=0)
+
+            # cv2.imshow("bil_filter", blur)
+            # cv2.imshow("thresh", thresh)       
+            # cv2.waitKey(0)
+            
+            closing = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, kernel)
+            closing = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, kernel)
+            closing = cv2.morphologyEx(closing, cv2.MORPH_CLOSE, kernel)
+
+            padded = cv2.copyMakeBorder(closing, 1, 1, 1, 1, cv2.BORDER_CONSTANT)
+        
+            edged = cv2.Canny(padded, 50, 100)
+            if CV_VERSION == 3:
+                _, contours, _ = cv2.findContours(edged, cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)
+            else:
+                contours, _ = cv2.findContours(edged, cv2.RETR_EXTERNAL,CHAIN_APPROX_SIMPLE)
+            
+            # print(len(contours))
+            # print(sorted([cv2.contourArea(ct) for ct in contours])[::-1])
+            # contours = sorted(contours, reverse=True, key=lambda x: cv2.minAreaRect(x))
+
+            # cv2.imshow("closing", padded)
+            # cv2.moveWindow("closing",2000,800)
+            # cv2.imshow("edged", edged)
+            # cv2.moveWindow("edged",2000,400)
+            
+            score_map = np.zeros((arena_roi.shape))
+
+
+            for ct in contours:
+                epsilon = 0.001*cv2.arcLength(ct,True)
+                approx = cv2.approxPolyDP(ct,epsilon,True)
+                rect = cv2.minAreaRect(approx)
+                angle = rect[2]
+                width = rect[1][0]
+                height = rect[1][1]
+                   
+                box = cv2.boxPoints(rect)
+                box = np.int0(box)
+                if width > 200 and width < 600 and height > 15 and height < 60:
+                    if (t < 150 and rect[1][0] > arena_roi.shape[0]/2) or (t > 150 and rect[1][0] < arena_roi.shape[0]/2):
+                        # print("Shape of a contour")
+                        # print(box.shape)
+                        # print(box)
+
+                        
+
+                        cv2.drawContours(score_map,[box],0,(255,255,255),-1)
+                        bin = cv2.add(bin, score_map)
+
+
+                # cv2.drawContours(arena_roi, [ct], -1, (0,255,0), -1)
+
+                # print("angle")
+                # print(angle)
+                # print(f"Size: {width}x{height}")
+
+            # cv2.imshow("arena_roi", arena_roi)
+            # cv2.moveWindow("arena_roi",2000,200)
+            # cv2.waitKey(0)
+
+        bin = cv2.threshold(bin, 8, 255, cv2.THRESH_BINARY)[1]
+        bin = cv2.convertScaleAbs(bin)
+        bin = cv2.cvtColor(bin, cv2.COLOR_BGR2GRAY)
+        # bin = bin.astype(np.uint8)
+        logging.warning("ROIs segmented successfully")
+        # print(img.shape)
+        # print(bin.shape)
+        
+
+        #start_row:end_row, start_column:end_column
+        #arena_roi= img[arena_int[1,3]:arena_int[1,1], arena_int[0,3]:arena_int[0,1]]
+
+        top = arena_int[1,3]
+        left = arena_int[0,3]
+        bottom = img.shape[0] - arena_int[1,1]
+        right = img.shape[1] - arena_int[0,1]
+        print(f"{top},{left},{bottom},{right} ") 
+        try:
+            bin = cv2.copyMakeBorder(bin, top, bottom, left, right, cv2.BORDER_CONSTANT,0)
+        except Exception:
+            import ipdb; ipdb.set_trace()
+        # print(bin.shape)
+        assert img.shape[:2] == bin.shape
+        print("Look here")
+        print(arena.dtype)
+        print(arena.dtype)
+        arena = arena.reshape((1,4,2)).astype(np.int16)
+        self._arena = arena
+        return bin
+        
+        
+
+        # cv2.imshow("rotated", rotated)
+        # cv2.moveWindow("rotated", 2000, 600)
+        # cv2.imshow("original", img)
+        # cv2.moveWindow("original", 2000, 100)
+        # cv2.waitKey(0)
+        
+        # ## ----
+
+        # identity = np.array([[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]])
+        # # identity = np.array([[np.random.uniform(0,2000,1)]*4,]*4).reshape((4,4))
+        # print(identity)
+        # print(identity.shape)
+        
+        
+        # TODO
+        #
+        # Put this in _rois_from_img and comment it to make it more legible
+        # rois = []
+        # for i,r in enumerate(rectangles):
+        #     r = np.append(r, np.zeros((4,1)), axis=1)
+        #     mapped_rectangle = np.dot(wrap_mat, r.T).T
+        #     # mapped rectangle must be 4x2            
+        #     mapped_rectangle = np.dot(identity, mapped_rectangle)
+            
+        #     mapped_rectangle -= shift
+        #     ct = mapped_rectangle.reshape((1,4,2)).astype(np.int32)
+        #     cv2.drawContours(img,[ct], -1, (255,0,0),1,LINE_AA)
+        #     rois.append(ROI(ct, idx=i+1))
+
+        #     if self._debug:
+        #         cv2.imshow("thresh", thresh)
+        #         cv2.imshow("edged", edged)
+        #         cv2.imshow("dbg",img)
+        #         cv2.waitKey(0)
+
+        # reshape the arena onject so it has the expected shape
+        # it should be
+        # 1 x ncols x nrows       
+        # new_shape = (1,arena.shape[1],arena.shape[0])
+        # arena = arena.T.reshape(new_shape).astype(np.int)
+
+        # return rois, arena
 
 
 class ThirtyFliesMonitorWithTargetROIBuilder(TargetGridROIBuilder):
@@ -457,13 +793,15 @@ class FSLSleepMonitorWithTargetROIBuilder(TargetGridROIBuilder):
                                                                n_cols=2,
                                                                top_margin= 6.99 / 111.00,
                                                                bottom_margin = 6.99 / 111.00,
-                                                               left_margin = -.033,
+                                                               left_margin = 0,
                                                                right_margin = 0,
                                                                horizontal_fill = .8,
                                                                vertical_fill= .65,
+                                                            #    horizontal_pad = 0,
                                                                horizontal_pad = .05,
                                                                vertical_pad = 0,
-                                                               vertical_offset = -0.001,
+                                                               vertical_offset = 0,
+                                                            #    vertical_offset = 0.002,
                                                                direction=-1
                                                                )
 

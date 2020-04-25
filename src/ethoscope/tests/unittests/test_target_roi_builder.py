@@ -35,9 +35,15 @@ class TestTargetROIBuilder(unittest.TestCase):
         print(self.class_name)
 
 
-    def _draw(self,img, rois):
+    def _draw(self,img, rois, arena=None):
         for r in rois:
             cv2.drawContours(img,r.polygon,-1, (255,255,0), 2, LINE_AA)
+
+
+        if arena is not None:
+            pass
+            # cv2.drawContours(img,[arena],-1, (255,255,0), 2, LINE_AA)
+
 
 
 
@@ -60,30 +66,38 @@ class TestTargetROIBuilder(unittest.TestCase):
                 img = np.asarray(image)
 
         else:
+            
             img = cv2.imread(self._path)
+            
 
         try:
-            rois = self.roi_builder.build(img)
-
+            img, rois = self.roi_builder.build(img)
+            
         except EthoscopeException:
             cv2.imwrite(f'/tmp/fail_rois_{self.message}.png',img)
             return
 
         self._draw(img, rois)
         cv2.imwrite(f'/tmp/rois_{self.message}.png',img)
-        self.assertEqual(len(rois),20)
+        #self.assertEqual(len(rois),20)
 
 
 
     def _test_one_img(self,path, out):
         
         img = cv2.imread(path)
-
+        
         rois = self.roi_builder.build(img)
+        angle = self.roi_builder._angle
+        M = self.roi_builder._M
+        arena = self.roi_builder._arena
+        
+        img = cv2.warpAffine(img, self.roi_builder._M, img.shape[:2][::-1], flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE)
+
         pickle_file = os.path.join(LOG_DIR, self.class_name + "_rois.pickle")
         with open(pickle_file, "wb") as fh:
             pickle.dump(rois, fh)
-        self._draw(img, rois)
+        self._draw(img, rois, arena)
         if out is None:
             out = os.path.join(LOG_DIR, f'{now}_annot.png')
         cv2.imwrite(out,img)

@@ -36,6 +36,7 @@ class BaseDrawer(object):
         if draw_frames:
             cv2.namedWindow(self._window_name, cv2.WINDOW_AUTOSIZE)
         self._last_drawn_frame = None
+        self.arena = None
 
     def _annotate_frame(self,img, positions, tracking_units):
         """
@@ -124,6 +125,8 @@ class DefaultDrawer(BaseDrawer):
     def _annotate_frame(self,img, positions, tracking_units):
         if img is None:
             return
+
+        cv2.drawContours(img, [self.arena], -1, roi_colour, 1, LINE_AA)
         for track_u in tracking_units:
 
             x,y = track_u.roi.offset
