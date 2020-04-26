@@ -28,9 +28,9 @@ class TestTargetROIBuilder(unittest.TestCase):
 
     roi_builder = SleepMonitorWithTargetROIBuilder()
     
-    
+
     def setUp(self):
-        
+
         self.class_name = self.__class__.__name__
         print(self.class_name)
 
@@ -56,7 +56,7 @@ class TestTargetROIBuilder(unittest.TestCase):
             import numpy as np
             from PIL import Image
             stream = io.BytesIO()
-    
+
             with picamera.PiCamera() as cam:
                 cam.start_preview()
                 time.sleep(2)
@@ -66,9 +66,9 @@ class TestTargetROIBuilder(unittest.TestCase):
                 img = np.asarray(image)
 
         else:
-            
+
             img = cv2.imread(self._path)
-            
+ 
 
         try:
             img, rois = self.roi_builder.build(img)
