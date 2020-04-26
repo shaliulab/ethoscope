@@ -24,8 +24,8 @@ from ethoscope.roi_builders.roi_builders import BaseROIBuilder
 from ethoscope.core.roi import ROI
 from ethoscope.utils.debug import EthoscopeException
 import itertools
-from ethoscope.roi_builders.helpers import center2rect, find_quadrant
-
+from ethoscope.roi_builders.helpers import center2rect, find_quadrant, contour_center, rotate_contour, contour_mean_intensity
+from scipy.optimize import minimize
 
 class TargetGridROIBuilder(BaseROIBuilder):
 
@@ -451,6 +451,7 @@ class TargetGridROIBuilder(BaseROIBuilder):
    
     def _rois_from_img_new(self, img):
 
+        grey = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         # rotate the image so ROIs are horizontal        
         rotated = self._rotate_img(img)        
         # segment the ROIs out of the rotated image
@@ -490,8 +491,6 @@ class TargetGridROIBuilder(BaseROIBuilder):
             centers.append(center)
             angles.append(angle)
             roi.reshape((4,1,2))
-            print(roi)
-
             cv2.circle(center_plot, center, 10, (0,255,0), -1)
             
             widths.append(w)
@@ -532,34 +531,94 @@ class TargetGridROIBuilder(BaseROIBuilder):
         median_x_left = np.median([e[0] for e in centers_left])
         median_x_right = np.median([e[0] for e in centers_right])
         
-        height = np.median(heights)
         
         rois = []
 
         arena_width = self._sorted_src_pts[1,0] - self._sorted_src_pts[2,0]
+        arena_height = self._sorted_src_pts[0,1] - self._sorted_src_pts[1,1]
 
-        long_side = int(0.3*arena_width)
-        short_side = int(0.15*arena_width)
+        long_side = int(0.26*arena_width)
+        short_side = int(0.13*arena_width)
+        # height =  int(0.7*(arena_height*0.8/10))
+        height = 0.8*np.median(heights)
+        
+        
+        
 
         for i, center in enumerate(centers):
             left, _ = find_quadrant(bin_rotated.shape, center)
             angle = angles[i]
+
+            segmented_contour = contours[i]
         
             # corrected_roi = cv2.boxPoints(rects[i])
 
             if left:
-                corrected_roi = center2rect((median_x_left, center[1]), heights[i], left = long_side, right = short_side, angle=angle)
+                corrected_roi = center2rect((median_x_left, center[1]), height, left = long_side, right = short_side, angle=angle)
+                inner_roi = center2rect((median_x_left, center[1]), height, left = long_side/2, right = short_side/3, angle=angle)
             else:
-                corrected_roi = center2rect((median_x_right, center[1]), heights[i], left = short_side, right = long_side, angle=angle)
+                corrected_roi = center2rect((median_x_right, center[1]), height, left = short_side, right = long_side, angle=angle)
+                inner_roi = center2rect((median_x_right, center[1]), height, left = short_side/3, right = long_side/2, angle=angle)
 
+            center_of_mass = contour_center(corrected_roi)
+            
+            max_angle = 0.0
+            learning_rate = 0.01
+            cnt_rot = rotate_contour(corrected_roi, +learning_rate, center_of_mass)
+            mean_pos = contour_mean_intensity(grey, cnt_rot)
+            cnt_rot = rotate_contour(corrected_roi, -learning_rate, center_of_mass)
+            mean_neg = contour_mean_intensity(grey, cnt_rot)
+            gradient = np.array([-1,1])[np.argmin(np.array([mean_neg, mean_pos]))]
+    
+            original_val = contour_mean_intensity(grey, corrected_roi)
+            max_val = original_val
+            for angle in np.arange(-.25, .25, learning_rate):
+            # while not min_found and n_iters < 100:
+                inner_cnt_rot = rotate_contour(inner_roi, angle, center_of_mass)
+                val = contour_mean_intensity(grey, inner_cnt_rot)
+                if val > max_val:
+                    max_val = val
+                    max_angle = angle
+
+            cnt_rot = rotate_contour(corrected_roi, max_angle, center_of_mass)
+            
+            # for pixel_moves in np.arange(0,5):
+            #     cnt_rot_up = cnt_rot - np.array(0, 1) 
+            #     cnt_rot_down = cnt_rot + np.array(0, 1) 
+            #     val_up = contour_mean_intensity(grey, cnt_rot_up)
+            #     val_down = contour_mean_intensity(grey, cnt_rot_down)
+            #     if val_up 
+
+
+                
+
+                
+            
+            print(f"ROI_{i+1}")
+            print(max_angle)
+            print(val)
+            print(original_val)
+
+            cv2.drawContours(grey, [inner_roi], -1, (255, 255, 0), 2)
+            if max_angle != 0:               
+                cv2.drawContours(grey, [inner_cnt_rot], -1, (255, 0, 255), 2)
+            
+
+            # fly_roi=cv2.bitwise_and(np.stack((mask,)*img.shape[2], axis=2), img)
+            # fly_roi = img[start_row:end_row, start_column:end_column]
+            # cv2.imshow(f"ROI_{i}", mask)
+            # cv2.waitKey(0)
             
             ####
             # give it the shape expected by programs downstream            
-            ct = corrected_roi.reshape((1,4,2)).astype(np.int32)
+            ct = cnt_rot.reshape((1,4,2)).astype(np.int32)
             # cv2.drawContours(img,[ct], -1, (255,0,0),1,LINE_AA)
             # initialize a ROI object to be returned to the control thread
             # with all the other detected ROIs in the rois list
             rois.append(ROI(ct, idx=i+1))
+
+        cv2.imshow("grey", grey)
+        cv2.waitKey(0)
 
         # if self._debug or debug or True:
         #     for roi in rois:
@@ -730,7 +789,12 @@ class TargetGridROIBuilder(BaseROIBuilder):
         # but we still need to find ROIs inside it
         else:
             if self._M is not None:
-                sorted_src_pts = np.dot(self._M, np.append(self._sorted_src_pts, np.zeros((self._sorted_src_pts.shape[0], 1)), axis=1).T).T
+                dst = np.append(self._sorted_src_pts, np.zeros((self._sorted_src_pts.shape[0], 1)), axis=1)
+                print("dst.shape")
+                print(dst.shape)
+
+
+                sorted_src_pts = np.dot(self._M, dst.T).T
             else:
                 sorted_src_pts = self._sorted_src_pts      
             
