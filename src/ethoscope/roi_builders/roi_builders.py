@@ -44,7 +44,11 @@ class BaseROIBuilder(DescribedObject):
 
             accum = np.median(np.array(accum),0).astype(np.uint8)
         try:
-            img, rois = self._rois_from_img_new(accum)
+            if self.__class__.__name__ == "FSLTargetROIBuilder":
+                img, rois = self._rois_from_img(accum)
+            else:
+                rois = self._rois_from_img(accum)
+
         except Exception as e:
             if not isinstance(input, np.ndarray):
                 del input
@@ -58,7 +62,12 @@ class BaseROIBuilder(DescribedObject):
         else:
             rois = self._value_sorting(rois)
 
-        return img, rois
+        if self.__class__.__name__ == "FSLTargetROIBuilder":
+            result = (img, rois)
+        else:
+            result = rois
+
+        return result
 
 
 

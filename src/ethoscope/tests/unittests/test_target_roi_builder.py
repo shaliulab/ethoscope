@@ -9,7 +9,8 @@ import time
 import sys
 from ethoscope.utils.debug import EthoscopeException
 
-from ethoscope.roi_builders.target_roi_builder import FSLSleepMonitorWithTargetROIBuilder, SleepMonitorWithTargetROIBuilder, TargetGridROIBuilder
+from ethoscope.roi_builders.target_roi_builder import SleepMonitorWithTargetROIBuilder, TargetGridROIBuilder
+from ethoscope.roi_builders.fsl_roi_builder import FSLTargetROIBuilder
 print(os.getcwd())
 
 try:
@@ -71,14 +72,19 @@ class TestTargetROIBuilder(unittest.TestCase):
  
 
         try:
-            img, rois = self.roi_builder.build(img)
+            if self.roi_builder.__class__.__name__ == "FSLTargetROIBuilder":
+                img, rois = self.roi_builder.build(img)
+            else:
+                rois = self.roi_builder.build(img)
+
             
         except EthoscopeException:
             cv2.imwrite(f'/tmp/fail_rois_{self.message}.png',img)
             return
 
         self._draw(img, rois)
-        cv2.imwrite(f'/tmp/rois_{self.message}.png',img)
+        out = os.path.join(LOG_DIR, f'{self.__class__.__name__}_annot.png')
+        cv2.imwrite(out,img)
         #self.assertEqual(len(rois),20)
 
 
@@ -99,7 +105,7 @@ class TestTargetROIBuilder(unittest.TestCase):
             pickle.dump(rois, fh)
         self._draw(img, rois, arena)
         if out is None:
-            out = os.path.join(LOG_DIR, f'{now}_annot.png')
+            out = os.path.join(LOG_DIR, f'{self.__class__.__name__}_{now}_annot.png')
         cv2.imwrite(out,img)
         self.assertEqual(len(rois),20)
 
@@ -114,7 +120,7 @@ class TestTargetROIBuilder(unittest.TestCase):
 
 class TestFSLROIBuilder(TestTargetROIBuilder):
 
-    roi_builder = FSLSleepMonitorWithTargetROIBuilder()
+    roi_builder = FSLTargetROIBuilder()
 
 
 
@@ -132,6 +138,14 @@ if __name__ == '__main__':
         test_instance._path = args['path']
     test_instance.setUp()
     test_instance._test_live()
+
+    TestTargetROIBuilder.message = message
+    test_instance = TestTargetROIBuilder()
+    if args['path'] is not None:
+        test_instance._path = args['path']
+    test_instance.setUp()
+    test_instance._test_live()
+
 
     
 
