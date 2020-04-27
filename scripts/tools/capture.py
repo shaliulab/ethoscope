@@ -7,8 +7,15 @@ from picamera import PiCamera
 from picamera.array import PiRGBArray
 import cv2
 
+try:
+    from ethoscope.web_utils.helpers import get_machine_name
+    machine_name = get_machine_name()
+    prefix = machine_name + "_"
+except ImportError:
+    prefix = ""
 
-temp = tempfile.NamedTemporaryFile(suffix=".png", delete=False)
+suffix = ".png"
+temp = tempfile.NamedTemporaryFile(prefix = prefix, suffix=".png", delete=False)
 
 with PiCamera() as capture:
     capture.resolution = (1024, 768)
