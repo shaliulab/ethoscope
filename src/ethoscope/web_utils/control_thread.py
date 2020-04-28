@@ -365,7 +365,7 @@ class ControlThread(Thread):
         cam = CameraClass(**camera_kwargs)
 
         if True:
-            for i,(t, frame) in enumerate(self._camera):
+            for i,(t, frame) in enumerate(cam):
                 cv2.imwrite('/root/last_img.png', frame)
                 break
 
