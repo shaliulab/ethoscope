@@ -73,10 +73,14 @@ def main():
 
     except Exception as e:
         try:
+            logging.info('Device not registered')
+            logging.error(e)
+            logging.error(traceback.format_exc())
             zeroconf.unregister_service(serviceInfo)
             zeroconf.close()
-        except:
+        except Exception:
             pass
+
         close(1)
 
     finally:
@@ -88,17 +92,7 @@ def main():
         close()
 
 
-
-
-
 def close(exit_status=0):
     os._exit(exit_status)
 
-finally:
-    try:
-        zeroconf.unregister_service(serviceInfo)
-        zeroconf.close()
-    except:
-        pass
-    close()
 
