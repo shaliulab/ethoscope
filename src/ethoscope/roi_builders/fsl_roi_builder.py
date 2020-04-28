@@ -220,7 +220,7 @@ class FSLTargetROIBuilder(BaseROIBuilder):
         
         map = blob_function(img)
        
-        if self._debug or True:
+        if debug:
             thresh = cv2.threshold(map, 1, 255, cv2.THRESH_BINARY)[1]
             cv2.imshow("map", thresh)
             cv2.waitKey(0)
@@ -236,10 +236,9 @@ class FSLTargetROIBuilder(BaseROIBuilder):
             else:
                 contours, h = cv2.findContours(bin, cv2.RETR_EXTERNAL, CHAIN_APPROX_SIMPLE)
             
-            print(len(contours))
-            print(t)
-            cv2.imshow('bin', bin)
-            cv2.waitKey(0)
+            if debug:
+                cv2.imshow('bin', bin)
+                cv2.waitKey(0)
 
             if len(contours) <3:
                 raise EthoscopeException("There should be three targets. Only %i objects have been found" % (len(contours)), img)
@@ -262,7 +261,7 @@ class FSLTargetROIBuilder(BaseROIBuilder):
 
         a, b, c = src_points
 
-        if self._debug:
+        if debug:
             for pt in src_points:
                 pt = tuple((int(e) for e in pt))
                 thresh = cv2.circle(thresh, pt, 5, 0, -1)
@@ -301,10 +300,11 @@ class FSLTargetROIBuilder(BaseROIBuilder):
             contours, _ = cv2.findContours(bin, cv2.RETR_EXTERNAL, CHAIN_APPROX_SIMPLE)
 
 
-        cv2.imshow("bin", bin)
-        cv2.waitKey(0)
+        if debug:
+            cv2.imshow("bin", bin)
+            cv2.waitKey(0)
 
-        while len(contours) != 20 or np.count_nonzero(bin) > 0:
+        while np.count_nonzero(bin) > 0:
 
             # bin = cv2.morphologyEx(bin, cv2.MORPH_TOPHAT, (9, 9))
             bin = cv2.erode(bin, np.ones((1, 10)))
@@ -313,8 +313,13 @@ class FSLTargetROIBuilder(BaseROIBuilder):
             else:
                 contours, _ = cv2.findContours(bin, cv2.RETR_EXTERNAL, CHAIN_APPROX_SIMPLE)
 
-            cv2.imshow("eroded_bin", bin)
-            cv2.waitKey(0)
+            if debug:
+                cv2.imshow("eroded_bin", bin)
+                cv2.waitKey(0)
+
+            if len(contours) == 20:
+                break
+
 
         if np.count_nonzero(bin) == 0:
             # TODO Adapt to any number of ROIs
@@ -370,8 +375,9 @@ class FSLTargetROIBuilder(BaseROIBuilder):
             else:
                 centers_right.append(center)
 
-        cv2.imshow("center_plot", center_plot)
-        cv2.waitKey(0)
+        if debug:
+            cv2.imshow("center_plot", center_plot)
+            cv2.waitKey(0)
         
         median_x_left = np.median([e[0] for e in centers_left])
         median_x_right = np.median([e[0] for e in centers_right])
@@ -455,8 +461,9 @@ class FSLTargetROIBuilder(BaseROIBuilder):
             # with all the other detected ROIs in the rois list
             rois.append(ROI(ct, idx=i+1))
 
-        cv2.imshow("grey", grey)
-        cv2.waitKey(0)
+        if debug:
+            cv2.imshow("grey", grey)
+            cv2.waitKey(0)
 
         # if self._debug or debug or True:
         #     for roi in rois:
@@ -674,7 +681,7 @@ class FSLTargetROIBuilder(BaseROIBuilder):
             score_map = self._get_roi_score_map(blur, t, debug=debug)
             bin = cv2.add(bin, score_map)
 
-            if self._debug or True:
+            if debug:
 
                 cv2.imshow(f"bin at threshold={t}", bin[:,:,0])
                 cv2.moveWindow(f"bin at threshold={t}", 600, 800)
