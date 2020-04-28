@@ -364,6 +364,10 @@ class ControlThread(Thread):
 
         cam = CameraClass(**camera_kwargs)
 
+        if True:
+            frame = next(cam)
+            cv2.imwrite('/root/last_img.png', frame)
+
         roi_builder = ROIBuilderClass(**roi_builder_kwargs)
         
         try:
