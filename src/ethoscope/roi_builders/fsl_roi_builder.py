@@ -49,7 +49,7 @@ class FSLTargetROIBuilder(BaseROIBuilder):
                     #              ]
                     }
                                    
-    def __init__(self, n_rows=10, n_cols=21, debug=False, long_side_fraction = 0.26, short_side_fraction = 0.18, mint=100, maxt=255):
+    def __init__(self, n_rows=10, n_cols=21, debug=False, long_side_fraction = 0.26, short_side_fraction = 0.18, mint=90, maxt=255):
         """
         This roi builder uses three black circles drawn on the arena (targets) to align a grid layout:
 
@@ -325,7 +325,7 @@ class FSLTargetROIBuilder(BaseROIBuilder):
 
         if np.count_nonzero(bin) == 0:
             # TODO Adapt to any number of ROIs
-            raise EthoscopeException('I could not find 20 ROIs. Please try again or change the lighting conditions', bin_orig)
+            raise EthoscopeException('I could not find 20 ROIs. Please try again or change the lighting conditions', np.stack((bin_orig, orig), axis=1))
 
         return contours
    
@@ -333,7 +333,7 @@ class FSLTargetROIBuilder(BaseROIBuilder):
 
         grey = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         # rotate the image so ROIs are horizontal        
-        rotated, M = self._rotate_img(img)        
+        rotated, M = self._rotate_img(img, grey)        
         # segment the ROIs out of the rotated image
         bin_rotated = self._segment_rois(rotated, debug=False)[:,:,0]
 
@@ -481,7 +481,7 @@ class FSLTargetROIBuilder(BaseROIBuilder):
         return rotated, M, rois           
 
 
-    def _rotate_img(self, img):
+    def _rotate_img(self, img, orig):
 
         bin = self._segment_rois(img)
         # cv2.imshow("segmented_bin",bin)
