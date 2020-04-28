@@ -49,7 +49,7 @@ class FSLTargetROIBuilder(BaseROIBuilder):
                                  ]
                     }
                                    
-    def __init__(self, n_rows=1, n_cols=1, debug=False, long_side_fraction = 0.26, short_side_fraction = 0.13, mint=100, maxt=255):
+    def __init__(self, n_rows=1, n_cols=1, debug=False, long_side_fraction = 0.26, short_side_fraction = 0.18, mint=100, maxt=255):
         """
         This roi builder uses three black circles drawn on the arena (targets) to align a grid layout:
 
@@ -219,8 +219,8 @@ class FSLTargetROIBuilder(BaseROIBuilder):
     def _find_target_coordinates(self, img, blob_function):
         
         map = blob_function(img)
-        
-        if self._debug:
+       
+        if self._debug or True:
             thresh = cv2.threshold(map, 1, 255, cv2.THRESH_BINARY)[1]
             cv2.imshow("map", thresh)
             cv2.waitKey(0)
@@ -235,6 +235,11 @@ class FSLTargetROIBuilder(BaseROIBuilder):
                 _, contours, h = cv2.findContours(bin, cv2.RETR_EXTERNAL, CHAIN_APPROX_SIMPLE)
             else:
                 contours, h = cv2.findContours(bin, cv2.RETR_EXTERNAL, CHAIN_APPROX_SIMPLE)
+            
+            print(len(contours))
+            print(t)
+            cv2.imshow('bin', bin)
+            cv2.waitKey(0)
 
             if len(contours) <3:
                 raise EthoscopeException("There should be three targets. Only %i objects have been found" % (len(contours)), img)
@@ -299,7 +304,7 @@ class FSLTargetROIBuilder(BaseROIBuilder):
         cv2.imshow("bin", bin)
         cv2.waitKey(0)
 
-        while len(contours) != 20:
+        while len(contours) != 20 or np.count_nonzero(bin) > 0:
 
             # bin = cv2.morphologyEx(bin, cv2.MORPH_TOPHAT, (9, 9))
             bin = cv2.erode(bin, np.ones((1, 10)))
@@ -310,14 +315,18 @@ class FSLTargetROIBuilder(BaseROIBuilder):
 
             cv2.imshow("eroded_bin", bin)
             cv2.waitKey(0)
-        
+
+        if np.count_nonzero(bin) == 0:
+            # TODO Adapt to any number of ROIs
+            raise EthoscopeException('I could not find 20 ROIs. Please try again or change the lighting conditions')
+
         return contours
    
     def _rois_from_img(self, img):
 
         grey = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         # rotate the image so ROIs are horizontal        
-        rotated = self._rotate_img(img)        
+        rotated, M = self._rotate_img(img)        
         # segment the ROIs out of the rotated image
         bin_rotated = self._segment_rois(rotated, debug=False)[:,:,0]
 
@@ -460,7 +469,7 @@ class FSLTargetROIBuilder(BaseROIBuilder):
         #     cv2.imshow("bin_rotated_contours", bin_rotated)
         #     cv2.waitKey(0)
        
-        return rotated, rois            
+        return rotated, M, rois           
 
 
     def _rotate_img(self, img):
@@ -506,7 +515,7 @@ class FSLTargetROIBuilder(BaseROIBuilder):
         self._M = M
         self._invM = invM
         self._angle = median_angle
-        return rotated
+        return rotated, M
 
 
     def _get_roi_score_map(self, arena_roi, t, debug=False):
@@ -584,12 +593,16 @@ class FSLTargetROIBuilder(BaseROIBuilder):
 
 
     def _find_arena(self, img):
+        # try:
+        #     sorted_src_pts = self._find_target_coordinates(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY), self._find_blobs)
+        # except EthoscopeException:
+            # logging.warning("Fall back to find_blobs_new")
         try:
-            sorted_src_pts = self._find_target_coordinates(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY), self._find_blobs)
-        except EthoscopeException:
-            logging.warning("Fall back to find_blobs_new")
             sorted_src_pts = self._find_target_coordinates(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY), self._find_blobs_new)
-            
+        except Exception as e:
+            logging.warning(e)
+            raise e
+
         finally:
             self._sorted_src_pts = sorted_src_pts
             wrap_mat = cv2.getAffineTransform(self._dst_points, sorted_src_pts)

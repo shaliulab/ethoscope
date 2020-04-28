@@ -45,7 +45,7 @@ class BaseROIBuilder(DescribedObject):
             accum = np.median(np.array(accum),0).astype(np.uint8)
         try:
             if self.__class__.__name__ == "FSLTargetROIBuilder":
-                img, rois = self._rois_from_img(accum)
+                img, M, rois = self._rois_from_img(accum)
             else:
                 rois = self._rois_from_img(accum)
 
@@ -63,7 +63,7 @@ class BaseROIBuilder(DescribedObject):
             rois = self._value_sorting(rois)
 
         if self.__class__.__name__ == "FSLTargetROIBuilder":
-            result = (img, rois)
+            result = (img, M, rois)
         else:
             result = rois
 

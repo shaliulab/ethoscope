@@ -2,7 +2,9 @@ __author__ = 'quentin'
 
 from .tracking_unit import TrackingUnit
 import logging
+loging.basicConfig(level=logging.INFO)
 import traceback
+import cv2
 
 class Monitor(object):
 
@@ -82,7 +84,7 @@ class Monitor(object):
         """
         self._force_stop = True
 
-    def run(self, result_writer = None, drawer = None, quality_controller=None):
+    def run(self, result_writer = None, drawer = None, quality_controller=None, M=None):
         """
         Runs the monitor indefinitely.
 
@@ -97,6 +99,10 @@ class Monitor(object):
             self._is_running = True
 
             for i,(t, frame) in enumerate(self._camera):
+
+                if M is not None:
+                    logging.info('Rotating input frame')
+                    frame = cv2.warpAffine(frame, M, frame.shape[:2][::-1], flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE)
 
                 if self._force_stop:
                     logging.info("Monitor object stopped from external request")
