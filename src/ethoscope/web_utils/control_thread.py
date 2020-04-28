@@ -365,8 +365,9 @@ class ControlThread(Thread):
         cam = CameraClass(**camera_kwargs)
 
         if True:
-            frame = next(cam)
-            cv2.imwrite('/root/last_img.png', frame)
+            for i,(t, frame) in enumerate(self._camera):
+                cv2.imwrite('/root/last_img.png', frame)
+                break
 
         roi_builder = ROIBuilderClass(**roi_builder_kwargs)
         

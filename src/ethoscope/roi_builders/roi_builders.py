@@ -44,6 +44,7 @@ class BaseROIBuilder(DescribedObject):
 
             accum = np.median(np.array(accum),0).astype(np.uint8)
             cv2.imwrite('/root/actual_image.png', accum)
+            
         try:
             if self.__class__.__name__ == "FSLTargetROIBuilder":
                 img, M, rois = self._rois_from_img(accum)
