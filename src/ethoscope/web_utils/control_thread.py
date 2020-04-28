@@ -447,6 +447,14 @@ class ControlThread(Thread):
                 if cam.canbepickled:
                     self._save_pickled_state(cam, rw, rois, M, TrackerClass, tracker_kwargs, hardware_connection, StimulatorClass, stimulator_kwargs, self._info)
                 
+                
+                if M is not None:
+                    logging.info(type(M))
+                    logging.info(M.shape)
+                
+                else:
+                    logging.info('M is None!')
+
                 self._start_tracking(cam, result_writer, rois, M, TrackerClass, tracker_kwargs,
                                      hardware_connection, StimulatorClass, stimulator_kwargs)
             self.stop()
