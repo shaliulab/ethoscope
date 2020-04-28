@@ -405,6 +405,11 @@ class FSLTargetROIBuilder(BaseROIBuilder):
         # height =  int(0.7*(arena_height*0.8/10))
         height = 0.8*np.median(heights)
 
+        # first ROIs whose side is left and then those whose top left corner y coordinate is lowest
+        centers = sorted(centers, key=lambda x: (find_quadrant(bin_rotated.shape, x) == 'right', x[1]))
+
+
+
         for i, center in enumerate(centers):
             left, _ = find_quadrant(bin_rotated.shape, center)
             side = 'left' if left else 'right'
@@ -474,8 +479,7 @@ class FSLTargetROIBuilder(BaseROIBuilder):
             # with all the other detected ROIs in the rois list
             rois.append(ROI(ct, idx=i+1, side=side))
 
-        # first ROIs whose side is left and then those whose top left corner y coordinate is lowest
-        rois = sorted(rois, key=lambda x: (x.side=='right', x.polygon[:,0,1]))
+ 
 
         if debug:
             cv2.imshow("grey", grey)
