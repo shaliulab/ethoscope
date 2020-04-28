@@ -406,7 +406,7 @@ class FSLTargetROIBuilder(BaseROIBuilder):
         height = 0.8*np.median(heights)
 
         # first ROIs whose side is left and then those whose top left corner y coordinate is lowest
-        centers = sorted(centers, key=lambda x: (find_quadrant(bin_rotated.shape, x) == 'right', x[1]))
+        centers = sorted(centers, key=lambda x: (not find_quadrant(bin_rotated.shape, x)[0], x[1]))
 
 
 
