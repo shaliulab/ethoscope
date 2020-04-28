@@ -43,13 +43,13 @@ class FSLTargetROIBuilder(BaseROIBuilder):
 
     _description = {"overview": "A flexible ROI builder that allows users to select parameters for the ROI layout."
                                "Lengths are relative to the distance between the two bottom targets (width)",
-                    "arguments": [
-                                    {"type": "number", "min": 1, "max": 16, "step":1, "name": "n_cols", "description": "The number of columns","default":1},
-                                    {"type": "number", "min": 1, "max": 16, "step":1, "name": "n_rows", "description": "The number of rows","default":1}
-                                 ]
+                    # "arguments": [
+                    #                 {"type": "number", "min": 1, "max": 16, "step":1, "name": "n_cols", "description": "The number of columns","default":1},
+                    #                 {"type": "number", "min": 1, "max": 16, "step":1, "name": "n_rows", "description": "The number of rows","default":1}
+                    #              ]
                     }
                                    
-    def __init__(self, n_rows=1, n_cols=1, debug=False, long_side_fraction = 0.26, short_side_fraction = 0.18, mint=100, maxt=255):
+    def __init__(self, n_rows=10, n_cols=21, debug=False, long_side_fraction = 0.26, short_side_fraction = 0.18, mint=100, maxt=255):
         """
         This roi builder uses three black circles drawn on the arena (targets) to align a grid layout:
 

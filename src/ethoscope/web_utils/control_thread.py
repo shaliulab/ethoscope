@@ -367,7 +367,7 @@ class ControlThread(Thread):
         roi_builder = ROIBuilderClass(**roi_builder_kwargs)
         
         try:
-            if self.roi_builder.__class__.__name__ == "FSLTargetROIBuilder":
+            if roi_builder.__class__.__name__ == "FSLTargetROIBuilder":
                 rois, M, arena = roi_builder.build(cam)
                 self._drawer.arena = arena
             else:
