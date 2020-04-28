@@ -127,7 +127,6 @@ class DefaultDrawer(BaseDrawer):
             return
 
         roi_colour = (0, 255,0)
-        cv2.drawContours(img, [self.arena], -1, roi_colour, 1, LINE_AA)
         for track_u in tracking_units:
 
             x,y = track_u.roi.offset
