@@ -25,7 +25,7 @@ class ROI(object):
         """
 
         # TODO if we do not need polygon, we can drop it
-        self._side = side
+        self.side = side
         self._polygon = np.array(polygon)
         if len(self._polygon.shape) == 2:
             self._polygon = self._polygon.reshape((self._polygon.shape[0],1,self._polygon.shape[1]))
