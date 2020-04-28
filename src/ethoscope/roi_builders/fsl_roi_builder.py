@@ -16,7 +16,7 @@ except ImportError:
 
 import numpy as np
 import logging
-debug=False
+debug=True
 # level = CFG.content["logging"]["level"]
 level = logging.DEBUG
 logging.basicConfig(level=level)
@@ -49,7 +49,7 @@ class FSLTargetROIBuilder(BaseROIBuilder):
                     #              ]
                     }
                                    
-    def __init__(self, n_rows=10, n_cols=21, debug=False, long_side_fraction = 0.26, short_side_fraction = 0.18, mint=100, maxt=255):
+    def __init__(self, n_rows=10, n_cols=21, debug=debug, long_side_fraction = 0.26, short_side_fraction = 0.18, mint=100, maxt=255):
         """
         This roi builder uses three black circles drawn on the arena (targets) to align a grid layout:
 
@@ -338,11 +338,18 @@ class FSLTargetROIBuilder(BaseROIBuilder):
         # rotate the image so ROIs are horizontal        
         rotated, M = self._rotate_img(img)        
         # segment the ROIs out of the rotated image
-        bin_rotated = self._segment_rois(rotated, debug=False)[:,:,0]
+        bin_rotated = self._segment_rois(rotated, debug=debug)[:,:,0]
 
         center_plot = np.stack((bin_rotated,)*3, axis=2)
 
-        contours = self._split_rois(bin_rotated, grey)
+        try:
+            contours = self._split_rois(bin_rotated, grey)
+        except EthoscopeException as e:
+            bin_rotated = self._segment_rois(rotated, mint=self._mint, maxt=self._maxt, half_t=110, debug=debug)[:,:,0]
+            center_plot = np.stack((bin_rotated,)*3, axis=2)
+            contours = self._split_rois(bin_rotated, grey)
+
+
         centers = []
         widths = []
         heights = []
@@ -530,7 +537,7 @@ class FSLTargetROIBuilder(BaseROIBuilder):
         return rotated, M
 
 
-    def _get_roi_score_map(self, arena_roi, t, debug=False):
+    def _get_roi_score_map(self, arena_roi, t, half_t, debug=debug):
 
         # reset the score map for this new threshold
         # initialize an array of same shape as input image
@@ -561,11 +568,7 @@ class FSLTargetROIBuilder(BaseROIBuilder):
         else:
             contours, _ = cv2.findContours(edged, cv2.RETR_EXTERNAL,CHAIN_APPROX_SIMPLE)
 
-
-        half_t = 130
-
-
-        
+      
         # go through each contour and validate it
         for ct in contours:
             epsilon = 0.001*cv2.arcLength(ct,True)
@@ -582,11 +585,12 @@ class FSLTargetROIBuilder(BaseROIBuilder):
             # Instead, compute these values from the arena dimensions
             # represented by self._sorted_src_pts
 
-            cond1 = (t < half_t and rect[0][1] > arena_roi.shape[0]/2)
-            cond2 = (t >= half_t and rect[0][1] < arena_roi.shape[0]/2)
+            cond1 = t < half_t and rect[0][1] > arena_roi.shape[0]/2
+            cond2 = t >= half_t*0.8 and rect[0][1] < arena_roi.shape[0]/2
+
             
 
-            if width > 200 and width < 600 and height > 15 and height < 60:
+            if width > 150 and width < 600 and height > 15 and height < 60:
                 if cond1 or cond2:
                     cv2.drawContours(score_map,[box],-1, (255, 0), -1)
             
@@ -623,7 +627,7 @@ class FSLTargetROIBuilder(BaseROIBuilder):
         return sorted_src_pts, wrap_mat
                 
 
-    def _segment_rois(self, img, debug=False):
+    def _segment_rois(self, img, mint=None, maxt=None, half_t=None, debug=debug):
 
         r"""
         the rois are segmented by:
@@ -647,6 +651,13 @@ class FSLTargetROIBuilder(BaseROIBuilder):
         #  * compute the affine transformation matrix needed
         #    to transform the three reference points (0,-1), (0,0) and (-1,0)
         #    into the coordinates just found
+
+        if mint is None:
+            mint = self._mint
+        if maxt is None:
+            maxt = self._maxt
+        if half_t is None:
+            half_t = 130
 
         if self._sorted_src_pts is None:
             sorted_src_pts, _ = self._find_arena(img)
@@ -681,9 +692,9 @@ class FSLTargetROIBuilder(BaseROIBuilder):
         cv2.destroyAllWindows()
         # cv2.imshow("blur", blur)
 
-        for t in range(self._mint, self._maxt, 5):
+        for t in range(mint, maxt, 4):
             # print(np.unique(bin, return_counts=True))
-            score_map = self._get_roi_score_map(blur, t, debug=debug)
+            score_map = self._get_roi_score_map(blur, t, half_t, debug=debug)
             bin = cv2.add(bin, score_map)
 
             if debug:
