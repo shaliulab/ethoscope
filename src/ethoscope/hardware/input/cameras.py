@@ -360,6 +360,9 @@ class PiFrameGrabber(multiprocessing.Process):
                 capture.awb_mode = 'off'
                 capture.awb_gains = (1.8, 1.5)
                 #capture.awb_mode = 'auto'
+                capture.exposure_mode = "off"
+                capture.shutter_speed = 50000
+                time.sleep(1)
 
                 capture.framerate = self._target_fps
                 raw_capture = PiRGBArray(capture, size=self._target_resolution)
