@@ -608,14 +608,14 @@ class FSLTargetROIBuilder(BaseROIBuilder):
             # logging.warning("Fall back to find_blobs_new")
         try:
             sorted_src_pts = self._find_target_coordinates(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY), self._find_blobs_new)
+            self._sorted_src_pts = sorted_src_pts
+            wrap_mat = cv2.getAffineTransform(self._dst_points, sorted_src_pts)
+            self._wrap_mat = wrap_mat
+
         except Exception as e:
             logging.warning(e)
             raise e
 
-        finally:
-            self._sorted_src_pts = sorted_src_pts
-            wrap_mat = cv2.getAffineTransform(self._dst_points, sorted_src_pts)
-            self._wrap_mat = wrap_mat
         
         return sorted_src_pts, wrap_mat
                 
