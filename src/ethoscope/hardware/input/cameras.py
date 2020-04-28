@@ -357,10 +357,11 @@ class PiFrameGrabber(multiprocessing.Process):
                 #however setting this to off would have to be coupled with custom gains
                 #some suggestion on how to set the gains can be found here: https://picamera.readthedocs.io/en/release-1.12/recipes1.html
                 #and here: https://github.com/waveform80/picamera/issues/182
-                capture.awb_mode = 'off'
+                capture.awb_mode = "off"
+                time.sleep(1)
                 capture.awb_gains = (1.8, 1.5)
-                #capture.awb_mode = 'auto'
                 capture.exposure_mode = "off"
+                time.sleep(1)
                 capture.shutter_speed = 50000
                 time.sleep(1)
 
