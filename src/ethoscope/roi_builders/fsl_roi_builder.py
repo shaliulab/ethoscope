@@ -294,6 +294,8 @@ class FSLTargetROIBuilder(BaseROIBuilder):
 
     def _split_rois(self, bin):
 
+        bin_orig = bin.copy()
+
         if CV_VERSION == 3:
             _, contours, _ = cv2.findContours(bin, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         else:
@@ -323,7 +325,7 @@ class FSLTargetROIBuilder(BaseROIBuilder):
 
         if np.count_nonzero(bin) == 0:
             # TODO Adapt to any number of ROIs
-            raise EthoscopeException('I could not find 20 ROIs. Please try again or change the lighting conditions')
+            raise EthoscopeException('I could not find 20 ROIs. Please try again or change the lighting conditions', bin_orig)
 
         return contours
    
