@@ -2,7 +2,7 @@ __author__ = 'quentin'
 
 from .tracking_unit import TrackingUnit
 import logging
-loging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO)
 import traceback
 import cv2
 
