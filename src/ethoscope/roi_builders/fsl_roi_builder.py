@@ -241,7 +241,7 @@ class FSLTargetROIBuilder(BaseROIBuilder):
                 cv2.waitKey(0)
 
             if len(contours) <3:
-                raise EthoscopeException("There should be three targets. Only %i objects have been found" % (len(contours)), img, self._orig)
+                raise EthoscopeException("There should be three targets. Only %i objects have been found" % (len(contours)), np.stack(img, self._orig), axis=1))
             if len(contours) == 3:
                 break
 
