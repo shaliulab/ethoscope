@@ -327,12 +327,12 @@ class ControlThread(Thread):
                 time.sleep(15)
                 return pickle.load(f)
 
-    def _save_pickled_state(self, camera, result_writer, rois, TrackerClass, tracker_kwargs, hardware_connection, StimulatorClass, stimulator_kwargs, running_info):
+    def _save_pickled_state(self, camera, result_writer, rois, M, TrackerClass, tracker_kwargs, hardware_connection, StimulatorClass, stimulator_kwargs, running_info):
         """
         note that cv2.videocapture is not a serializable object and cannot be pickled
         """
 
-        tpl = (camera, result_writer, rois, TrackerClass, tracker_kwargs,
+        tpl = (camera, result_writer, rois, M, TrackerClass, tracker_kwargs,
                         hardware_connection, StimulatorClass, stimulator_kwargs, running_info)
 
 
