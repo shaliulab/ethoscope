@@ -333,7 +333,7 @@ class FSLTargetROIBuilder(BaseROIBuilder):
 
         grey = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         # rotate the image so ROIs are horizontal        
-        rotated, M = self._rotate_img(img, grey)        
+        rotated, M = self._rotate_img(img)        
         # segment the ROIs out of the rotated image
         bin_rotated = self._segment_rois(rotated, debug=False)[:,:,0]
 
