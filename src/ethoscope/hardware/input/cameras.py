@@ -357,15 +357,15 @@ class PiFrameGrabber(multiprocessing.Process):
                 #however setting this to off would have to be coupled with custom gains
                 #some suggestion on how to set the gains can be found here: https://picamera.readthedocs.io/en/release-1.12/recipes1.html
                 #and here: https://github.com/waveform80/picamera/issues/182
+                capture.framerate = self._target_fps
                 capture.awb_mode = "off"
                 time.sleep(1)
                 capture.awb_gains = (1.8, 1.5)
                 capture.exposure_mode = "off"
-                time.sleep(1)
+                time.sleep(3)
                 capture.shutter_speed = 75000
                 time.sleep(1)
 
-                capture.framerate = self._target_fps
                 raw_capture = PiRGBArray(capture, size=self._target_resolution)
 
                 for frame in capture.capture_continuous(raw_capture, format="bgr", use_video_port=True):
@@ -376,6 +376,14 @@ class PiFrameGrabber(multiprocessing.Process):
                         self._stop_queue.task_done()
                         logging.warning("Stop Task Done")
                         break
+
+                    logging.warning(f'camera framerate: {capture.framerate}')
+                    logging.warning(f'camera resolution: {capture.resolution}')
+                    logging.warning(f'camera exposure_mode: {capture.exposure_mode}')
+                    logging.warning(f'camera shutter_speed: {capture.shutter_speed}')
+                    logging.warning(f'camera exposure_speed: {capture.exposure_speed}')
+                    logging.warning(f'camera awb_gains: {capture.awb_gains}')
+
                     raw_capture.truncate(0)
                     # out = np.copy(frame.array)
                     out = cv2.cvtColor(frame.array,cv2.COLOR_BGR2GRAY)
