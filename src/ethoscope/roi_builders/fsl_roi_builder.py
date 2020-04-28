@@ -534,8 +534,7 @@ class FSLTargetROIBuilder(BaseROIBuilder):
         if abs(median_angle) > 10:
             logging.warning("Please ensure correct orientation of the camera")
             logging.warning(f"Angle detected is {median_angle}")
-        else:
-            rotated = cv2.warpAffine(img, M, img.shape[:2][::-1], flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE)
+        rotated = cv2.warpAffine(img, M, img.shape[:2][::-1], flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE)
         logging.info(f"Image rotated successfully with angle {median_angle}")
         self._M = M
         self._invM = invM
