@@ -49,7 +49,7 @@ class FSLTargetROIBuilder(BaseROIBuilder):
                     #              ]
                     }
                                    
-    def __init__(self, n_rows=10, n_cols=21, debug=False, long_side_fraction = 0.26, short_side_fraction = 0.18, mint=80, maxt=255):
+    def __init__(self, n_rows=10, n_cols=21, debug=False, long_side_fraction = 0.26, short_side_fraction = 0.18, mint=100, maxt=255):
         """
         This roi builder uses three black circles drawn on the arena (targets) to align a grid layout:
 
