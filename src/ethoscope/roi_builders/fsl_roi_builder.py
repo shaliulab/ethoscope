@@ -292,7 +292,7 @@ class FSLTargetROIBuilder(BaseROIBuilder):
         sorted_src_pts = np.array([sorted_a, sorted_b, sorted_c], dtype=np.float32)
         return sorted_src_pts
 
-    def _split_rois(self, bin):
+    def _split_rois(self, bin, orig):
 
         bin_orig = bin.copy()
 
@@ -481,7 +481,7 @@ class FSLTargetROIBuilder(BaseROIBuilder):
         return rotated, M, rois           
 
 
-    def _rotate_img(self, img, orig):
+    def _rotate_img(self, img):
 
         bin = self._segment_rois(img)
         # cv2.imshow("segmented_bin",bin)
