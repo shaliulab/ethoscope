@@ -49,7 +49,7 @@ class FSLTargetROIBuilder(BaseROIBuilder):
                     #              ]
                     }
                                    
-    def __init__(self, n_rows=10, n_cols=21, debug=debug, long_side_fraction = 0.26, short_side_fraction = 0.18, mint=100, maxt=255):
+    def __init__(self, n_rows=10, n_cols=21, debug=debug, long_side_fraction = 0.24, short_side_fraction = 0.18, mint=100, maxt=255):
         """
         This roi builder uses three black circles drawn on the arena (targets) to align a grid layout:
 
@@ -407,6 +407,7 @@ class FSLTargetROIBuilder(BaseROIBuilder):
 
         for i, center in enumerate(centers):
             left, _ = find_quadrant(bin_rotated.shape, center)
+            side = 'left' if left else 'right'
             angle = angles[i]
 
             segmented_contour = contours[i]
@@ -471,7 +472,10 @@ class FSLTargetROIBuilder(BaseROIBuilder):
             # cv2.drawContours(img,[ct], -1, (255,0,0),1,LINE_AA)
             # initialize a ROI object to be returned to the control thread
             # with all the other detected ROIs in the rois list
-            rois.append(ROI(ct, idx=i+1))
+            rois.append(ROI(ct, idx=i+1, side=side))
+
+        # first ROIs whose side is left and then those whose top left corner y coordinate is lowest
+        rois = sorted(rois, key=lambda x: (x.side=='right', x.polygon[:,0,1]))
 
         if debug:
             cv2.imshow("grey", grey)

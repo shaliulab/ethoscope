@@ -7,7 +7,7 @@ __author__ = 'quentin'
 
 class ROI(object):
 
-    def __init__(self, polygon, idx, value=None, orientation = None, regions=None):
+    def __init__(self, polygon, idx, value=None, orientation = None, regions=None, side=None):
         """
         Class to define a region of interest(ROI).
         Internally, ROIs are single polygons.
@@ -25,6 +25,7 @@ class ROI(object):
         """
 
         # TODO if we do not need polygon, we can drop it
+        self._side = side
         self._polygon = np.array(polygon)
         if len(self._polygon.shape) == 2:
             self._polygon = self._polygon.reshape((self._polygon.shape[0],1,self._polygon.shape[1]))
