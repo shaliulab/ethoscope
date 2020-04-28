@@ -49,7 +49,7 @@ class FSLTargetROIBuilder(BaseROIBuilder):
                                  ]
                     }
                                    
-    def __init__(self, n_rows=1, n_cols=1, debug=False, long_side_fraction = 0.26, short_side_fraction = 0.13, mint=120, maxt=180):
+    def __init__(self, n_rows=1, n_cols=1, debug=False, long_side_fraction = 0.26, short_side_fraction = 0.13, mint=100, maxt=255):
         """
         This roi builder uses three black circles drawn on the arena (targets) to align a grid layout:
 
@@ -539,6 +539,11 @@ class FSLTargetROIBuilder(BaseROIBuilder):
             _, contours, _ = cv2.findContours(edged, cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)
         else:
             contours, _ = cv2.findContours(edged, cv2.RETR_EXTERNAL,CHAIN_APPROX_SIMPLE)
+
+
+        half_t = 130
+
+
         
         # go through each contour and validate it
         for ct in contours:
@@ -556,8 +561,8 @@ class FSLTargetROIBuilder(BaseROIBuilder):
             # Instead, compute these values from the arena dimensions
             # represented by self._sorted_src_pts
 
-            cond1 = (t < 150 and rect[0][1] > arena_roi.shape[0]/2)
-            cond2 = (t >= 150 and rect[0][1] < arena_roi.shape[0]/2)
+            cond1 = (t < half_t and rect[0][1] > arena_roi.shape[0]/2)
+            cond2 = (t >= half_t and rect[0][1] < arena_roi.shape[0]/2)
             
 
             if width > 200 and width < 600 and height > 15 and height < 60:
@@ -651,12 +656,13 @@ class FSLTargetROIBuilder(BaseROIBuilder):
         cv2.destroyAllWindows()
         # cv2.imshow("blur", blur)
 
-        for t in range(self._mint, self._maxt+1, 5):
+        for t in range(self._mint, self._maxt, 5):
             # print(np.unique(bin, return_counts=True))
             score_map = self._get_roi_score_map(blur, t, debug=debug)
             bin = cv2.add(bin, score_map)
 
-            if self._debug:
+            if self._debug or True:
+
                 cv2.imshow(f"bin at threshold={t}", bin[:,:,0])
                 cv2.moveWindow(f"bin at threshold={t}", 600, 800)
                 cv2.waitKey(0)
@@ -665,7 +671,7 @@ class FSLTargetROIBuilder(BaseROIBuilder):
         # bin[bin>=8] = 255
         # bin[bin<=7] = 0
         
-        bin = cv2.threshold(bin, 8, 255, cv2.THRESH_BINARY)[1]
+        bin = cv2.threshold(bin, 10, 255, cv2.THRESH_BINARY)[1]
         logging.info("ROIs segmented successfully")
 
         
