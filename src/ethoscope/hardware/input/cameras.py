@@ -362,7 +362,7 @@ class PiFrameGrabber(multiprocessing.Process):
                 capture.awb_gains = (1.8, 1.5)
                 capture.exposure_mode = "off"
                 time.sleep(1)
-                capture.shutter_speed = 50000
+                capture.shutter_speed = 75000
                 time.sleep(1)
 
                 capture.framerate = self._target_fps
@@ -395,7 +395,7 @@ class OurPiCameraAsync(BaseCamera):
                                    
 
     _frame_grabber_class = PiFrameGrabber
-    def __init__(self, target_fps=15, target_resolution=(1280, 960), *args, **kwargs):
+    def __init__(self, target_fps=10, target_resolution=(1280, 768), *args, **kwargs):
         """
         Class to acquire frames from the raspberry pi camera asynchronously.
         At the moment, frames are only greyscale images.
