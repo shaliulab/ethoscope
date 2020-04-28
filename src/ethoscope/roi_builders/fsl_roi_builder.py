@@ -241,7 +241,7 @@ class FSLTargetROIBuilder(BaseROIBuilder):
                 cv2.waitKey(0)
 
             if len(contours) <3:
-                raise EthoscopeException("There should be three targets. Only %i objects have been found" % (len(contours)), img)
+                raise EthoscopeException("There should be three targets. Only %i objects have been found" % (len(contours)), img, self._orig)
             if len(contours) == 3:
                 break
 
@@ -332,6 +332,9 @@ class FSLTargetROIBuilder(BaseROIBuilder):
     def _rois_from_img(self, img):
 
         grey = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        
+        self._orig = grey
+        
         # rotate the image so ROIs are horizontal        
         rotated, M = self._rotate_img(img)        
         # segment the ROIs out of the rotated image
