@@ -107,14 +107,14 @@ class PiCameraProcess(multiprocessing.Process):
                 #however setting this to off would have to be coupled with custom gains
                 #some suggestion on how to set the gains can be found here: https://picamera.readthedocs.io/en/release-1.12/recipes1.html
                 #and here: https://github.com/waveform80/picamera/issues/182
-                capture.awb_mode = "off"
+                camera.awb_mode = "off"
                 time.sleep(1)
-                capture.awb_gains = (1.8, 1.5)
-                capture.exposure_mode = "off"
+                camera.awb_gains = (1.8, 1.5)
+                camera.exposure_mode = "off"
                 time.sleep(3)
-                capture.shutter_speed = 75000
+                camera.shutter_speed = 75000
                 time.sleep(1)
-
+                camera.color_effects = (128,128)
                 
                 if not self._stream:
                     output = self._make_video_name(i)
