@@ -529,15 +529,17 @@ class FSLTargetROIBuilder(BaseROIBuilder):
         mean_angle = np.round(np.mean(np.array(angle_sample)), 2)
         center = tuple(e/2 for e in img.shape[:2])
         
+
+        if abs(median_angle) > 3:
+            logging.warning("Please ensure correct orientation of the camera")
+            max_angle = median_angle/abs(median_angle) * 3
+            logging.warning(f"Angle detected is {median_angle}. I will set it to {max_angle}")
+            median_angle = max_angle
+
+
         M = cv2.getRotationMatrix2D(center, median_angle, 1.0)
         invM = cv2.getRotationMatrix2D(center, -median_angle, 1.0)
-        if abs(median_angle) > 10:
-            logging.warning("Please ensure correct orientation of the camera")
-            logging.warning(f"Angle detected is {median_angle}")
-            rotated = img
-            return img
-        else:
-            rotated = cv2.warpAffine(img, M, img.shape[:2][::-1], flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE)
+        rotated = cv2.warpAffine(img, M, img.shape[:2][::-1], flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE)
         logging.info(f"Image rotated successfully with angle {median_angle}")
         self._M = M
         self._invM = invM
