@@ -16,7 +16,7 @@ except ImportError:
 
 import numpy as np
 import logging
-debug=True
+debug=False
 # level = CFG.content["logging"]["level"]
 level = logging.DEBUG
 logging.basicConfig(level=level)
@@ -530,9 +530,10 @@ class FSLTargetROIBuilder(BaseROIBuilder):
         center = tuple(e/2 for e in img.shape[:2])
         
 
-        if abs(median_angle) > 3:
+        max_angle = 0.5
+        if abs(median_angle) > max_angle:
             logging.warning("Please ensure correct orientation of the camera")
-            max_angle = median_angle/abs(median_angle) * 3
+            max_angle = median_angle/abs(median_angle) * max_angle
             logging.warning(f"Angle detected is {median_angle}. I will set it to {max_angle}")
             median_angle = max_angle
 
