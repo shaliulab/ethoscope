@@ -294,7 +294,7 @@ class ControlThread(Thread):
         self._last_info_frame_idx = frame_idx
 
 
-    def _start_tracking(self, camera, result_writer, rois, TrackerClass, tracker_kwargs,
+    def _start_tracking(self, camera, result_writer, rois, M, TrackerClass, tracker_kwargs,
                         hardware_connection, StimulatorClass, stimulator_kwargs):
 
         #Here the stimulator passes args. Hardware connection was previously open as thread.
@@ -313,7 +313,7 @@ class ControlThread(Thread):
 
         quality_controller = QualityControl(result_writer)
 
-        self._monit.run(result_writer, self._drawer, quality_controller)
+        self._monit.run(result_writer, self._drawer, quality_controller, M)
 
     def _has_pickle_file(self):
         """
@@ -327,12 +327,12 @@ class ControlThread(Thread):
                 time.sleep(15)
                 return pickle.load(f)
 
-    def _save_pickled_state(self, camera, result_writer, rois, TrackerClass, tracker_kwargs, hardware_connection, StimulatorClass, stimulator_kwargs, running_info):
+    def _save_pickled_state(self, camera, result_writer, rois, M, TrackerClass, tracker_kwargs, hardware_connection, StimulatorClass, stimulator_kwargs, running_info):
         """
         note that cv2.videocapture is not a serializable object and cannot be pickled
         """
 
-        tpl = (camera, result_writer, rois, TrackerClass, tracker_kwargs,
+        tpl = (camera, result_writer, rois, M, TrackerClass, tracker_kwargs,
                         hardware_connection, StimulatorClass, stimulator_kwargs, running_info)
 
 
@@ -364,11 +364,20 @@ class ControlThread(Thread):
 
         cam = CameraClass(**camera_kwargs)
 
+        if True:
+            for i,(t, frame) in enumerate(cam):
+                cv2.imwrite('/root/last_img.png', frame)
+                break
+
         roi_builder = ROIBuilderClass(**roi_builder_kwargs)
         
         try:
-            rois, arena = roi_builder.build(cam)
-            self._drawer.arena = arena
+            if roi_builder.__class__.__name__ == "FSLTargetROIBuilder":
+                img, M, rois = roi_builder.build(cam)
+            else:
+                rois = roi_builder.build(cam)
+                M = None
+                        
         except EthoscopeException as e:
             cam._close()
             raise e
@@ -411,7 +420,7 @@ class ControlThread(Thread):
         # hardware_interface is a running thread
         rw = ResultWriter(self._db_credentials, rois, self._metadata, take_frame_shots=True, sensor=sensor)
 
-        return  (cam, rw, rois, TrackerClass, tracker_kwargs,
+        return  (cam, rw, rois, M, TrackerClass, tracker_kwargs,
                         hardware_connection, StimulatorClass, stimulator_kwargs)
 
     def run(self):
@@ -428,21 +437,29 @@ class ControlThread(Thread):
 
             if self._has_pickle_file():
                 try:
-                    cam, rw, rois, TrackerClass, tracker_kwargs, hardware_connection, StimulatorClass, stimulator_kwargs, self._info = self._set_tracking_from_pickled()
+                    cam, rw, rois, M, TrackerClass, tracker_kwargs, hardware_connection, StimulatorClass, stimulator_kwargs, self._info = self._set_tracking_from_pickled()
 
                 except Exception as e:
                     logging.error("Could not load previous state for unexpected reason:")
                     raise e
 
             else:
-                cam, rw, rois, TrackerClass, tracker_kwargs, hardware_connection, StimulatorClass, stimulator_kwargs = self._set_tracking_from_scratch()
+                cam, rw, rois, M, TrackerClass, tracker_kwargs, hardware_connection, StimulatorClass, stimulator_kwargs = self._set_tracking_from_scratch()
                 
             
             with rw as result_writer:
                 if cam.canbepickled:
-                    self._save_pickled_state(cam, rw, rois, TrackerClass, tracker_kwargs, hardware_connection, StimulatorClass, stimulator_kwargs, self._info)
+                    self._save_pickled_state(cam, rw, rois, M, TrackerClass, tracker_kwargs, hardware_connection, StimulatorClass, stimulator_kwargs, self._info)
                 
-                self._start_tracking(cam, result_writer, rois, TrackerClass, tracker_kwargs,
+                
+                if M is not None:
+                    logging.info(type(M))
+                    logging.info(M.shape)
+                
+                else:
+                    logging.info('M is None!')
+
+                self._start_tracking(cam, result_writer, rois, M, TrackerClass, tracker_kwargs,
                                      hardware_connection, StimulatorClass, stimulator_kwargs)
             self.stop()
 

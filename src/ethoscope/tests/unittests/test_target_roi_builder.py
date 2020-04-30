@@ -46,8 +46,6 @@ class TestTargetROIBuilder(unittest.TestCase):
             # cv2.drawContours(img,[arena],-1, (255,255,0), 2, LINE_AA)
 
 
-
-
     def _test_live(self):
 
         if self._path is None:
@@ -75,7 +73,7 @@ class TestTargetROIBuilder(unittest.TestCase):
 
         try:
             if self.roi_builder.__class__.__name__ == "FSLTargetROIBuilder":
-                img, rois = self.roi_builder.build(img)
+                img, M, rois = self.roi_builder.build(img)
             else:
                 rois = self.roi_builder.build(img)
 

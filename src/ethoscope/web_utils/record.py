@@ -107,9 +107,14 @@ class PiCameraProcess(multiprocessing.Process):
                 #however setting this to off would have to be coupled with custom gains
                 #some suggestion on how to set the gains can be found here: https://picamera.readthedocs.io/en/release-1.12/recipes1.html
                 #and here: https://github.com/waveform80/picamera/issues/182
-                #camera.awb_mode = 'off'
-                #camera.awb_gains = (1.8, 1.5)
-                camera.awb_mode = 'auto'
+                capture.awb_mode = "off"
+                time.sleep(1)
+                capture.awb_gains = (1.8, 1.5)
+                capture.exposure_mode = "off"
+                time.sleep(3)
+                capture.shutter_speed = 75000
+                time.sleep(1)
+
                 
                 if not self._stream:
                     output = self._make_video_name(i)
@@ -158,7 +163,7 @@ class GeneralVideoRecorder(DescribedObject):
                                 {"type": "number", "name":"bitrate", "description": "The target bitrate","default":200000, "min":0, "max":10000000,"step":1000}
                                ]}
 
-    def __init__(self, video_prefix, video_dir, img_path,width=1280, height=960,fps=25,bitrate=200000,stream=False):
+    def __init__(self, video_prefix, video_dir, img_path,width=1280, height=960,fps=12,bitrate=200000,stream=False):
 
         self._stop_queue = multiprocessing.JoinableQueue(maxsize=1)
         self._stream = stream

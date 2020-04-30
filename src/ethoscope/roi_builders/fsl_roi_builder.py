@@ -16,7 +16,7 @@ except ImportError:
 
 import numpy as np
 import logging
-debug=False
+debug=True
 # level = CFG.content["logging"]["level"]
 level = logging.DEBUG
 logging.basicConfig(level=level)
@@ -43,13 +43,13 @@ class FSLTargetROIBuilder(BaseROIBuilder):
 
     _description = {"overview": "A flexible ROI builder that allows users to select parameters for the ROI layout."
                                "Lengths are relative to the distance between the two bottom targets (width)",
-                    "arguments": [
-                                    {"type": "number", "min": 1, "max": 16, "step":1, "name": "n_cols", "description": "The number of columns","default":1},
-                                    {"type": "number", "min": 1, "max": 16, "step":1, "name": "n_rows", "description": "The number of rows","default":1}
-                                 ]
+                    # "arguments": [
+                    #                 {"type": "number", "min": 1, "max": 16, "step":1, "name": "n_cols", "description": "The number of columns","default":1},
+                    #                 {"type": "number", "min": 1, "max": 16, "step":1, "name": "n_rows", "description": "The number of rows","default":1}
+                    #              ]
                     }
                                    
-    def __init__(self, n_rows=1, n_cols=1, debug=False, long_side_fraction = 0.26, short_side_fraction = 0.13, mint=100, maxt=255):
+    def __init__(self, n_rows=10, n_cols=21, debug=debug, long_side_fraction = 0.24, short_side_fraction = 0.18, mint=100, maxt=255):
         """
         This roi builder uses three black circles drawn on the arena (targets) to align a grid layout:
 
@@ -219,8 +219,8 @@ class FSLTargetROIBuilder(BaseROIBuilder):
     def _find_target_coordinates(self, img, blob_function):
         
         map = blob_function(img)
-        
-        if self._debug:
+       
+        if debug:
             thresh = cv2.threshold(map, 1, 255, cv2.THRESH_BINARY)[1]
             cv2.imshow("map", thresh)
             cv2.waitKey(0)
@@ -235,9 +235,13 @@ class FSLTargetROIBuilder(BaseROIBuilder):
                 _, contours, h = cv2.findContours(bin, cv2.RETR_EXTERNAL, CHAIN_APPROX_SIMPLE)
             else:
                 contours, h = cv2.findContours(bin, cv2.RETR_EXTERNAL, CHAIN_APPROX_SIMPLE)
+            
+            if debug:
+                cv2.imshow('bin', bin)
+                cv2.waitKey(0)
 
             if len(contours) <3:
-                raise EthoscopeException("There should be three targets. Only %i objects have been found" % (len(contours)), img)
+                raise EthoscopeException(f"There should be three targets. Only {len(contours)} objects have been found", np.stack((img, self._orig), axis=1))
             if len(contours) == 3:
                 break
 
@@ -257,7 +261,7 @@ class FSLTargetROIBuilder(BaseROIBuilder):
 
         a, b, c = src_points
 
-        if self._debug:
+        if debug:
             for pt in src_points:
                 pt = tuple((int(e) for e in pt))
                 thresh = cv2.circle(thresh, pt, 5, 0, -1)
@@ -288,7 +292,9 @@ class FSLTargetROIBuilder(BaseROIBuilder):
         sorted_src_pts = np.array([sorted_a, sorted_b, sorted_c], dtype=np.float32)
         return sorted_src_pts
 
-    def _split_rois(self, bin):
+    def _split_rois(self, bin, orig):
+
+        bin_orig = bin.copy()
 
         if CV_VERSION == 3:
             _, contours, _ = cv2.findContours(bin, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -296,10 +302,11 @@ class FSLTargetROIBuilder(BaseROIBuilder):
             contours, _ = cv2.findContours(bin, cv2.RETR_EXTERNAL, CHAIN_APPROX_SIMPLE)
 
 
-        cv2.imshow("bin", bin)
-        cv2.waitKey(0)
+        if debug:
+            cv2.imshow("bin", bin)
+            cv2.waitKey(0)
 
-        while len(contours) != 20:
+        while np.count_nonzero(bin) > 0:
 
             # bin = cv2.morphologyEx(bin, cv2.MORPH_TOPHAT, (9, 9))
             bin = cv2.erode(bin, np.ones((1, 10)))
@@ -308,22 +315,41 @@ class FSLTargetROIBuilder(BaseROIBuilder):
             else:
                 contours, _ = cv2.findContours(bin, cv2.RETR_EXTERNAL, CHAIN_APPROX_SIMPLE)
 
-            cv2.imshow("eroded_bin", bin)
-            cv2.waitKey(0)
-        
+            if debug:
+                cv2.imshow("eroded_bin", bin)
+                cv2.waitKey(0)
+
+            if len(contours) == 20:
+                break
+
+
+        if np.count_nonzero(bin) == 0:
+            # TODO Adapt to any number of ROIs
+            raise EthoscopeException('I could not find 20 ROIs. Please try again or change the lighting conditions', np.stack((bin_orig, orig), axis=1))
+
         return contours
    
     def _rois_from_img(self, img):
 
         grey = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        
+        self._orig = grey
+        
         # rotate the image so ROIs are horizontal        
-        rotated = self._rotate_img(img)        
+        rotated, M = self._rotate_img(img)        
         # segment the ROIs out of the rotated image
-        bin_rotated = self._segment_rois(rotated, debug=False)[:,:,0]
+        bin_rotated = self._segment_rois(rotated, debug=debug)[:,:,0]
 
         center_plot = np.stack((bin_rotated,)*3, axis=2)
 
-        contours = self._split_rois(bin_rotated)
+        try:
+            contours = self._split_rois(bin_rotated, grey)
+        except EthoscopeException as e:
+            bin_rotated = self._segment_rois(rotated, mint=self._mint, maxt=self._maxt, half_t=110, debug=debug)[:,:,0]
+            center_plot = np.stack((bin_rotated,)*3, axis=2)
+            contours = self._split_rois(bin_rotated, grey)
+
+
         centers = []
         widths = []
         heights = []
@@ -361,8 +387,9 @@ class FSLTargetROIBuilder(BaseROIBuilder):
             else:
                 centers_right.append(center)
 
-        cv2.imshow("center_plot", center_plot)
-        cv2.waitKey(0)
+        if debug:
+            cv2.imshow("center_plot", center_plot)
+            cv2.waitKey(0)
         
         median_x_left = np.median([e[0] for e in centers_left])
         median_x_right = np.median([e[0] for e in centers_right])
@@ -378,8 +405,14 @@ class FSLTargetROIBuilder(BaseROIBuilder):
         # height =  int(0.7*(arena_height*0.8/10))
         height = 0.8*np.median(heights)
 
+        # first ROIs whose side is left and then those whose top left corner y coordinate is lowest
+        centers = sorted(centers, key=lambda x: (not find_quadrant(bin_rotated.shape, x)[0], x[1]))
+
+
+
         for i, center in enumerate(centers):
             left, _ = find_quadrant(bin_rotated.shape, center)
+            side = 'left' if left else 'right'
             angle = angles[i]
 
             segmented_contour = contours[i]
@@ -444,10 +477,13 @@ class FSLTargetROIBuilder(BaseROIBuilder):
             # cv2.drawContours(img,[ct], -1, (255,0,0),1,LINE_AA)
             # initialize a ROI object to be returned to the control thread
             # with all the other detected ROIs in the rois list
-            rois.append(ROI(ct, idx=i+1))
+            rois.append(ROI(ct, idx=i+1, side=side))
 
-        cv2.imshow("grey", grey)
-        cv2.waitKey(0)
+ 
+
+        if debug:
+            cv2.imshow("grey", grey)
+            cv2.waitKey(0)
 
         # if self._debug or debug or True:
         #     for roi in rois:
@@ -460,7 +496,7 @@ class FSLTargetROIBuilder(BaseROIBuilder):
         #     cv2.imshow("bin_rotated_contours", bin_rotated)
         #     cv2.waitKey(0)
        
-        return rotated, rois            
+        return rotated, M, rois           
 
 
     def _rotate_img(self, img):
@@ -493,23 +529,25 @@ class FSLTargetROIBuilder(BaseROIBuilder):
         mean_angle = np.round(np.mean(np.array(angle_sample)), 2)
         center = tuple(e/2 for e in img.shape[:2])
         
+
+        if abs(median_angle) > 3:
+            logging.warning("Please ensure correct orientation of the camera")
+            max_angle = median_angle/abs(median_angle) * 3
+            logging.warning(f"Angle detected is {median_angle}. I will set it to {max_angle}")
+            median_angle = max_angle
+
+
         M = cv2.getRotationMatrix2D(center, median_angle, 1.0)
         invM = cv2.getRotationMatrix2D(center, -median_angle, 1.0)
-        if abs(median_angle) > 10:
-            logging.warning("Please ensure correct orientation of the camera")
-            logging.warning(f"Angle detected is {median_angle}")
-            rotated = img
-            return img
-        else:
-            rotated = cv2.warpAffine(img, M, img.shape[:2][::-1], flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE)
+        rotated = cv2.warpAffine(img, M, img.shape[:2][::-1], flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE)
         logging.info(f"Image rotated successfully with angle {median_angle}")
         self._M = M
         self._invM = invM
         self._angle = median_angle
-        return rotated
+        return rotated, M
 
 
-    def _get_roi_score_map(self, arena_roi, t, debug=False):
+    def _get_roi_score_map(self, arena_roi, t, half_t, debug=debug):
 
         # reset the score map for this new threshold
         # initialize an array of same shape as input image
@@ -540,11 +578,7 @@ class FSLTargetROIBuilder(BaseROIBuilder):
         else:
             contours, _ = cv2.findContours(edged, cv2.RETR_EXTERNAL,CHAIN_APPROX_SIMPLE)
 
-
-        half_t = 130
-
-
-        
+      
         # go through each contour and validate it
         for ct in contours:
             epsilon = 0.001*cv2.arcLength(ct,True)
@@ -561,11 +595,12 @@ class FSLTargetROIBuilder(BaseROIBuilder):
             # Instead, compute these values from the arena dimensions
             # represented by self._sorted_src_pts
 
-            cond1 = (t < half_t and rect[0][1] > arena_roi.shape[0]/2)
-            cond2 = (t >= half_t and rect[0][1] < arena_roi.shape[0]/2)
+            cond1 = t < half_t and rect[0][1] > arena_roi.shape[0]/2
+            cond2 = t >= half_t*0.8 and rect[0][1] < arena_roi.shape[0]/2
+
             
 
-            if width > 200 and width < 600 and height > 15 and height < 60:
+            if width > 150 and width < 600 and height > 15 and height < 60:
                 if cond1 or cond2:
                     cv2.drawContours(score_map,[box],-1, (255, 0), -1)
             
@@ -584,21 +619,25 @@ class FSLTargetROIBuilder(BaseROIBuilder):
 
 
     def _find_arena(self, img):
+        # try:
+        #     sorted_src_pts = self._find_target_coordinates(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY), self._find_blobs)
+        # except EthoscopeException:
+            # logging.warning("Fall back to find_blobs_new")
         try:
-            sorted_src_pts = self._find_target_coordinates(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY), self._find_blobs)
-        except EthoscopeException:
-            logging.warning("Fall back to find_blobs_new")
             sorted_src_pts = self._find_target_coordinates(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY), self._find_blobs_new)
-            
-        finally:
             self._sorted_src_pts = sorted_src_pts
             wrap_mat = cv2.getAffineTransform(self._dst_points, sorted_src_pts)
             self._wrap_mat = wrap_mat
+
+        except Exception as e:
+            logging.warning(e)
+            raise e
+
         
         return sorted_src_pts, wrap_mat
                 
 
-    def _segment_rois(self, img, debug=False):
+    def _segment_rois(self, img, mint=None, maxt=None, half_t=None, debug=debug):
 
         r"""
         the rois are segmented by:
@@ -622,6 +661,13 @@ class FSLTargetROIBuilder(BaseROIBuilder):
         #  * compute the affine transformation matrix needed
         #    to transform the three reference points (0,-1), (0,0) and (-1,0)
         #    into the coordinates just found
+
+        if mint is None:
+            mint = self._mint
+        if maxt is None:
+            maxt = self._maxt
+        if half_t is None:
+            half_t = 130
 
         if self._sorted_src_pts is None:
             sorted_src_pts, _ = self._find_arena(img)
@@ -656,12 +702,12 @@ class FSLTargetROIBuilder(BaseROIBuilder):
         cv2.destroyAllWindows()
         # cv2.imshow("blur", blur)
 
-        for t in range(self._mint, self._maxt, 5):
+        for t in range(mint, maxt, 4):
             # print(np.unique(bin, return_counts=True))
-            score_map = self._get_roi_score_map(blur, t, debug=debug)
+            score_map = self._get_roi_score_map(blur, t, half_t, debug=debug)
             bin = cv2.add(bin, score_map)
 
-            if self._debug or True:
+            if debug:
 
                 cv2.imshow(f"bin at threshold={t}", bin[:,:,0])
                 cv2.moveWindow(f"bin at threshold={t}", 600, 800)
