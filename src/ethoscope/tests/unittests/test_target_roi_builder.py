@@ -65,10 +65,12 @@ class TestTargetROIBuilder(unittest.TestCase):
                 stream.seek(0)
                 image = Image.open(stream)
                 img = np.asarray(image)
+                id = "live"
 
         else:
 
             img = cv2.imread(self._path)
+            id = self._path[::-1].split("/")[0][::-1].split(".")[0]
  
 
         try:
@@ -83,7 +85,7 @@ class TestTargetROIBuilder(unittest.TestCase):
             return
 
         self._draw(img, rois)
-        out = os.path.join(LOG_DIR, f'{self.__class__.__name__}_annot.png')
+        out = os.path.join(LOG_DIR, f'{self.__class__.__name__}_{id}.png')
         cv2.imwrite(out,img)
         #self.assertEqual(len(rois),20)
 
