@@ -50,6 +50,7 @@ class CamHandler(BaseHTTPRequestHandler):
                 stream.seek(0)
                 stream.truncate()
                 time.sleep(.1)
+
             except KeyboardInterrupt:
                 pass
             return
@@ -125,6 +126,16 @@ class PiCameraProcess(multiprocessing.Process):
                     while True:
                         camera.wait_recording(2)
                         camera.capture(self._img_path, use_video_port=True, quality=50)
+
+                        logging.warning(f'camera framerate: {camera.framerate}')
+                        logging.warning(f'camera resolution: {camera.resolution}')
+                        logging.warning(f'camera exposure_mode: {camera.exposure_mode}')
+                        logging.warning(f'camera shutter_speed: {camera.shutter_speed}')
+                        logging.warning(f'camera exposure_speed: {camera.exposure_speed}')
+                        logging.warning(f'camera awb_gains: {camera.awb_gains}')
+                        logging.warning(f'camera analog_gain: {float(camera.analog_gain)}')
+                        logging.warning(f'camera digital_gain: {float(camera.digital_gain)}')
+    
                         if time.time() - start_time >= self._VIDEO_CHUNCK_DURATION:
                             camera.split_recording(self._make_video_name(i))
                             # self._write_video_index()
@@ -180,14 +191,14 @@ class HDVideoRecorder(GeneralVideoRecorder):
                                   "so we effectively zoom in the middle of arenas","arguments": []}
     def __init__(self, video_prefix, video_dir, img_path):
         super(HDVideoRecorder, self).__init__(video_prefix, video_dir, img_path,
-                                        width=1920, height=1080,fps=25,bitrate=1000000)
+                                        width=1920, height=1080,fps=12,bitrate=1000000)
 
 
 class StandardVideoRecorder(GeneralVideoRecorder):
     _description  = { "overview": "A preset 1280 x 960, 25fps, bitrate = 2e5 video recorder.", "arguments": []}
     def __init__(self, video_prefix, video_dir, img_path):
         super(StandardVideoRecorder, self).__init__(video_prefix, video_dir, img_path,
-                                        width=1280, height=960,fps=25,bitrate=500000)
+                                        width=1280, height=960,fps=12,bitrate=500000)
 
 class Streamer(GeneralVideoRecorder):
     #hiding the description field will not pass this class information to the node UI
