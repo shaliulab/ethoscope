@@ -3,6 +3,8 @@ import time
 import logging
 import os
 import sys
+import signal
+
 logging.basicConfig(level=logging.INFO)
 
 pidfile = "/var/run/picamera/picamera.pid"
