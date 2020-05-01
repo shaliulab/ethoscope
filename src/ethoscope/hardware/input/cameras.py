@@ -372,7 +372,7 @@ class PiFrameGrabber(multiprocessing.Process):
 
                 for frame in capture.capture_continuous(raw_capture, format="bgr", use_video_port=True):
                     if not self._stop_queue.empty():
-                        logging.warning("The stop queue is not empty. Stop acquiring frames")
+                        logging.warning(f"PID {os.getpid()}: The stop queue is not empty. Stop acquiring frames")
 
                         self._stop_queue.get()
                         self._stop_queue.task_done()
@@ -387,10 +387,10 @@ class PiFrameGrabber(multiprocessing.Process):
         finally:
             # remove the pidfile created in claim_camera()
             remove_pidfile()
-            logging.warning("Closing frame grabber process")
+            logging.warning(f"PID {os.getpid()}: Closing frame grabber process")
             self._stop_queue.close()
             self._queue.close()
-            logging.warning("Camera Frame grabber stopped acquisition cleanly")
+            logging.warning(f"PID {os.getpid()}: Camera Frame grabber stopped acquisition cleanly")
 
 
 class OurPiCameraAsync(BaseCamera):
@@ -411,7 +411,7 @@ class OurPiCameraAsync(BaseCamera):
         :param args: additional arguments
         :param kwargs: additional keyword arguments
         """
-        logging.info("Initialising camera")
+        logging.info(f"{os.getpid()} Initialising camera")
         self.canbepickled = True #cv2.videocapture object cannot be serialized, hence cannot be picked
         w,h = target_resolution
         if not isinstance(target_fps, int):
