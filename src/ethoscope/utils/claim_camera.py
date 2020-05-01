@@ -22,16 +22,16 @@ def create_pidfile(pidfile=pidfile):
         logging.warning(f"An existing pidfile is detected in {pidfile}.")
 
         with open(pidfile, 'r') as fh:
-            pid = int(fh.readline().strip("\n"))
+            pid = fh.readline().strip("\n")
             logging.warning(f"Killing the process with the PID in that file...")
-            os.kill(pid, signal.SIGTERM)
+            os.kill(int(pid), signal.SIGTERM)
 
         remove_pidfile(pidfile)
 
 
     with open(pidfile, 'w') as fh:
         logging.info(f"Writing PID {pid} to pidfile {pidfile}")
-        fh.write(pid)
+        fh.write(str(pid))
 
 
 
