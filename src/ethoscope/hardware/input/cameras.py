@@ -18,6 +18,8 @@ from ethoscope.utils.debug import EthoscopeException
 import multiprocessing
 import traceback
 
+from ethoscope.utils.claim_camera import claim_camera, remove_pidfile
+
 class BaseCamera(object):
     capture = None
     _resolution = None
@@ -350,7 +352,11 @@ class PiFrameGrabber(multiprocessing.Process):
             from picamera.array import PiRGBArray
             from picamera import PiCamera
 
-            with  PiCamera() as capture:
+            # wrap the call to picamera.PiCamera around a handler that
+            # 1. creates a pidfile so the PID of the thread can be easily tracked
+            # 2. removes a potential existing pidfile and kills the corresponding process
+            # This is intended to avoid the Out of resources error caused by the camera thread not stopping upon monitor stop 
+            with claim_camera() as capture:
                 logging.warning(capture)
                 capture.resolution = self._target_resolution
                 #disable auto white balance to address the following issue: https://github.com/raspberrypi/firmware/issues/1167
@@ -379,6 +385,8 @@ class PiFrameGrabber(multiprocessing.Process):
                     # This way, we would manage to get faster FPS
                     self._queue.put(out)
         finally:
+            # remove the pidfile created in claim_camera()
+            remove_pidfile()
             logging.warning("Closing frame grabber process")
             self._stop_queue.close()
             self._queue.close()
