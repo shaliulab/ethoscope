@@ -23,7 +23,7 @@ def create_pidfile(pidfile=pidfile):
             pid = int(fh.readline().strip("\n"))
             logging.warning(f"Killing the process with the PID in that file...")
             os.kill(pid, signal.SIGTERM)
-        
+
         remove_pidfile(pidfile)
 
 
@@ -34,7 +34,7 @@ def create_pidfile(pidfile=pidfile):
 
 
 def kill_all_instances():
-          
+
     #ps = subprocess.Popen(['ps', 'aux'], stdout=subprocess.PIPE).communicate()[0]
     ps = subprocess.Popen(['ps', '-ef'], stdout=subprocess.PIPE)
     output = subprocess.check_output(('grep', 'device_server\.py'), stdin=ps.stdout)
@@ -42,13 +42,13 @@ def kill_all_instances():
     output_split = output.decode("utf-8").split('\n')
     output_split = [e for e in output_split if e != '']
     [print(e) for e in output_split]
-    
+
     pids = []
     for e in output_split:
         f = [e for e in e.split(' ') if e != '']
         pid = int(f[1])
         pids.append(pid)
-    
+
     pids_to_remove = pids[1:]
     for pid in pids_to_remove:
         logging.warning('Sending SIGTERM to {}'.format(pid))
@@ -61,9 +61,8 @@ def kill_all_instances():
 
 
 def claim_camera():
-    try:
-        create_pidfile()
-        capture = picamera.PiCamera()
+    create_pidfile()
+    capture = picamera.PiCamera()
 
     return capture
 
