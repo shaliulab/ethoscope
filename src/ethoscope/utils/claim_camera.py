@@ -55,6 +55,7 @@ def kill_all_instances():
     for pid in pids_to_remove:
         logging.warning('Sending SIGTERM to {}'.format(pid))
         os.kill(pid, signal.SIGTERM) #or signal.SIGKILL
+        time.sleep(5)
     else:
         logging.info('No two extra processes found')
 
