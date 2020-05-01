@@ -18,6 +18,8 @@ from ethoscope.utils.debug import EthoscopeException
 import multiprocessing
 import traceback
 
+from ethoscope.hardware.input.camera_settings import configure_camera
+
 class BaseCamera(object):
     capture = None
     _resolution = None
@@ -352,19 +354,8 @@ class PiFrameGrabber(multiprocessing.Process):
 
             with  PiCamera() as capture:
                 logging.warning(capture)
-                capture.resolution = self._target_resolution
-                #disable auto white balance to address the following issue: https://github.com/raspberrypi/firmware/issues/1167
-                #however setting this to off would have to be coupled with custom gains
-                #some suggestion on how to set the gains can be found here: https://picamera.readthedocs.io/en/release-1.12/recipes1.html
-                #and here: https://github.com/waveform80/picamera/issues/182
-                capture.framerate = self._target_fps
-                capture.awb_mode = "off"
-                time.sleep(1)
-                capture.awb_gains = (1.8, 1.5)
-                capture.exposure_mode = "off"
-                time.sleep(3)
-                capture.shutter_speed = 75000
-                time.sleep(1)
+
+                capture = configure_camera(capture, self._target_resolution, self._target_fps)
 
                 raw_capture = PiRGBArray(capture, size=self._target_resolution)
 
@@ -383,6 +374,8 @@ class PiFrameGrabber(multiprocessing.Process):
                     logging.warning(f'camera shutter_speed: {capture.shutter_speed}')
                     logging.warning(f'camera exposure_speed: {capture.exposure_speed}')
                     logging.warning(f'camera awb_gains: {capture.awb_gains}')
+                    logging.warning(f'camera analog_gain: {float(capture.analog_gain)}')
+                    logging.warning(f'camera digital_gain: {float(capture.digital_gain)}')
 
                     raw_capture.truncate(0)
                     # out = np.copy(frame.array)

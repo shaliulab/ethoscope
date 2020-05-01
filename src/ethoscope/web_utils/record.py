@@ -4,6 +4,7 @@ import traceback
 import logging
 import time
 from ethoscope.web_utils.control_thread import ControlThread, ExperimentalInformation
+from ethoscope.hardware.input.camera_settings import configure_camera
 from ethoscope.utils.description import DescribedObject
 import os
 import tempfile
@@ -100,21 +101,8 @@ class PiCameraProcess(multiprocessing.Process):
 
         try:
             with picamera.PiCamera() as camera:
-                camera.resolution = self._resolution
-                camera.framerate = self._fps
-                
-                #disable auto white balance to address the following issue: https://github.com/raspberrypi/firmware/issues/1167
-                #however setting this to off would have to be coupled with custom gains
-                #some suggestion on how to set the gains can be found here: https://picamera.readthedocs.io/en/release-1.12/recipes1.html
-                #and here: https://github.com/waveform80/picamera/issues/182
-                camera.awb_mode = "off"
-                time.sleep(1)
-                camera.awb_gains = (1.8, 1.5)
-                camera.exposure_mode = "off"
-                time.sleep(3)
-                camera.shutter_speed = 75000
-                time.sleep(1)
-                camera.color_effects = (128,128)
+
+                camera = configure_camera(camera, self._resolution, self._fps)
                 
                 if not self._stream:
                     output = self._make_video_name(i)

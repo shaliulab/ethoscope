@@ -533,8 +533,8 @@ class FSLTargetROIBuilder(BaseROIBuilder):
         if abs(median_angle) > 3:
             logging.warning("Please ensure correct orientation of the camera")
             max_angle = median_angle/abs(median_angle) * 3
-            logging.warning(f"Angle detected is {median_angle}. I will set it to {max_angle}")
-            median_angle = max_angle
+            logging.warning(f"Angle detected is {median_angle}. I will set it to 0")
+            median_angle = 0
 
 
         M = cv2.getRotationMatrix2D(center, median_angle, 1.0)
