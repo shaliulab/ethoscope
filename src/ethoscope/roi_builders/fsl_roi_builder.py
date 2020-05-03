@@ -138,7 +138,10 @@ class FSLTargetROIBuilder(BaseROIBuilder):
         grey_orig = grey.copy()
 
         for threshold in range(0, 255, 5):
-            cv2.threshold(grey, threshold, 255, cv2.THRESH_BINARY_INV, bin)
+
+            bilfilter = cv2.bilateralFilter(grey, 10, 150 , 150)
+            cv2.threshold(bilfilter, threshold, 255, cv2.THRESH_BINARY_INV, bin)
+            #cv2.threshold(grey, threshold, 255, cv2.THRESH_BINARY_INV, bin)
             non_zero_pixels = np.count_nonzero(bin)
             # if this threshold operation leaves
             # more than 70% white pixels, continue
@@ -530,7 +533,7 @@ class FSLTargetROIBuilder(BaseROIBuilder):
         center = tuple(e/2 for e in img.shape[:2])
         
 
-        max_angle = 0.5
+        max_angle = 3
         if abs(median_angle) > max_angle:
             logging.warning("Please ensure correct orientation of the camera")
             max_angle = median_angle/abs(median_angle) * 3
