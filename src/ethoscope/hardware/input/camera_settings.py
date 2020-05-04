@@ -1,4 +1,5 @@
 import picamera
+from picamera_attributes import variables
 import time
 from picamera_attributes import variables
 ps = variables.ParameterSet({"awb_mode": "off", "awb_gains": (0.5,0.5), "exposure_mode": "off", "shutter_speed": 70000, "analog_gain": 1, "iso": 100, "color_effects": (128, 128)})
@@ -26,7 +27,5 @@ def configure_camera(camera, resolution=None, fps=None):
     #camera.exposure_mode = "auto"
     #time.sleep(4)
     #camera.exposure_mode = "off"
-
-
     return camera
 

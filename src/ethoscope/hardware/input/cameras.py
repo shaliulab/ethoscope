@@ -18,6 +18,7 @@ from ethoscope.utils.debug import EthoscopeException
 import multiprocessing
 import traceback
 
+from ethoscope.utils.claim_camera import claim_camera, remove_pidfile
 from ethoscope.hardware.input.camera_settings import configure_camera
 
 class BaseCamera(object):
@@ -352,7 +353,11 @@ class PiFrameGrabber(multiprocessing.Process):
             from picamera.array import PiRGBArray
             from picamera import PiCamera
 
-            with  PiCamera(resolution=self._target_resolution, framerate=self._target_fps) as capture:
+            with claim_camera(framerate=self._target_fps, resolution=self._target_resolution) as capture:
+            # wrap the call to picamera.PiCamera around a handler that
+            # 1. creates a pidfile so the PID of the thread can be easily tracked
+            # 2. removes a potential existing pidfile and kills the corresponding process
+            # This is intended to avoid the Out of resources error caused by the camera thread not stopping upon monitor stop 
                 logging.warning(capture)
 
                 capture = configure_camera(capture)
@@ -361,7 +366,7 @@ class PiFrameGrabber(multiprocessing.Process):
 
                 for frame in capture.capture_continuous(raw_capture, format="bgr", use_video_port=True):
                     if not self._stop_queue.empty():
-                        logging.warning("The stop queue is not empty. Stop acquiring frames")
+                        logging.warning(f"PID {os.getpid()}: The stop queue is not empty. Stop acquiring frames")
 
                         self._stop_queue.get()
                         self._stop_queue.task_done()
@@ -385,10 +390,12 @@ class PiFrameGrabber(multiprocessing.Process):
                     # This way, we would manage to get faster FPS
                     self._queue.put(out)
         finally:
-            logging.warning("Closing frame grabber process")
+            # remove the pidfile created in claim_camera()
+            remove_pidfile()
+            logging.warning(f"PID {os.getpid()}: Closing frame grabber process")
             self._stop_queue.close()
             self._queue.close()
-            logging.warning("Camera Frame grabber stopped acquisition cleanly")
+            logging.warning(f"PID {os.getpid()}: Camera Frame grabber stopped acquisition cleanly")
 
 
 class OurPiCameraAsync(BaseCamera):
@@ -409,7 +416,7 @@ class OurPiCameraAsync(BaseCamera):
         :param args: additional arguments
         :param kwargs: additional keyword arguments
         """
-        logging.info("Initialising camera")
+        logging.info(f"{os.getpid()} Initialising camera")
         self.canbepickled = True #cv2.videocapture object cannot be serialized, hence cannot be picked
         w,h = target_resolution
         if not isinstance(target_fps, int):
@@ -422,7 +429,7 @@ class OurPiCameraAsync(BaseCamera):
         self._p.daemon = True
         self._p.start()
         try:
-            im = self._queue.get(timeout=10)
+            im = self._queue.get(timeout=30)
         except Exception as e:
             logging.error("Could not get any frame from the camera")
             self._stop_queue.cancel_join_thread()

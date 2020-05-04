@@ -195,7 +195,16 @@ class ControlThread(Thread):
 
     @property
     def was_interrupted(self):
-        return os.path.exists(self._persistent_state_file)
+        logging.warning(f"Process with PID {os.getpid()} was interruped")
+        if os.path.exists(self._persistent_state_file):
+            logging.warning(f'File         : {self._persistent_state_file}')
+            logging.warning(f'Access time  : {time.ctime(os.path.getatime(self._persistent_state_file))}')
+            logging.warning(f'Modified time: {time.ctime(os.path.getmtime(self._persistent_state_file))}')
+            logging.warning(f'Change time  : {time.ctime(os.path.getctime(self._persistent_state_file))}')
+            logging.warning(f'Size         : {os.path.getsize(self._persistent_state_file)}')
+            return True
+        else:
+            return False
 
 
     @classmethod
@@ -383,7 +392,7 @@ class ControlThread(Thread):
             raise e
 
 
-        logging.info("Initialising monitor")
+        logging.info(f"PID {os.getpid()}: Initialising monitor")
         cam.restart()
         # the camera start time is the reference 0
 
