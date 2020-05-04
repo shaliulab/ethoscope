@@ -24,7 +24,6 @@ logging.basicConfig(level=level)
 from ethoscope.roi_builders.roi_builders import BaseROIBuilder
 from ethoscope.core.roi import ROI
 from ethoscope.utils.debug import EthoscopeException
-from ethoscope.hardware.input.camera_settings import configure_camera 
 import itertools
 from ethoscope.roi_builders.helpers import center2rect, find_quadrant, contour_center, rotate_contour, contour_mean_intensity
 from scipy.optimize import minimize
@@ -348,12 +347,8 @@ class FSLTargetROIBuilder(BaseROIBuilder):
         logging.info("DETECTED ARENA")
         # segment the ROIs out of the rotated image
         if camera is not None:
-            camera = configure_camera(camera, "tracker")
+            camera.set_tracking_mode()
             time.sleep(2)
-            logging.info(f"ANALOG GAIN {camera.analog_gain}")
-            logging.info(f"AWB GAINS {camera.awb_gains}")
-            logging.info(f"SHUTTER SPEED {camera.shutter_speed}")
-            logging.info(f"EXPOSURE SPEED {camera.exposure_speed}")
             accum = self.fetch_frames(camera)
         cv2.imwrite("/root/accum.png", accum)
 
