@@ -17,7 +17,7 @@ except ImportError:
 
 import numpy as np
 import logging
-debug=True
+debug=False
 # level = CFG.content["logging"]["level"]
 level = logging.DEBUG
 logging.basicConfig(level=level)
