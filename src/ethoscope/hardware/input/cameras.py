@@ -352,10 +352,10 @@ class PiFrameGrabber(multiprocessing.Process):
             from picamera.array import PiRGBArray
             from picamera import PiCamera
 
-            with  PiCamera() as capture:
+            with  PiCamera(resolution=self._target_resolution, framerate=self._target_fps) as capture:
                 logging.warning(capture)
 
-                capture = configure_camera(capture, self._target_resolution, self._target_fps)
+                capture = configure_camera(capture)
 
                 raw_capture = PiRGBArray(capture, size=self._target_resolution)
 
@@ -376,6 +376,7 @@ class PiFrameGrabber(multiprocessing.Process):
                     logging.warning(f'camera awb_gains: {capture.awb_gains}')
                     logging.warning(f'camera analog_gain: {float(capture.analog_gain)}')
                     logging.warning(f'camera digital_gain: {float(capture.digital_gain)}')
+                    logging.warning(f'camera iso: {float(capture.iso)}')
 
                     raw_capture.truncate(0)
                     # out = np.copy(frame.array)
