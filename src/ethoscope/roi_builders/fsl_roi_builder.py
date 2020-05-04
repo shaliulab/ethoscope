@@ -356,12 +356,14 @@ class FSLTargetROIBuilder(BaseROIBuilder):
         center_plot = np.stack((bin_rotated,)*3, axis=2)
 
         try:
+            logging.info("Splitting ROIs")
             contours = self._split_rois(bin_rotated, grey)
         except EthoscopeException as e:
             bin_rotated = self._segment_rois(rotated, mint=self._mint, maxt=self._maxt, half_t=110, debug=debug)[:,:,0]
             center_plot = np.stack((bin_rotated,)*3, axis=2)
             contours = self._split_rois(bin_rotated, grey)
 
+        logging.info("ROI Detection successful")
 
         centers = []
         widths = []
@@ -640,8 +642,10 @@ class FSLTargetROIBuilder(BaseROIBuilder):
         # except EthoscopeException:
             # logging.warning("Fall back to find_blobs_new")
         try:
+            logging.info("Detecting targets")
             sorted_src_pts = self._find_target_coordinates(grey, self._find_blobs_new)
             self._sorted_src_pts = sorted_src_pts
+            logging.info("Computing affine transformation")
             wrap_mat = cv2.getAffineTransform(self._dst_points, sorted_src_pts)
             self._wrap_mat = wrap_mat
 
@@ -721,6 +725,8 @@ class FSLTargetROIBuilder(BaseROIBuilder):
         cv2.destroyAllWindows()
         # cv2.imshow("blur", blur)
 
+        logging.info("Thresholding ROIs")
+
         for t in range(mint, maxt, 4):
             # print(np.unique(bin, return_counts=True))
             score_map = self._get_roi_score_map(blur, t, half_t, debug=debug)
@@ -737,7 +743,7 @@ class FSLTargetROIBuilder(BaseROIBuilder):
         # bin[bin<=7] = 0
 
         bin = cv2.threshold(bin, 10, 255, cv2.THRESH_BINARY)[1]
-        logging.info("ROIs segmented successfully")
+        logging.info("ROIs segmented")
 
 
         # pad bin on all sides so it acquires the same shape as img
