@@ -68,8 +68,8 @@ class BaseDrawer(object):
         :param tracking_units: the tracking units corresponding to the positions
         :type tracking_units: list(:class:`~ethoscope.core.tracking_unit.TrackingUnit`)
         :return:
-        """_annotate_frame
-
+        """
+        
         self._last_drawn_frame = img.copy()
 
         img = self._annotate_frame(self._last_drawn_frame, positions, tracking_units)
