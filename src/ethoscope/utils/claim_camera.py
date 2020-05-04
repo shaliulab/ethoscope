@@ -1,4 +1,3 @@
-import picamera
 import time
 import logging
 import os
@@ -20,6 +19,7 @@ def create_pidfile(framerate, resolution, pidfile=pidfile):
     os.makedirs(directory, exist_ok=True)
 
     try:
+        import picamera
         capture = picamera.PiCamera(framerate=framerate, resolution=resolution)
     except Exception as e:
         logging.error(e)
