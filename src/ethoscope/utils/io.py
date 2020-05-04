@@ -649,8 +649,12 @@ class AsyncSQLiteWriter(multiprocessing.Process):
                 "journal_mode": "OFF",
                 "locking_mode":  "EXCLUSIVE"}
 
-    def __init__(self, db_name, queue, erase_old_db=True):
-        self._db_name = db_name
+    def __init__(self, db_credentials, queue, erase_old_db=True):
+        
+        self._db_name = db_credentials["name"]
+        self._db_user_name = db_credentials["user"]
+        self._db_user_pass = db_credentials["password"]
+
         self._queue = queue
         self._erase_old_db =  erase_old_db
 
