@@ -2,6 +2,7 @@ from os import path
 # from threading import Thread
 import traceback
 import logging
+logging.basicConfig(level=logging.INFO)
 import time
 from ethoscope.web_utils.control_thread import ControlThread, ExperimentalInformation
 from ethoscope.hardware.input.camera_settings import configure_camera
@@ -12,6 +13,7 @@ import shutil
 import multiprocessing
 import glob
 import datetime
+import time
 
 #For streaming
 from http.server import BaseHTTPRequestHandler, HTTPServer
@@ -41,7 +43,14 @@ class CamHandler(BaseHTTPRequestHandler):
             stream=io.BytesIO()
             try:
               start=time.time()
-              for foo in self.server.camera.capture_continuous(stream,'jpeg',use_video_port=True):
+              for i, foo in enumerate(self.server.camera.capture_continuous(stream,'jpeg',use_video_port=True)):
+                if i == 5:
+                    self.server.camera = configure_camera(self.server.camera, mode = "roi_builder")
+                    time.sleep(5)
+                if i == 10:
+                    self.server.camera = configure_camera(self.server.camera, mode = "tracker")
+                    time.sleep(5)
+
                 self.wfile.write(b"--jpgboundary")
                 self.send_header('Content-type','image/jpeg')
                 self.send_header('Content-length',len(stream.getvalue()))
@@ -103,15 +112,77 @@ class PiCameraProcess(multiprocessing.Process):
         try:
             with picamera.PiCamera(resolution = self._resolution, framerate = self._fps) as camera:
 
-                camera = configure_camera(camera)                 
                 if not self._stream:
+
+                    camera = configure_camera(camera, mode = "target_detection")
+                
+                    #output = self._make_video_name(i)
+                    #folder = "/".join(output.split("/")[::-1][1:][::-1])
+                    #logging.info(os.path.exists(folder))
+                    #logging.info(folder)
+                    filename, extension = self._make_video_name(i).split(".")
+                    filename = filename + "_target_detection"
+                    output = filename + "." + extension
+                    time.sleep(5)
+                    logging.info(f"Saving video to {output}")
+                    logging.warning(f'camera framerate: {camera.framerate}')
+                    logging.warning(f'camera resolution: {camera.resolution}')
+                    logging.warning(f'camera exposure_mode: {camera.exposure_mode}')
+                    logging.warning(f'camera shutter_speed: {camera.shutter_speed}')
+                    logging.warning(f'camera exposure_speed: {camera.exposure_speed}')
+                    logging.warning(f'camera awb_gains: {camera.awb_gains}')
+                    logging.warning(f'camera analog_gain: {float(camera.analog_gain)}')
+                    logging.warning(f'camera digital_gain: {float(camera.digital_gain)}')
+                    logging.warning(f'camera iso: {float(camera.iso)}')
+
+
+                    camera.start_recording(output, bitrate=self._bitrate)
+                    camera.wait_recording(10)
+                    camera.stop_recording()
+
+                    camera = configure_camera(camera, mode = "roi_builder")
+                    filename, extension = self._make_video_name(i).split(".")
+                    filename = filename + "_roi_builder"
+                    output = filename + "." + extension
+                    time.sleep(5)
+                    logging.info(f"Saving video to {output}")
+                    camera.start_recording(output, bitrate=self._bitrate)
+                    logging.warning(f'camera framerate: {camera.framerate}')
+                    logging.warning(f'camera resolution: {camera.resolution}')
+                    logging.warning(f'camera exposure_mode: {camera.exposure_mode}')
+                    logging.warning(f'camera shutter_speed: {camera.shutter_speed}')
+                    logging.warning(f'camera exposure_speed: {camera.exposure_speed}')
+                    logging.warning(f'camera awb_gains: {camera.awb_gains}')
+                    logging.warning(f'camera analog_gain: {float(camera.analog_gain)}')
+                    logging.warning(f'camera digital_gain: {float(camera.digital_gain)}')
+                    logging.warning(f'camera iso: {float(camera.iso)}')
+
+
+                    camera.wait_recording(10)
+                    camera.stop_recording()
+
+                    camera = configure_camera(camera, mode = "tracker")
+                    time.sleep(5)
                     output = self._make_video_name(i)
+                    logging.warning("I am tracking")
+                    logging.warning(f'camera framerate: {camera.framerate}')
+                    logging.warning(f'camera resolution: {camera.resolution}')
+                    logging.warning(f'camera exposure_mode: {camera.exposure_mode}')
+                    logging.warning(f'camera shutter_speed: {camera.shutter_speed}')
+                    logging.warning(f'camera exposure_speed: {camera.exposure_speed}')
+                    logging.warning(f'camera awb_gains: {camera.awb_gains}')
+                    logging.warning(f'camera analog_gain: {float(camera.analog_gain)}')
+                    logging.warning(f'camera digital_gain: {float(camera.digital_gain)}')
+                    logging.warning(f'camera iso: {float(camera.iso)}')
+
                     camera.start_recording(output, bitrate=self._bitrate)
                     
                 # self._write_video_index()
                 start_time = time.time()
                 
                 if self._stream:
+                    camera = configure_camera(camera, mode = "tracker")         
+                    time.sleep(5)
                     try:
                         self.server = CamStreamHTTPServer (camera, ('',8008), CamHandler)
                         self.server.serve_forever()
@@ -125,6 +196,7 @@ class PiCameraProcess(multiprocessing.Process):
                     while True:
                         camera.wait_recording(2)
                         camera.capture(self._img_path, use_video_port=True, quality=50)
+                        camera = configure_camera(camera, mode = "tracker")
 
                         logging.warning(f'camera framerate: {camera.framerate}')
                         logging.warning(f'camera resolution: {camera.resolution}')
