@@ -42,6 +42,19 @@ class Monitor(object):
         self._last_time_stamp = 0
         self._is_running = False
 
+        if "verbose" not in kwargs.keys():
+            verbose = False
+
+        if verbose:
+            try:
+                from tqdm import tqdm
+                monitor_iterator = enumerate(tqdm(self._camera))
+            except ImportError:
+                monitor_iterator = enumerate(self._camera)
+
+        else:
+            monitor_iterator = enumerate(self._camera)
+
         if rois is None:
             raise NotImplementedError("rois must exist (cannot be None)")
 
@@ -100,7 +113,7 @@ class Monitor(object):
 
             self._camera.set_tracker()
 
-            for i,(t, frame) in enumerate(self._camera):
+            for i,(t, frame) in self._monitor_iterator:
 
                 if M is not None:
                     logging.info('Rotating input frame')

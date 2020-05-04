@@ -330,7 +330,9 @@ class ControlThread(Thread):
         # then rerun stimulators and Monitor(......)
         self._monit = Monitor(camera, TrackerClass, rois,
                               stimulators=stimulators,
-                              *self._monit_args)
+                              *self._monit_args,
+                              **self._monit_kwargs)
+
         self._info["status"] = "running"
         logging.info("Setting monitor status as running: '%s'" % self._info["status"])
 
