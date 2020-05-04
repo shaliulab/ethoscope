@@ -649,11 +649,12 @@ class AsyncSQLiteWriter(multiprocessing.Process):
                 "journal_mode": "OFF",
                 "locking_mode":  "EXCLUSIVE"}
 
-    def __init__(self, db_credentials, queue, erase_old_db=True):
+    def __init__(self, db_credentials, queue, erase_old_db=True, path=None):
         
         self._db_name = db_credentials["name"]
         self._db_user_name = db_credentials["user"]
         self._db_user_pass = db_credentials["password"]
+        self._path = path
 
         self._queue = queue
         self._erase_old_db =  erase_old_db
@@ -676,7 +677,7 @@ class AsyncSQLiteWriter(multiprocessing.Process):
         
     def _get_connection(self):
         import sqlite3
-        db =   sqlite3.connect(self._db_name)
+        db =   sqlite3.connect(self._path)
         return db
 
 
