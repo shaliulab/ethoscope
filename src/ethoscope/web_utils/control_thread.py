@@ -395,14 +395,14 @@ class ControlThread(Thread):
                 break
 
         roi_builder = ROIBuilderClass(**roi_builder_kwargs)
-        
+  
         try:
             if roi_builder.__class__.__name__ == "FSLTargetROIBuilder":
                 img, M, rois = roi_builder.build(cam)
             else:
                 rois = roi_builder.build(cam)
                 M = None
-                        
+                
         except EthoscopeException as e:
             cam._close()
             raise e

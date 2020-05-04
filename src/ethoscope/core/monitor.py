@@ -1,16 +1,19 @@
-__author__ = 'quentin'
-
-from .tracking_unit import TrackingUnit
 import logging
 logging.basicConfig(level=logging.INFO)
 import traceback
 import cv2
+import os
+
+from .tracking_unit import TrackingUnit
+
+__author__ = 'quentin'
 
 class Monitor(object):
 
-    def __init__(self, camera, tracker_class,
-                 rois = None, stimulators=None,
-                 *args, **kwargs  # extra arguments for the tracker objects
+    def __init__(self, camera, tracker_class, *args,
+                 rois=None, stimulators=None,
+                 **kwargs
+                 # extra arguments for the tracker objects
                  ):
         """
         Class to orchestrate the tracking of multiple objects.
@@ -109,6 +112,13 @@ class Monitor(object):
 
         try:
             logging.info("Monitor starting a run")
+            for t, frame in self._camera:
+                img = drawer.draw(frame, tracking_units=self._unit_trackers, positions=None)
+                roi_builder_output_path = os.path.join(os.environ["HOME"], "roi_builder_output.png")
+                logging.info(f"Saving roi builder result to {roi_builder_output_path}")
+                cv2.imwrite(roi_builder_output_path, img)
+                break
+
             self._is_running = True
 
             self._camera.set_tracker()
@@ -149,7 +159,7 @@ class Monitor(object):
                     result_writer.flush(t, frame)
 
                 if drawer is not None:
-                    drawer.draw(frame, self._last_positions, self._unit_trackers)
+                    drawer.draw(frame, tracking_units=self._unit_trackers, positions=self._last_positions)
                 self._last_t = t
 
         except Exception as e:

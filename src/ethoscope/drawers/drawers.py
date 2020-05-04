@@ -68,11 +68,11 @@ class BaseDrawer(object):
         :param tracking_units: the tracking units corresponding to the positions
         :type tracking_units: list(:class:`~ethoscope.core.tracking_unit.TrackingUnit`)
         :return:
-        """
+        """_annotate_frame
 
         self._last_drawn_frame = img.copy()
 
-        self._annotate_frame(self._last_drawn_frame, positions,tracking_units)
+        img = self._annotate_frame(self._last_drawn_frame, positions, tracking_units)
 
         if self._draw_frames:
             cv2.imshow(self._window_name, self._last_drawn_frame )
@@ -86,6 +86,8 @@ class BaseDrawer(object):
                                                  self._video_out_fps, (img.shape[1], img.shape[0]))
 
         self._video_writer.write(self._last_drawn_frame)
+
+        return img
 
     def __del__(self):
         if self._draw_frames:
@@ -122,7 +124,7 @@ class DefaultDrawer(BaseDrawer):
         """
         super(DefaultDrawer,self).__init__(video_out=video_out, draw_frames=draw_frames)
 
-    def _annotate_frame(self,img, positions, tracking_units):
+    def _annotate_frame(self,img, tracking_units, positions=None):
         if img is None:
             return
 
@@ -137,18 +139,21 @@ class DefaultDrawer(BaseDrawer):
             cv2.drawContours(img,[track_u.roi.polygon],-1, black_colour, 3, LINE_AA)
             cv2.drawContours(img,[track_u.roi.polygon],-1, roi_colour, 1, LINE_AA)
 
-            try:
-                pos_list = positions[track_u.roi.idx]
-            except KeyError:
-                continue
-
-            for pos in pos_list:
-                colour = (0 ,0, 255)
+            if positions is not None:
                 try:
-                    if pos["has_interacted"]:
-                        colour = (255, 0,0)
+                    pos_list = positions[track_u.roi.idx]
                 except KeyError:
-                    pass
+                    continue
 
-                cv2.ellipse(img,((pos["x"],pos["y"]), (pos["w"],pos["h"]), pos["phi"]),black_colour,3, LINE_AA)
-                cv2.ellipse(img,((pos["x"],pos["y"]), (pos["w"],pos["h"]), pos["phi"]),colour,1, LINE_AA)
+                for pos in pos_list:
+                    colour = (0 ,0, 255)
+                    try:
+                        if pos["has_interacted"]:
+                            colour = (255, 0,0)
+                    except KeyError:
+                        pass
+
+                    cv2.ellipse(img,((pos["x"],pos["y"]), (pos["w"],pos["h"]), pos["phi"]),black_colour,3, LINE_AA)
+                    cv2.ellipse(img,((pos["x"],pos["y"]), (pos["w"],pos["h"]), pos["phi"]),colour,1, LINE_AA)
+            
+        return img
