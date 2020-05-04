@@ -1,6 +1,7 @@
 __author__ = 'quentin'
 
 import cv2
+import time
 
 try:
     CV_VERSION = int(cv2.__version__.split(".")[0])
@@ -23,7 +24,7 @@ logging.basicConfig(level=level)
 from ethoscope.roi_builders.roi_builders import BaseROIBuilder
 from ethoscope.core.roi import ROI
 from ethoscope.utils.debug import EthoscopeException
-from ethoscope.hardware.input.camera_settgins import configure_camera 
+from ethoscope.hardware.input.camera_settings import configure_camera 
 import itertools
 from ethoscope.roi_builders.helpers import center2rect, find_quadrant, contour_center, rotate_contour, contour_mean_intensity
 from scipy.optimize import minimize
@@ -245,7 +246,8 @@ class FSLTargetROIBuilder(BaseROIBuilder):
                 cv2.waitKey(0)
 
             if len(contours) <3:
-                raise EthoscopeException(f"There should be three targets. Only {len(contours)} objects have been found", np.stack((img, self._orig), axis=1))
+                raise EthoscopeException(f"There should be three targets. Only {len(contours)} objects have been found", img)
+                #raise EthoscopeException(f"There should be three targets. Only {len(contours)} objects have been found", np.stack((img, self._orig), axis=1))
             if len(contours) == 3:
                 break
 
@@ -343,9 +345,17 @@ class FSLTargetROIBuilder(BaseROIBuilder):
         
         # rotate the image so ROIs are horizontal        
         rotated, M = self._rotate_img(img)        
+        logging.info("DETECTED ARENA")
         # segment the ROIs out of the rotated image
         if camera is not None:
+            camera = configure_camera(camera, "tracker")
+            time.sleep(2)
+            logging.info(f"ANALOG GAIN {camera.analog_gain}")
+            logging.info(f"AWB GAINS {camera.awb_gains}")
+            logging.info(f"SHUTTER SPEED {camera.shutter_speed}")
+            logging.info(f"EXPOSURE SPEED {camera.exposure_speed}")
             accum = self.fetch_frames(camera)
+        cv2.imwrite("/root/accum.png", accum)
 
         rotated = cv2.warpAffine(accum, M, accum.shape[:2][::-1], flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE)
 
@@ -489,6 +499,9 @@ class FSLTargetROIBuilder(BaseROIBuilder):
             # initialize a ROI object to be returned to the control thread
             # with all the other detected ROIs in the rois list
             rois.append(ROI(ct, idx=i+1, side=side))
+
+        logging.info("DETECTED ROIS")
+
 
  
 

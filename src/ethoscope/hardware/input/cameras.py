@@ -369,7 +369,7 @@ class PiFrameGrabber(multiprocessing.Process):
                 i = 0
 
                 for frame in capture.capture_continuous(raw_capture, format="bgr", use_video_port=True):
-                    if i == 12:
+                    if i == 11:
                         capture = configure_camera(capture, mode = "tracker")
                     if not self._stop_queue.empty():
                         logging.warning(f"PID {os.getpid()}: The stop queue is not empty. Stop acquiring frames")
