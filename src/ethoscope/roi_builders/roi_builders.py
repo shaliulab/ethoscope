@@ -17,16 +17,7 @@ class BaseROIBuilder(DescribedObject):
         """
         pass
 
-    def build(self, input):
-        """
-        Uses an input (image or camera) to build ROIs.
-        When a camera is used, several frames are acquired and averaged to build a reference image.
-
-        :param input: Either a camera object, or an image.
-        :type input: :class:`~ethoscope.hardware.input.camera.BaseCamera` or :class:`~numpy.ndarray`
-        :return: list(:class:`~ethoscope.core.roi.ROI`)
-        """
-
+    def fetch_frames(self, input):
         # If input is an image, make a copy
         # Otherwise it is assumed to be a camera object
         # that returns frames upon iterating it.
@@ -41,10 +32,21 @@ class BaseROIBuilder(DescribedObject):
                 accum.append(frame)
                 if i  >= 5:
                     break
-
             accum = np.median(np.array(accum),0).astype(np.uint8)
-            import cv2
-            cv2.imwrite('/root/actual_image.png', accum)
+        
+        return accum
+
+    def build(self, input):
+        """
+        Uses an input (image or camera) to build ROIs.
+        When a camera is used, several frames are acquired and averaged to build a reference image.
+
+        :param input: Either a camera object, or an image.
+        :type input: :class:`~ethoscope.hardware.input.camera.BaseCamera` or :class:`~numpy.ndarray`
+        :return: list(:class:`~ethoscope.core.roi.ROI`)
+        """
+
+        accum = self.fetch_frames(input)     
 
         try:
             if self.__class__.__name__ == "FSLTargetROIBuilder":
