@@ -426,6 +426,9 @@ class ResultWriter(object):
         self._make_dam_like_table = make_dam_like_table
         self._take_frame_shots = take_frame_shots
 
+        if "take_frame_shots" in kwargs.keys():
+            self._take_frame_shots = kwargs.pop("take_frame_shots")
+
         if make_dam_like_table:
             self._dam_file_helper = DAMFileHelper(n_rois=len(rois))
         else:
