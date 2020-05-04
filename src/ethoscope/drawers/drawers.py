@@ -57,7 +57,7 @@ class BaseDrawer(object):
     def last_drawn_frame(self):
         return self._last_drawn_frame
 
-    def draw(self,img, positions, tracking_units):
+    def draw(self,img, tracking_units, positions):
         """
         Draw results on a frame.
 
@@ -72,7 +72,7 @@ class BaseDrawer(object):
         
         self._last_drawn_frame = img.copy()
 
-        img = self._annotate_frame(self._last_drawn_frame, positions, tracking_units)
+        img = self._annotate_frame(self._last_drawn_frame, tracking_units, positions)
 
         if self._draw_frames:
             cv2.imshow(self._window_name, self._last_drawn_frame )

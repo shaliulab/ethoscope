@@ -10,9 +10,9 @@ __author__ = 'quentin'
 
 class Monitor(object):
 
-    def __init__(self, camera, tracker_class, *args,
+    def __init__(self, camera, tracker_class,
                  rois=None, stimulators=None,
-                 **kwargs
+                 *args, **kwargs
                  # extra arguments for the tracker objects
                  ):
         """
@@ -44,19 +44,21 @@ class Monitor(object):
         self._last_positions = {}
         self._last_time_stamp = 0
         self._is_running = False
+        try:
+            self._verbose = kwargs.pop("verbose")
+        except KeyError:
+            self._verbose = False
 
-        if "verbose" not in kwargs.keys():
-            verbose = False
 
-        if verbose:
+        if self._verbose:
             try:
                 from tqdm import tqdm
-                monitor_iterator = enumerate(tqdm(self._camera))
+                self._monitor_iterator = enumerate(tqdm(self._camera))
             except ImportError:
-                monitor_iterator = enumerate(self._camera)
+                self._monitor_iterator = enumerate(self._camera)
 
         else:
-            monitor_iterator = enumerate(self._camera)
+            self._monitor_iterator = enumerate(self._camera)
 
         if rois is None:
             raise NotImplementedError("rois must exist (cannot be None)")
@@ -113,6 +115,8 @@ class Monitor(object):
         try:
             logging.info("Monitor starting a run")
             for t, frame in self._camera:
+                logging.warning("unit trackers")
+                logging.warning(self._unit_trackers)
                 img = drawer.draw(frame, tracking_units=self._unit_trackers, positions=None)
                 roi_builder_output_path = os.path.join(os.environ["HOME"], "roi_builder_output.png")
                 logging.info(f"Saving roi builder result to {roi_builder_output_path}")
