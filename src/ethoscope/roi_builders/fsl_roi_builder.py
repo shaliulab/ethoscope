@@ -17,7 +17,7 @@ except ImportError:
 
 import numpy as np
 import logging
-debug=False
+debug=True
 # level = CFG.content["logging"]["level"]
 level = logging.DEBUG
 logging.basicConfig(level=level)
@@ -332,6 +332,7 @@ class FSLTargetROIBuilder(BaseROIBuilder):
     def _rois_from_img(self, img,camera=None):
 
         grey = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        grey = cv2.cvtColor(grey, cv2.COLOR_GRAY2BGR)
 
         self._orig = grey
         cv2.imwrite("/root/accum_rois_from_img.png", img)
@@ -347,7 +348,7 @@ class FSLTargetROIBuilder(BaseROIBuilder):
             cv2.imwrite("/root/accum.png", accum)
             img = accum
 
-        rotated = cv2.warpAffine(img, M, img.shape[:2][::-1], flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE)
+        rotated = cv2.warpAffine(img, M, grey.shape[:2][::-1], flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE)
 
         bin_rotated = self._segment_rois(rotated, debug=debug)[:,:,0]
 
@@ -517,6 +518,11 @@ class FSLTargetROIBuilder(BaseROIBuilder):
 
     def _rotate_img(self, img):
 
+        logging.warning(img.shape)
+        if len(img.shape) == 3:
+            if img.shape[2] == 3:
+                img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+            
         bin = self._segment_rois(img)
         # cv2.imshow("segmented_bin",bin)
         # cv2.waitKey(0)
@@ -680,6 +686,8 @@ class FSLTargetROIBuilder(BaseROIBuilder):
         #    to transform the three reference points (0,-1), (0,0) and (-1,0)
         #    into the coordinates just found
 
+        grey = img.copy()
+
         if mint is None:
             mint = self._mint
         if maxt is None:
@@ -689,7 +697,7 @@ class FSLTargetROIBuilder(BaseROIBuilder):
 
         if self._sorted_src_pts is None:
             logging.info("CALLING FIND_ARENA")
-            grey = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+            logging.warning(img.shape)
             cv2.imwrite("/root/target_detection_find_arena.png", grey)
             sorted_src_pts, _ = self._find_arena(grey)
         # if is not None, the arena was already segmented

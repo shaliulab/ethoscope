@@ -53,7 +53,9 @@ class BaseROIBuilder(DescribedObject):
 
             accum = np.median(np.array(accum),0).astype(np.uint8)
 
-        cv2.imwrite("/root/target_detection_fetch_frames.png", accum)
+        output_path = os.path.join(os.environ["HOME"], f"{mode}.png")
+        logging.info(f"Saving {mode} accum to {output_path}")
+        cv2.imwrite(output_path, accum)
         
         return accum
 
