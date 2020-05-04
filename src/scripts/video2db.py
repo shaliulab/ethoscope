@@ -51,7 +51,7 @@ if __name__ == "__main__":
         "camera":
             {"name": "MovieVirtualCamera", "arguments": {"path": ARGS["input"]}},
         "result_writer":
-            {"name": "SQLiteResultWriter", "arguments": {"path": ARGS["output"]}}
+           {"name": "SQLiteResultWriter", "arguments": {"path": ARGS["output"], "take_frame_shots": False}}
     }
 
     control = ControlThread(MACHINE_ID, NAME, VERSION, ethoscope_dir=ETHOSCOPE_DIR, data=data)
