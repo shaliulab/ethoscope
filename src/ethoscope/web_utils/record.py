@@ -101,10 +101,9 @@ class PiCameraProcess(multiprocessing.Process):
         i = 0
 
         try:
-            with picamera.PiCamera() as camera:
+            with picamera.PiCamera(resolution = self._resolution, framerate = self._fps) as camera:
 
-                camera = configure_camera(camera, self._resolution, self._fps)
-                
+                camera = configure_camera(camera)                 
                 if not self._stream:
                     output = self._make_video_name(i)
                     camera.start_recording(output, bitrate=self._bitrate)

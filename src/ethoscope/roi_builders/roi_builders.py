@@ -48,7 +48,7 @@ class BaseROIBuilder(DescribedObject):
 
         try:
             if self.__class__.__name__ == "FSLTargetROIBuilder":
-                img, M, rois = self._rois_from_img(accum)
+                img, M, rois = self._rois_from_img(accum, camera=input)
             else:
                 rois = self._rois_from_img(accum)
 

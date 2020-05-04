@@ -14,7 +14,7 @@ def remove_pidfile(pidfile=pidfile):
     logging.info("Removing pidfile")
     os.unlink(pidfile)
 
-def create_pidfile(pidfile=pidfile, framerate, resolution):
+def create_pidfile(framerate, resolution, pidfile=pidfile):
     pid = str(os.getpid())
     directory = "/var/run/picamera/"
     os.makedirs(directory, exist_ok=True)

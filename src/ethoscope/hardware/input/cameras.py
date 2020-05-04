@@ -360,11 +360,17 @@ class PiFrameGrabber(multiprocessing.Process):
             # This is intended to avoid the Out of resources error caused by the camera thread not stopping upon monitor stop 
                 logging.warning(capture)
 
-                capture = configure_camera(capture)
+                capture.start_preview()
+                time.sleep(1)
+                capture = configure_camera(capture, mode = "roi_builder")
+                time.sleep(5)
 
                 raw_capture = PiRGBArray(capture, size=self._target_resolution)
+                i = 0
 
                 for frame in capture.capture_continuous(raw_capture, format="bgr", use_video_port=True):
+                    if i == 12:
+                        capture = configure_camera(capture, mode = "tracker")
                     if not self._stop_queue.empty():
                         logging.warning(f"PID {os.getpid()}: The stop queue is not empty. Stop acquiring frames")
 
@@ -388,7 +394,9 @@ class PiFrameGrabber(multiprocessing.Process):
                     out = cv2.cvtColor(frame.array,cv2.COLOR_BGR2GRAY)
                     #fixme here we could actually pass a JPG compressed file object (http://docs.scipy.org/doc/scipy-0.16.0/reference/generated/scipy.misc.imsave.html)
                     # This way, we would manage to get faster FPS
+                    cv2.imwrite(f"/root/frame_{str(i).zfill(2)}.png", out)
                     self._queue.put(out)
+                    i+= 1
         finally:
             # remove the pidfile created in claim_camera()
             remove_pidfile()

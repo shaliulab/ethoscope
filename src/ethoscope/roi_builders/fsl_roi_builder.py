@@ -23,6 +23,7 @@ logging.basicConfig(level=level)
 from ethoscope.roi_builders.roi_builders import BaseROIBuilder
 from ethoscope.core.roi import ROI
 from ethoscope.utils.debug import EthoscopeException
+from ethoscope.hardware.input.camera_settgins import configure_camera 
 import itertools
 from ethoscope.roi_builders.helpers import center2rect, find_quadrant, contour_center, rotate_contour, contour_mean_intensity
 from scipy.optimize import minimize
@@ -331,8 +332,10 @@ class FSLTargetROIBuilder(BaseROIBuilder):
             raise EthoscopeException('I could not find 20 ROIs. Please try again or change the lighting conditions', np.stack((bin_orig, orig), axis=1))
 
         return contours
+
+
    
-    def _rois_from_img(self, img):
+    def _rois_from_img(self, img,camera=None):
 
         grey = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         
@@ -341,6 +344,11 @@ class FSLTargetROIBuilder(BaseROIBuilder):
         # rotate the image so ROIs are horizontal        
         rotated, M = self._rotate_img(img)        
         # segment the ROIs out of the rotated image
+        if camera is not None:
+            accum = self.fetch_frames(camera)
+
+        rotated = cv2.warpAffine(accum, M, accum.shape[:2][::-1], flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE)
+
         bin_rotated = self._segment_rois(rotated, debug=debug)[:,:,0]
 
         center_plot = np.stack((bin_rotated,)*3, axis=2)
