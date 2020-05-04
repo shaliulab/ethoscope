@@ -441,8 +441,7 @@ class ControlThread(Thread):
             "selected_options": str(self._option_dict),
         }
         # hardware_interface is a running thread
-        rw = ResultWriterClass(self._db_credentials, rois, self._metadata, take_frame_shots=True, sensor=sensor)
-
+        rw = ResultWriterClass(self._db_credentials, rois, self._metadata, take_frame_shots=True, sensor=sensor, **result_writer_kwargs)
         return  (cam, rw, rois, M, TrackerClass, tracker_kwargs,
                         hardware_connection, StimulatorClass, stimulator_kwargs)
 

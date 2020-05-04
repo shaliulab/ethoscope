@@ -18,7 +18,7 @@ class AsyncMySQLWriter(multiprocessing.Process):
     _db_host = "localhost"
     #_db_host = "node" #uncomment this to save data on the node
 
-    def __init__(self, db_credentials, queue, erase_old_db=True):
+    def __init__(self, db_credentials, queue, erase_old_db=True, **kwargs):
         self._db_name = db_credentials["name"]
         self._db_user_name = db_credentials["user"]
         self._db_user_pass = db_credentials["password"]
@@ -414,7 +414,7 @@ class ResultWriter(object):
     
     def __init__(self, db_credentials, rois, metadata=None, make_dam_like_table=True, take_frame_shots=False, erase_old_db=True, sensor=None, *args, **kwargs):
         self._queue = multiprocessing.JoinableQueue()
-        self._async_writer = self._async_writing_class(db_credentials, self._queue, erase_old_db)
+        self._async_writer = self._async_writing_class(db_credentials, self._queue, erase_old_db, **kwargs)
         self._async_writer.start()
 
         self._last_t, self._last_flush_t, self._last_dam_t = [0] * 3
@@ -649,11 +649,16 @@ class AsyncSQLiteWriter(multiprocessing.Process):
                 "journal_mode": "OFF",
                 "locking_mode":  "EXCLUSIVE"}
 
-    def __init__(self, db_credentials, queue, erase_old_db=True, path=None):
+    def __init__(self, db_credentials, queue, erase_old_db=True, **kwargs):
         
         self._db_name = db_credentials["name"]
         self._db_user_name = db_credentials["user"]
         self._db_user_pass = db_credentials["password"]
+
+        logging.warning("kwargs")
+        logging.warning(kwargs)
+
+        path = kwargs.pop("path")
         self._path = path
 
         self._queue = queue
