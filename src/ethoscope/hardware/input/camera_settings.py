@@ -4,7 +4,7 @@ import time
 from picamera_attributes import variables
 #ps = variables.ParameterSet({"awb_mode": "off", "awb_gains": (0.5,0.5), "exposure_mode": "off", "shutter_speed": 70000, "analog_gain": 1, "color_effects": (128, 128)})
 
-ps_roi_builder = variables.ParameterSet({"awb_mode": "off", "awb_gains": (1.8,1.5), "exposure_mode": "off", "shutter_speed": 200000, "analog_gain": 8, "digital_gain": 2})
+ps_roi_builder = variables.ParameterSet({"awb_mode": "off", "awb_gains": (1.8,1.5), "exposure_mode": "off", "shutter_speed": 70000, "analog_gain": 2, "digital_gain": 1})
 ps_roi_builder.validate()
 ps_roi_builder.cross_verify()
 

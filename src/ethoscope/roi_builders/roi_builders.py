@@ -4,9 +4,10 @@ __author__ = 'quentin'
 
 import numpy as np
 
-from ethoscope.utils.description import DescribedObject
 import logging
 import traceback
+import cv2
+from ethoscope.utils.description import DescribedObject
 
 
 class BaseROIBuilder(DescribedObject):
@@ -17,7 +18,9 @@ class BaseROIBuilder(DescribedObject):
         """
         pass
 
-    def fetch_frames(self, input):
+
+    @staticmethod
+    def fetch_frames(input):
         # If input is an image, make a copy
         # Otherwise it is assumed to be a camera object
         # that returns frames upon iterating it.
@@ -30,9 +33,13 @@ class BaseROIBuilder(DescribedObject):
         else:
             for i, (_, frame) in enumerate(input):
                 accum.append(frame)
-                if i  >= 5:
+                logging.warning(f"I: {i}")
+                logging.warning(f"mean_intensity: {np.mean(frame)}")
+                if i  == 4:
                     break
             accum = np.median(np.array(accum),0).astype(np.uint8)
+
+        cv2.imwrite("/root/target_detection_fetch_frames.png", accum)
         
         return accum
 
@@ -50,6 +57,7 @@ class BaseROIBuilder(DescribedObject):
 
         try:
             if self.__class__.__name__ == "FSLTargetROIBuilder":
+                cv2.imwrite("/root/target_detection_build.png", accum)
                 img, M, rois = self._rois_from_img(accum, camera=input)
             else:
                 rois = self._rois_from_img(accum)

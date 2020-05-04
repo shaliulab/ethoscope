@@ -195,18 +195,30 @@ class ControlThread(Thread):
 
     @property
     def was_interrupted(self):
-        logging.warning(f"Process with PID {os.getpid()} was interruped")
-        persistent_state_file_exists = os.path.exists(self._persistent_state_file)
-
-        if persistent_state_file_exists:
-            logging.warning(f'File         : {self._persistent_state_file}')
-            logging.warning(f'Access time  : {time.ctime(os.path.getatime(self._persistent_state_file))}')
-            logging.warning(f'Modified time: {time.ctime(os.path.getmtime(self._persistent_state_file))}')
-            logging.warning(f'Change time  : {time.ctime(os.path.getctime(self._persistent_state_file))}')
-            logging.warning(f'Size         : {os.path.getsize(self._persistent_state_file)}')
-            return True
-        else:
-            return False
+        return False
+#        logging.warning(f"Process with PID {os.getpid()} was interruped")
+#        persistent_state_file_exists = os.path.exists(self._persistent_state_file)
+#        control_thread_already_running = False 
+#
+#        try:
+#            r = requests.get(f"http://localhost:9000/data/{self._info['id']}", timeout = 5)
+#            data = json.loads(r.content.decode())
+#            control_thread_already_running = True
+#            #control_thread_already_running = data["status"] in ["stopp
+#        except Exception as e:
+#            control_thread_already_running = False
+#            logging.error(e)
+#
+#        if persistent_state_file_exists:
+#            logging.warning(f'File         : {self._persistent_state_file}')
+#            logging.warning(f'Access time  : {time.ctime(os.path.getatime(self._persistent_state_file))}')
+#            logging.warning(f'Modified time: {time.ctime(os.path.getmtime(self._persistent_state_file))}')
+#            logging.warning(f'Change time  : {time.ctime(os.path.getctime(self._persistent_state_file))}')
+#            logging.warning(f'Size         : {os.path.getsize(self._persistent_state_file)}')
+#            if not control_thread_already_running:
+#                return True
+#        else:
+#            return False
 
 
     @classmethod

@@ -117,9 +117,8 @@ class FSLTargetROIBuilder(BaseROIBuilder):
         return score_map
 
 
-    def _find_blobs_new(self, img, scoring_fun=None):
+    def _find_blobs_new(self, grey, scoring_fun=None):
 
-        grey = img
         if scoring_fun is None:
             scoring_fun = self._score_circles
 
@@ -131,9 +130,10 @@ class FSLTargetROIBuilder(BaseROIBuilder):
             rad += 1
 
         # make median intensity 255
-        med = np.median(grey)
-        scale = 255/(med)
-        cv2.multiply(grey, scale, dst=grey)
+        #med = np.median(grey)
+        #scale = 255/(med)
+        #cv2.multiply(grey, scale, dst=grey)
+
         bin = np.copy(grey)
         score_map = np.zeros_like(bin)
         grey_orig = grey.copy()
@@ -176,13 +176,6 @@ class FSLTargetROIBuilder(BaseROIBuilder):
 
             score_map = cv2.add(bin, score_map)
 
-            # if self._debug or debug:
-            #     cv2.imshow("bin_th", cv2.threshold(score_map, 1, 255, cv2.THRESH_BINARY)[1])
-            #     cv2.imshow("closing", foreground_model)
-            #     cv2.imshow("foreground_model", foreground_model)
-
-            #     cv2.waitKey(0)
-
         return score_map
 
     def _points_distance(self, pt1, pt2):
@@ -221,8 +214,10 @@ class FSLTargetROIBuilder(BaseROIBuilder):
         return 1
 
     def _find_target_coordinates(self, img, blob_function):
+        cv2.imwrite("/root/target_dection_find_target_coordinates.png", img)
         
         map = blob_function(img)
+        cv2.imwrite("/root/target_dection_find_target_coordinates_after.png", img)
        
         if debug:
             thresh = cv2.threshold(map, 1, 255, cv2.THRESH_BINARY)[1]
@@ -341,6 +336,7 @@ class FSLTargetROIBuilder(BaseROIBuilder):
         grey = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         
         self._orig = grey
+        cv2.imwrite("/root/accum_rois_from_img.png", img)
         
         # rotate the image so ROIs are horizontal        
         rotated, M = self._rotate_img(img)        
@@ -637,13 +633,13 @@ class FSLTargetROIBuilder(BaseROIBuilder):
         return score_map
 
 
-    def _find_arena(self, img):
+    def _find_arena(self, grey):
         # try:
         #     sorted_src_pts = self._find_target_coordinates(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY), self._find_blobs)
         # except EthoscopeException:
             # logging.warning("Fall back to find_blobs_new")
         try:
-            sorted_src_pts = self._find_target_coordinates(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY), self._find_blobs_new)
+            sorted_src_pts = self._find_target_coordinates(grey, self._find_blobs_new)
             self._sorted_src_pts = sorted_src_pts
             wrap_mat = cv2.getAffineTransform(self._dst_points, sorted_src_pts)
             self._wrap_mat = wrap_mat
@@ -689,7 +685,10 @@ class FSLTargetROIBuilder(BaseROIBuilder):
             half_t = 130
 
         if self._sorted_src_pts is None:
-            sorted_src_pts, _ = self._find_arena(img)
+            logging.info("CALLING FIND_ARENA")
+            grey = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+            cv2.imwrite("/root/target_detection_find_arena.png", grey)
+            sorted_src_pts, _ = self._find_arena(grey)
         # if is not None, the arena was already segmented
         # but we still need to find ROIs inside it
         else:
@@ -697,11 +696,11 @@ class FSLTargetROIBuilder(BaseROIBuilder):
                 dst = np.append(self._sorted_src_pts, np.zeros((self._sorted_src_pts.shape[0], 1)), axis=1)
                 print("dst.shape")
                 print(dst.shape)
-
-
                 sorted_src_pts = np.dot(self._M, dst.T).T
             else:
                 sorted_src_pts = self._sorted_src_pts      
+
+            self._sorted_src_pts = sorted_src_pts
             
         arena = np.round(sorted_src_pts.T.reshape((2,3))).astype(np.int32)
 
