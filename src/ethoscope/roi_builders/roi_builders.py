@@ -27,19 +27,30 @@ class BaseROIBuilder(DescribedObject):
         # that returns frames upon iterating it.
         # Capture 5 frames and take the median intensity for each pixel
         # i.e. get an image that represents the median of 5 frames
+
+        modes_min = {"target_detection": 90, "roi_builder": 20, "tracker": 0}
+        modes_n = {"target_detection": 5, "roi_builder": 5}
+        next_mode = {"target_detection": "roi_builder", "roi_builder": "tracker"}
+
         accum = []
         if isinstance(input, np.ndarray):
             accum = np.copy(input)
 
         else:
             for i, (_, frame) in enumerate(input):
-                accum.append(frame)
-                output_path = os.path.join(os.environ["HOME"], "frame_{str(i).zfill(3)}_{mode}.png")
+                output_path = os.path.join(os.environ["HOME"], f"frame_{str(i).zfill(3)}_{mode}.png")
                 cv2.imwrite(output_path, frame)
                 logging.warning(f"I: {i}")
                 logging.warning(f"mean_intensity: {np.mean(frame)}")
-                if i  == 4:
+                if i  == modes_n[mode]-1:
                     break
+                if mode is not None:
+                    mean_intensity = np.mean(frame)
+                    logging.warning(mean_intensity)
+                    if mean_intensity < modes_min[mode]:
+                        modes_n[next_mode[mode]] -= 1
+                accum.append(frame)
+
             accum = np.median(np.array(accum),0).astype(np.uint8)
 
         cv2.imwrite("/root/target_detection_fetch_frames.png", accum)
