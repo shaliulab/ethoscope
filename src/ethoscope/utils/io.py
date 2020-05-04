@@ -412,7 +412,7 @@ class ResultWriter(object):
     _async_writing_class = AsyncMySQLWriter
     _null = 0
     
-    def __init__(self, db_credentials, rois, metadata=None, make_dam_like_table=True, take_frame_shots=False, erase_old_db=True, sensor=None, *args, **kwargs):
+    def __init__(self, db_credentials, rois, metadata=None, make_dam_like_table=True, take_frame_shots=True, erase_old_db=True, sensor=None, *args, **kwargs):
         self._queue = multiprocessing.JoinableQueue()
         self._async_writer = self._async_writing_class(db_credentials, self._queue, erase_old_db, **kwargs)
         self._async_writer.start()
