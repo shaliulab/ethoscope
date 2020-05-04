@@ -2,8 +2,7 @@ __author__ = 'quentin'
 
 
 
-from ethoscope.tracking.cameras import V4L2Camera
-from ethoscope.tracking.cameras import MovieVirtualCamera
+from ethoscope.hardware.input.cameras import MovieVirtualCamera
 
 # Build ROIs from greyscale image
 from ethoscope.roi_builders.fsl_roi_builder import FSLTargetROIBuilder as ROIBuilderClass
@@ -17,7 +16,7 @@ from ethoscope.utils.io import SQLiteResultWriter
 from ethoscope.core.monitor import Monitor
 
 from ethoscope.web_utils.control_thread import ControlThread
-from ethoscope.utils import get_git_version
+from ethoscope.web_utils.helpers import get_git_version
 
 import argparse
 import logging
@@ -45,14 +44,14 @@ if __name__ == "__main__":
         MACHINE_ID = ARGS["machine_id"]
 
     NAME = ARGS["name"]
-    VERSION = get_git_version
+    VERSION = get_git_version()
 
 
     data = {
         "camera":
             {"name": "MovieVirtualCamera", "arguments": {"path": ARGS["input"]}},
         "result_writer":
-            {"name": "SQLiteResultWriter"}
+            {"name": "SQLiteResultWriter", "arguments": {"path": ARGS["output"]}}
     }
 
     control = ControlThread(MACHINE_ID, NAME, VERSION, ethoscope_dir=ETHOSCOPE_DIR, data=data)
