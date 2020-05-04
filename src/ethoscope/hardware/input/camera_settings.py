@@ -7,16 +7,21 @@ def configure_camera(camera, mode, resolution=None, fps=None):
     from picamera_attributes import variables
     #ps = variables.ParameterSet({"awb_mode": "off", "awb_gains": (0.5,0.5), "exposure_mode": "off", "shutter_speed": 70000, "analog_gain": 1, "color_effects": (128, 128)})
 
-    ps_roi_builder = variables.ParameterSet({"awb_mode": "off", "awb_gains": (1.8,1.5), "exposure_mode": "off", "shutter_speed": 70000, "analog_gain": 2, "digital_gain": 1})
+    ps_target_detection = variables.ParameterSet({"awb_mode": "off", "awb_gains": (1.8,1.5), "exposure_mode": "off", "shutter_speed": 70000, "analog_gain": 2, "digital_gain": 1})
+    ps_target_detection.validate()
+    ps_target_detection.cross_verify()
+
+    ps_roi_builder = variables.ParameterSet({"awb_mode": "off", "awb_gains": (8,8), "exposure_mode": "off", "shutter_speed": 50000, "analog_gain": 1, "digital_gain": 1})
     ps_roi_builder.validate()
     ps_roi_builder.cross_verify()
 
-    ps_tracker = variables.ParameterSet({"awb_mode": "off", "awb_gains": (.5, .5), "exposure_mode": "off", "shutter_speed": 70000, "analog_gain": 2, "digital_gain": 1, "color_effects": (128, 128)})
+
+    ps_tracker = variables.ParameterSet({"awb_mode": "off", "awb_gains": (.5, .5), "exposure_mode": "off", "shutter_speed": 70000, "analog_gain": 1, "digital_gain": 1, "color_effects": (128, 128)})
     ps_tracker.validate()
     ps_tracker.cross_verify()
 
 
-    sets = {"tracker": ps_tracker, "roi_builder": ps_roi_builder}
+    sets = {"tracker": ps_tracker, "target_detection": ps_target_detection, "roi_builder": ps_roi_builder}
 
 
     if resolution is not None:

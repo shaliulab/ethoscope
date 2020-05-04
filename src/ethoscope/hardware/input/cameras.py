@@ -336,7 +336,8 @@ class PiFrameGrabber(multiprocessing.Process):
         self._stop_queue = stop_queue
         self._target_fps = target_fps
         self._target_resolution = target_resolution
-        self._tracking_event = multiprocessing.Event()
+        self._tracker_event = multiprocessing.Event()
+        self._roi_builder_event = multiprocessing.Event()
 
         super(PiFrameGrabber, self).__init__()
 
@@ -366,16 +367,21 @@ class PiFrameGrabber(multiprocessing.Process):
                 time.sleep(1)
                 capture = configure_camera(capture, mode = "roi_builder")
                 time.sleep(5)
-                already_reacted = False
+                roi_builder_event = False
+                tracker_event = False
 
                 raw_capture = PiRGBArray(capture, size=self._target_resolution)
                 i = 0
 
                 for frame in capture.capture_continuous(raw_capture, format="bgr", use_video_port=True):
                     
-                    if self._tracking_event.is_set() and not already_reacted:
+                    if self._tracker_event.is_set() and not tracker_event:
                         capture = configure_camera(capture, mode="tracker")
-                        already_reacted = True
+                        tracker_event = True
+
+                    if self._roi_builder_event.is_set() and not roi_builder_event:
+                        capture = configure_camera(capture, mode="roi_builder")
+                        roi_builder_event = True
 
                     if not self._stop_queue.empty():
                         logging.warning(f"PID {os.getpid()}: The stop queue is not empty. Stop acquiring frames")
@@ -472,8 +478,11 @@ class OurPiCameraAsync(BaseCamera):
         logging.info("Camera initialised")
 
 
-    def set_tracking_mode(self):
-        self._p._tracking_event.set()
+    def set_tracker(self):
+        self._p._tracker_event.set()
+
+    def set_roi_builder(self):
+        self._p.roi_builder_event.set()
 
     def restart(self):
         self._frame_idx = 0

@@ -343,7 +343,7 @@ class FSLTargetROIBuilder(BaseROIBuilder):
         logging.info("DETECTED ARENA")
         # segment the ROIs out of the rotated image
         if camera is not None and not isinstance(camera, np.ndarray):
-            camera.set_tracking_mode()
+            camera.set_roi_builder()
             time.sleep(2)
             accum = self.fetch_frames(camera)
             cv2.imwrite("/root/accum.png", accum)

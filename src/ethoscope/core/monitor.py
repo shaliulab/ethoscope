@@ -98,6 +98,8 @@ class Monitor(object):
             logging.info("Monitor starting a run")
             self._is_running = True
 
+            self._camera.set_tracker()
+
             for i,(t, frame) in enumerate(self._camera):
 
                 if M is not None:
