@@ -348,7 +348,7 @@ class FSLTargetROIBuilder(BaseROIBuilder):
             cv2.imwrite("/root/accum.png", accum)
             img = accum
 
-        rotated = cv2.warpAffine(img, M, grey.shape[:2][::-1], flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE)
+        rotated = cv2.warpAffine(grey, M, grey.shape[:2][::-1], flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE)
 
         bin_rotated = self._segment_rois(rotated, debug=debug)[:,:,0]
 
