@@ -71,6 +71,13 @@ class BaseCamera(object):
             if self._max_duration is not None and t > self._max_duration:
                 break
 
+
+    def set_tracker(self):
+        pass
+
+    def set_roi_builder(self):
+        pass
+
     @property
     def resolution(self):
         """
