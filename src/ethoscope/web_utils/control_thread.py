@@ -196,7 +196,9 @@ class ControlThread(Thread):
     @property
     def was_interrupted(self):
         logging.warning(f"Process with PID {os.getpid()} was interruped")
-        if os.path.exists(self._persistent_state_file):
+        persistent_state_file_exists = os.path.exists(self._persistent_state_file)
+
+        if persistent_state_file_exists:
             logging.warning(f'File         : {self._persistent_state_file}')
             logging.warning(f'Access time  : {time.ctime(os.path.getatime(self._persistent_state_file))}')
             logging.warning(f'Modified time: {time.ctime(os.path.getmtime(self._persistent_state_file))}')

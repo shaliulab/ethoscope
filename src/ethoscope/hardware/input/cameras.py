@@ -400,7 +400,7 @@ class PiFrameGrabber(multiprocessing.Process):
                     out = cv2.cvtColor(frame.array,cv2.COLOR_BGR2GRAY)
                     #fixme here we could actually pass a JPG compressed file object (http://docs.scipy.org/doc/scipy-0.16.0/reference/generated/scipy.misc.imsave.html)
                     # This way, we would manage to get faster FPS
-                    cv2.imwrite(f"/root/frame_{str(i).zfill(2)}.png", out)
+                    #cv2.imwrite(f"/root/frame_{str(i).zfill(2)}.png", out)
                     self._queue.put(out)
                     i+= 1
         finally:
