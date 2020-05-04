@@ -329,8 +329,6 @@ class FSLTargetROIBuilder(BaseROIBuilder):
 
         return contours
 
-
-
     def _rois_from_img(self, img,camera=None):
 
         grey = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -345,7 +343,7 @@ class FSLTargetROIBuilder(BaseROIBuilder):
         if camera is not None and not isinstance(camera, np.ndarray):
             camera.set_roi_builder()
             time.sleep(2)
-            accum = self.fetch_frames(camera)
+            accum = self.fetch_frames(camera, mode="roi_builder")
             cv2.imwrite("/root/accum.png", accum)
             img = accum
 

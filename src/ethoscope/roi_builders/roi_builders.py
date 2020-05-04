@@ -1,5 +1,3 @@
-from ethoscope.core.roi import ROI
-
 __author__ = 'quentin'
 
 import numpy as np
@@ -7,7 +5,10 @@ import numpy as np
 import logging
 import traceback
 import cv2
+import os
+
 from ethoscope.utils.description import DescribedObject
+from ethoscope.core.roi import ROI
 
 
 class BaseROIBuilder(DescribedObject):
@@ -20,7 +21,7 @@ class BaseROIBuilder(DescribedObject):
 
 
     @staticmethod
-    def fetch_frames(input):
+    def fetch_frames(input, mode=None):
         # If input is an image, make a copy
         # Otherwise it is assumed to be a camera object
         # that returns frames upon iterating it.
@@ -33,6 +34,8 @@ class BaseROIBuilder(DescribedObject):
         else:
             for i, (_, frame) in enumerate(input):
                 accum.append(frame)
+                output_path = os.path.join(os.environ["HOME"], "frame_{str(i).zfill(3)}_{mode}.png")
+                cv2.imwrite(output_path, frame)
                 logging.warning(f"I: {i}")
                 logging.warning(f"mean_intensity: {np.mean(frame)}")
                 if i  == 4:
@@ -53,7 +56,7 @@ class BaseROIBuilder(DescribedObject):
         :return: list(:class:`~ethoscope.core.roi.ROI`)
         """
 
-        accum = self.fetch_frames(input)     
+        accum = self.fetch_frames(input, mode="target_detection")     
 
         try:
             if self.__class__.__name__ == "FSLTargetROIBuilder":
