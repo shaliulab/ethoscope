@@ -365,7 +365,7 @@ class PiFrameGrabber(multiprocessing.Process):
 
                 capture.start_preview()
                 time.sleep(1)
-                capture = configure_camera(capture, mode = "roi_builder")
+                capture = configure_camera(capture, mode = "target_detection")
                 time.sleep(5)
                 roi_builder_event = False
                 tracker_event = False
@@ -482,7 +482,7 @@ class OurPiCameraAsync(BaseCamera):
         self._p._tracker_event.set()
 
     def set_roi_builder(self):
-        self._p.roi_builder_event.set()
+        self._p._roi_builder_event.set()
 
     def restart(self):
         self._frame_idx = 0
