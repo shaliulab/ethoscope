@@ -89,7 +89,8 @@ class TargetGridROIBuilder(BaseROIBuilder):
         #     self._right_margin = self._left_margin
         # if self._bottom_margin is None:
         #     self._bottom_margin = self._top_margin
-        _target_coord_file = kwargs.pop('target_coordinates_file')
+        if 'target_coordinates_file' in kwargs.keys():
+            self._target_coord_file = kwargs.pop('target_coordinates_file')
 
         super(TargetGridROIBuilder,self).__init__(*args, **kwargs)
 
