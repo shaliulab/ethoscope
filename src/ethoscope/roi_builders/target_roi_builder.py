@@ -92,7 +92,7 @@ class TargetGridROIBuilder(BaseROIBuilder):
         if 'target_coordinates_file' in kwargs.keys():
             self._target_coord_file = kwargs.pop('target_coordinates_file')
 
-        super(TargetGridROIBuilder,self).__init__(*args, **kwargs)
+        super(TargetGridROIBuilder,self).__init__()
 
     def _sort_src_pts(self, src_points):
         a, b, c = src_points
