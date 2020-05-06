@@ -406,7 +406,7 @@ class PiFrameGrabber(multiprocessing.Process):
                     
                     try:
                         gain, sign = self._exposure_queue.get(block=False)
-                        capture = adjust_camera(capture, gain, sign)
+                        capture = self.adjust_camera(capture, gain, sign)
 
                     except queue.Empty:
                         pass
