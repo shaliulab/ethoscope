@@ -129,6 +129,7 @@ class TargetGridROIBuilder(BaseROIBuilder):
         # the remaining point is a
         sorted_a = [sp for sp in src_points if not sp is sorted_b and not sp is sorted_c][0]
         sorted_src_pts = np.array([sorted_a, sorted_b, sorted_c], dtype=np.float32)
+        self._sorted_src_pts = sorted_src_pts
 
         return sorted_src_pts
 

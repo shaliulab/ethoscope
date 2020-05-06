@@ -635,7 +635,6 @@ class FSLTargetROIBuilder(SleepMonitorWithTargetROIBuilder):
         else:
             sorted_src_pts = self._find_target_coordinates(grey, self._find_blobs_new)
 
-        self._sorted_src_pts = sorted_src_pts
         logging.info("Computing affine transformation")
         logging.info("These are the coordinates I found")
         logging.info(f"A: {sorted_src_pts[0]}")
