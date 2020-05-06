@@ -58,7 +58,6 @@ class BaseROIBuilder(DescribedObject):
                         input.change_gain(gain, -sign)
                         time.sleep(1)                    
 
-                    logging.warning(mean_intensity)
                     if mean_intensity < modes_min[mode]:
                         modes_n[next_mode[mode]] -= 1
                 accum.append(frame)
