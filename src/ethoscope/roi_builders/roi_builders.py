@@ -84,6 +84,7 @@ class BaseROIBuilder(DescribedObject):
                 img, M, rois = self._rois_from_img(accum, camera=input)
             else:
                 rois = self._rois_from_img(accum)
+                img = accum
         
             roi_build_with_dots = img.copy()
             for pt in self._sorted_src_pts:
