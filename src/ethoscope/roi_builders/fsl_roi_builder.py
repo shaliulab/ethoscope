@@ -290,8 +290,8 @@ class FSLTargetROIBuilder(SleepMonitorWithTargetROIBuilder):
 
         if np.count_nonzero(bin) == 0:
             # TODO Adapt to any number of ROIs
-            imwrite('/root/failed_roi_builder_binary.png', bin_orig)
-            imwrite('/root/failed_roi_builder_orig', orig)
+            cv2.imwrite('/root/failed_roi_builder_binary.png', bin_orig)
+            cv2.imwrite('/root/failed_roi_builder_orig', orig)
             
             raise EthoscopeException('I could not find 20 ROIs. Please try again or change the lighting conditions', np.stack((bin_orig, cv2.cvtColor(orig,cv2.COLOR_BGR2GRAY)), axis=1))
 
@@ -311,7 +311,7 @@ class FSLTargetROIBuilder(SleepMonitorWithTargetROIBuilder):
         # segment the ROIs out of the rotated image
         if camera is not None and not isinstance(camera, np.ndarray):
             camera.set_roi_builder()
-            time.sleep(2)
+            time.sleep(5)
             accum = self.fetch_frames(camera, mode="roi_builder")
             cv2.imwrite("/root/accum.png", accum)
             img = accum
