@@ -13,10 +13,12 @@ except ImportError:
 
 import time
 import logging
+logging.basicConfig(level=logging.INFO)
 import os
 from ethoscope.utils.debug import EthoscopeException
 import multiprocessing
 import traceback
+import Queue
 
 from ethoscope.utils.claim_camera import claim_camera, remove_pidfile
 from ethoscope.hardware.input.camera_settings import configure_camera
@@ -322,7 +324,7 @@ class V4L2Camera(BaseCamera):
 
 class PiFrameGrabber(multiprocessing.Process):
 
-    def __init__(self, target_fps, target_resolution, queue,stop_queue, *args, **kwargs):
+    def __init__(self, target_fps, target_resolution, queue,stop_queue, exposure_queue, *args, **kwargs):
         """
         Class to grab frames from pi camera. Designed to be used within :class:`~ethoscope.hardware.camreras.camreras.OurPiCameraAsync`
         This allows to get frames asynchronously as acquisition is a bottleneck.
@@ -341,12 +343,32 @@ class PiFrameGrabber(multiprocessing.Process):
 
         self._queue = queue
         self._stop_queue = stop_queue
+        self._exposure_queue = exposure_queue
         self._target_fps = target_fps
         self._target_resolution = target_resolution
         self._tracker_event = multiprocessing.Event()
         self._roi_builder_event = multiprocessing.Event()
 
         super(PiFrameGrabber, self).__init__()
+
+    @staticmethod
+    def adjust_camera(camera, gain ,sign):
+        # Lazy load dependencies
+        import picamera
+        import time
+        from picamera_attributes import variables
+
+        val_change = (sign * 0.5, ) * variables.ParameterSet._supported[gain]._length
+        original_val = getattr(camera, gain)
+
+        if issubclass(variables.ParameterSet._supported[gain], variables.Plural):
+            val = [e1 + e2 for e1, e2 in zip(val_change, original_val)]
+        else:
+            val = original_val + val_change
+
+        logging.info(f'Adjusting camera {gain} from {original_val} to {val}')
+        setattr(camera, gain, val)
+        return camera
 
 
     def run(self):
@@ -382,6 +404,13 @@ class PiFrameGrabber(multiprocessing.Process):
 
                 for frame in capture.capture_continuous(raw_capture, format="bgr", use_video_port=True):
                     
+                    try:
+                        gain, sign = self._exposure_queue.get(block=False)
+                        capture = adjust_camera(capture, gain, sign)
+
+                    except Queue.Empty:
+                        pass
+
                     if self._tracker_event.is_set() and not tracker_event:
                         capture = configure_camera(capture, mode="tracker")
                         tracker_event = True
@@ -451,8 +480,10 @@ class OurPiCameraAsync(BaseCamera):
         self._args = args
         self._kwargs = kwargs
         self._queue = multiprocessing.Queue(maxsize=1)
+        self._exposure_queue = multiprocessing.Queue(maxsize=2)
+        
         self._stop_queue = multiprocessing.JoinableQueue(maxsize=1)
-        self._p = self._frame_grabber_class(target_fps,target_resolution,self._queue,self._stop_queue, *args, **kwargs)
+        self._p = self._frame_grabber_class(target_fps,target_resolution,self._queue,self._stop_queue, self._exposure_queue, *args, **kwargs)
         self._p.daemon = True
         self._p.start()
 
@@ -487,6 +518,9 @@ class OurPiCameraAsync(BaseCamera):
 
     def set_tracker(self):
         self._p._tracker_event.set()
+
+    def change_gain(self, gain, sign):
+        self._exposure_queue.put((gain, sign))
 
     def set_roi_builder(self):
         self._p._roi_builder_event.set()

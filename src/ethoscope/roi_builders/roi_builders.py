@@ -29,7 +29,7 @@ class BaseROIBuilder(DescribedObject):
         modes_min = {"target_detection": 90, "roi_builder": 20, "tracker": 0}
         modes_n = {"target_detection": 5, "roi_builder": 5}
         next_mode = {"target_detection": "roi_builder", "roi_builder": "tracker"}
-        means = {"target_detection": , "roi_builder": 40, "tracker":  70}
+        means = {"target_detection": 150, "roi_builder": 26}
 
         accum = []
         if isinstance(input, np.ndarray):
@@ -50,12 +50,10 @@ class BaseROIBuilder(DescribedObject):
                     if abs(mean_intensity - means[mode]) < 10:
                         i += 1
                     else:
-                        if mean_intensity < means[mode]:
-                            input.increase_gain()
-                        else:
-                            input.decrease_gain()
-
-                    
+                        gain = 'analog' if mode == target_detection else 'awb_gains'
+                        sign = abs(mean_intensity - means[mode]) / (mean_intensity - means[mode])
+                        input.change_gain(gain, -sign)
+                        time.sleep(1)                    
 
                     logging.warning(mean_intensity)
                     if mean_intensity < modes_min[mode]:
