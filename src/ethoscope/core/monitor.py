@@ -130,7 +130,7 @@ class Monitor(object):
             for i,(t, frame) in self._monitor_iterator:
 
                 if M is not None:
-                    logging.info('Rotating input frame')
+                    logging.debug('Rotating input frame')
                     frame = cv2.warpAffine(frame, M, frame.shape[:2][::-1], flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE)
 
                 if self._force_stop:

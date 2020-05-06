@@ -17,7 +17,7 @@ if __name__ == "__main__":
     ap.add_argument("-o", "--output", help="Resulting sqlite3 db file", type=str)
     ap.add_argument("--machine_id", type=str, required=False)
     ap.add_argument("--name", type=str, default="ETHOSCOPE_CV1")
-    ap.add_argument("-r", "--roi_builder", type=str, default="FSLTargetROiBuilder")
+    ap.add_argument("-r", "--roi_builder", type=str, default="FSLTargetROIBuilder")
     ap.add_argument("-t", "--target_coordinates_file", type=str, required=False)
 
     ETHOSCOPE_DIR = "/ethoscope_data/results"

@@ -686,6 +686,9 @@ class AsyncSQLiteWriter(multiprocessing.Process):
         
     def _get_connection(self):
         import sqlite3
+
+        FOLDER = os.path.dirname(self._path)
+        os.makedirs(FOLDER, exist_ok=True)
         db =   sqlite3.connect(self._path)
         return db
 

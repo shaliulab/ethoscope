@@ -25,7 +25,7 @@ import itertools
 class TargetGridROIBuilder(BaseROIBuilder):
 
     _adaptive_med_rad = 0.10
-    _expected__min_target_dist = 10 # the minimal distance between two targets, in 'target diameter'
+    _expected_min_target_dist = 200 # the minimal distance between two targets, in 'target diameter'
     _n_rows = 10
     _n_cols = 2
     _top_margin =  0
@@ -101,6 +101,13 @@ class TargetGridROIBuilder(BaseROIBuilder):
         pairs = [(a,b), (b,c), (a,c)]
 
         dists = [self._points_distance(*p) for p in pairs]
+
+        for d in dists:
+            logging.info(d)
+            if d < self._expected__min_target_dist:
+                raise EthoscopeException(f"""The detected targets are too close.
+                                         If you think this is correct, please decrease the value of _expected_min_target_dist
+                                         to something that fits your setup. It is now set to {self._expected_min_target_dist}""")
         # that is the AC pair
         hypo_vertices = pairs[np.argmax(dists)]
 

@@ -617,43 +617,33 @@ class FSLTargetROIBuilder(SleepMonitorWithTargetROIBuilder):
         #     sorted_src_pts = self._find_target_coordinates(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY), self._find_blobs)
         # except EthoscopeException:
             # logging.warning("Fall back to find_blobs_new")
-        try:
-            logging.info("Detecting targets")
+        logging.info("Detecting targets")
 
+        import os.path
+        if os.path.exists(self._target_coord_file):
+            # if could not find targets but there is a conf file
+            # with human annotation of the dots, just read it
+            with open(self._target_coord_file, "r") as fh:
+                data = fh.read()
 
-            try:
-                sorted_src_pts = self._find_target_coordinates(grey, self._find_blobs_new)
-            except EthoscopeException as e:
-                import os.path
-                logging.info(self._target_coord_file)
-                if os.path.exists(self._target_coord_file):
-                    logging.warning(e)
-                    # if could not find targets but there is a conf file
-                    # with human annotation of the dots, just read it
-                    with open(self._target_coord_file, "r") as fh:
-                        data = fh.read()
+            # each dot is in a newline
+            data = data.split("\n")[:3]
+            # each dot is made by two numbers separated by comma
+            src_points = [tuple([int(f) for f in e.split(",")]) for e in data]
+            sorted_src_pts = self._sort_src_pts(src_points)
+            logging.info(sorted_src_pts)
+        else:
+            sorted_src_pts = self._find_target_coordinates(grey, self._find_blobs_new)
 
-                    logging.info(data)
-
-                    # each dot is in a newline
-                    data = data.split("\n")[:3]
-                    # each dot is made by two numbers separated by comma
-                    src_points = [tuple([int(f) for f in e.split(",")]) for e in data]
-                    sorted_src_pts = self._sort_src_pts(src_points)
-                    logging.info(sorted_src_pts)
-                else:
-                    raise e
-
-            self._sorted_src_pts = sorted_src_pts
-            logging.info("Computing affine transformation")
-            wrap_mat = cv2.getAffineTransform(self._dst_points, sorted_src_pts)
-            self._wrap_mat = wrap_mat
-
-        except Exception as e:
-            logging.warning(e)
-            raise e
-
-
+        self._sorted_src_pts = sorted_src_pts
+        logging.info("Computing affine transformation")
+        logging.info("These are the coordinates I found")
+        logging.info(f"A: {sorted_src_pts[0]}")
+        logging.info(f"B: {sorted_src_pts[1]}")
+        logging.info(f"C: {sorted_src_pts[2]}")
+            
+        wrap_mat = cv2.getAffineTransform(self._dst_points, sorted_src_pts)
+        self._wrap_mat = wrap_mat
         return sorted_src_pts, wrap_mat
 
 
