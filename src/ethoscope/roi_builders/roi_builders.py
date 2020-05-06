@@ -47,10 +47,12 @@ class BaseROIBuilder(DescribedObject):
                     break
                 if mode is not None:
                     mean_intensity = np.mean(frame)
-                    if abs(mean_intensity - means[mode]) < 10:
+                    diff = abs(mean_intensity - means[mode])
+                    logging.warning(f'Difference with reference for {mode} is {diff}')
+                    if diff < 10:
                         i += 1
                     else:
-                        gain = 'analog' if mode == target_detection else 'awb_gains'
+                        gain = 'analog' if mode == 'target_detection' else 'awb_gains'
                         sign = abs(mean_intensity - means[mode]) / (mean_intensity - means[mode])
                         input.change_gain(gain, -sign)
                         time.sleep(1)                    
