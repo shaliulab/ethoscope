@@ -362,9 +362,9 @@ class PiFrameGrabber(multiprocessing.Process):
         original_val = getattr(camera, gain)
 
         if issubclass(variables.ParameterSet._supported[gain], variables.Plural):
-            val = [e1 + e2 for e1, e2 in zip(val_change, original_val)]
+            val = [e1 + float(e2) for e1, e2 in zip(val_change, original_val)]
         else:
-            val = original_val + val_change
+            val = float(original_val) + val_change
 
         logging.info(f'Adjusting camera {gain} from {original_val} to {val}')
         setattr(camera, gain, val)
