@@ -118,7 +118,7 @@ class Monitor(object):
                 logging.warning("unit trackers")
                 logging.warning(self._unit_trackers)
                 img = drawer.draw(frame, tracking_units=self._unit_trackers, positions=None)
-                roi_builder_output_path = os.path.join(os.environ["HOME"], "roi_builder_output.png")
+                roi_builder_output_path = os.path.join('/root', "roi_builder_output.png")
                 logging.info(f"Saving roi builder result to {roi_builder_output_path}")
                 cv2.imwrite(roi_builder_output_path, img)
                 break
