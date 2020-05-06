@@ -105,7 +105,7 @@ class TargetGridROIBuilder(BaseROIBuilder):
 
         for d in dists:
             logging.info(d)
-            if d < self._expected__min_target_dist:
+            if d < self._expected_min_target_dist:
                 raise EthoscopeException(f"""The detected targets are too close.
                                          If you think this is correct, please decrease the value of _expected_min_target_dist
                                          to something that fits your setup. It is now set to {self._expected_min_target_dist}""")
