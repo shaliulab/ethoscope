@@ -18,7 +18,7 @@ import os
 from ethoscope.utils.debug import EthoscopeException
 import multiprocessing
 import traceback
-import Queue
+import queue
 
 from ethoscope.utils.claim_camera import claim_camera, remove_pidfile
 from ethoscope.hardware.input.camera_settings import configure_camera
@@ -408,7 +408,7 @@ class PiFrameGrabber(multiprocessing.Process):
                         gain, sign = self._exposure_queue.get(block=False)
                         capture = adjust_camera(capture, gain, sign)
 
-                    except Queue.Empty:
+                    except queue.Empty:
                         pass
 
                     if self._tracker_event.is_set() and not tracker_event:
