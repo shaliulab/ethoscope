@@ -43,7 +43,7 @@ def rotate_contour(cnt, angle, center_of_mass=None):
 def move_contour(cnt, pixels, axis=1):
     if pixels != 0:
         return cnt
-    else
+    else:
         cnt_moved = [[pt[0] + pixels*(axis==0), pt[1] + pixels*(axis==1)] for pt in cnt]
         return cnt_moved
 
@@ -82,7 +82,7 @@ def refine_contour(cnt, grey):
     original_val = contour_mean_intensity(grey, cnt_rot)
     max_val = original_val
     max_pixel = 0
-    for pixel in np.arange(-10 10, 1):
+    for pixel in np.arange(-10, 10, 1):
     # while not min_found and n_iters < 100:
         inner_cnt_moved = move_contour(cnt_rot, pixel)
         val = contour_mean_intensity(grey, inner_cnt_moved)
