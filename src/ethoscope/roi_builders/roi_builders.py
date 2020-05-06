@@ -42,7 +42,8 @@ class BaseROIBuilder(DescribedObject):
 
         else:
             for i, (_, frame) in enumerate(input):
-                output_path = os.path.join(os.environ["HOME"], f"frame_{str(i).zfill(3)}_{mode}.png")
+                
+                output_path = os.path.join('/root', f"frame_{str(i).zfill(3)}_{mode}.png")
                 cv2.imwrite(output_path, frame)
                 logging.warning(f"I: {i}")
                 logging.warning(f"mean_intensity: {np.mean(frame)}")
@@ -56,8 +57,11 @@ class BaseROIBuilder(DescribedObject):
                 accum.append(frame)
 
             accum = np.median(np.array(accum),0).astype(np.uint8)
-
-        output_path = os.path.join(os.environ["HOME"], f"{mode}.png")
+            
+        logging.info('OS.ENVIRON')
+        logging.info(os.environ)
+            
+        output_path = os.path.join('/root', f"{mode}.png")
         logging.info(f"Saving {mode} accum to {output_path}")
         cv2.imwrite(output_path, accum)
         
