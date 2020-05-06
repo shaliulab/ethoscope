@@ -29,13 +29,15 @@ class BaseROIBuilder(DescribedObject):
         modes_min = {"target_detection": 90, "roi_builder": 20, "tracker": 0}
         modes_n = {"target_detection": 5, "roi_builder": 5}
         next_mode = {"target_detection": "roi_builder", "roi_builder": "tracker"}
+        means = {"target_detection": , "roi_builder": 40, "tracker":  70}
 
         accum = []
         if isinstance(input, np.ndarray):
             accum = np.copy(input)
 
         else:
-            for i, (_, frame) in enumerate(input):
+            i = 0
+            for _, frame in input:
                 
                 output_path = os.path.join('/root', f"frame_{str(i).zfill(3)}_{mode}.png")
                 cv2.imwrite(output_path, frame)
@@ -45,6 +47,16 @@ class BaseROIBuilder(DescribedObject):
                     break
                 if mode is not None:
                     mean_intensity = np.mean(frame)
+                    if abs(mean_intensity - means[mode]) < 10:
+                        i += 1
+                    else:
+                        if mean_intensity < means[mode]:
+                            input.increase_gain()
+                        else:
+                            input.decrease_gain()
+
+                    
+
                     logging.warning(mean_intensity)
                     if mean_intensity < modes_min[mode]:
                         modes_n[next_mode[mode]] -= 1
