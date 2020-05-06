@@ -290,7 +290,10 @@ class FSLTargetROIBuilder(SleepMonitorWithTargetROIBuilder):
 
         if np.count_nonzero(bin) == 0:
             # TODO Adapt to any number of ROIs
-            raise EthoscopeException('I could not find 20 ROIs. Please try again or change the lighting conditions', np.stack((bin_orig, orig), axis=1))
+            imwrite('/root/failed_roi_builder_binary.png', bin_orig)
+            imwrite('/root/failed_roi_builder_orig', orig)
+            
+            raise EthoscopeException('I could not find 20 ROIs. Please try again or change the lighting conditions', np.stack((bin_orig, cv2.cvtColor(orig,cv2.COLOR_BGR2GRAY)), axis=1))
 
         return contours
 
