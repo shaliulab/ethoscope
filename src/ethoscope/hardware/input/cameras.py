@@ -358,12 +358,14 @@ class PiFrameGrabber(multiprocessing.Process):
         import time
         from picamera_attributes import variables
 
-        val_change = (sign * 0.5, ) * variables.ParameterSet._supported[gain]._length
         original_val = getattr(camera, gain)
 
         if issubclass(variables.ParameterSet._supported[gain], variables.Plural):
+            val_change = (sign * 0.5, ) * variables.ParameterSet._supported[gain]._length
+
             val = [e1 + float(e2) for e1, e2 in zip(val_change, original_val)]
         else:
+            val_change = sign * 0.5
             val = float(original_val) + val_change
 
         logging.info(f'Adjusting camera {gain} from {original_val} to {val}')
