@@ -26,7 +26,7 @@ from ethoscope.roi_builders.target_roi_builder import SleepMonitorWithTargetROIB
 from ethoscope.core.roi import ROI
 from ethoscope.utils.debug import EthoscopeException
 import itertools
-from ethoscope.roi_builders.helpers import center2rect, find_quadrant, contour_center, rotate_contour, contour_mean_intensity
+from ethoscope.roi_builders.helpers import *
 from scipy.optimize import minimize
 
 class FSLTargetROIBuilder(SleepMonitorWithTargetROIBuilder):
@@ -414,61 +414,17 @@ class FSLTargetROIBuilder(SleepMonitorWithTargetROIBuilder):
 
             center_of_mass = contour_center(corrected_roi)
 
-            max_angle = 0.0
-            learning_rate = 0.01
-            cnt_rot = rotate_contour(corrected_roi, +learning_rate, center_of_mass)
-            mean_pos = contour_mean_intensity(grey, cnt_rot)
-            cnt_rot = rotate_contour(corrected_roi, -learning_rate, center_of_mass)
-            mean_neg = contour_mean_intensity(grey, cnt_rot)
-            gradient = np.array([-1,1])[np.argmin(np.array([mean_neg, mean_pos]))]
-
-            original_val = contour_mean_intensity(grey, corrected_roi)
-            max_val = original_val
-            for angle in np.arange(-.25, .25, learning_rate):
-            # while not min_found and n_iters < 100:
-                inner_cnt_rot = rotate_contour(inner_roi, angle, center_of_mass)
-                val = contour_mean_intensity(grey, inner_cnt_rot)
-                if val > max_val:
-                    max_val = val
-                    max_angle = angle
-
-            cnt_rot = rotate_contour(corrected_roi, max_angle, center_of_mass)
-
-            # for pixel_moves in np.arange(0,5):
-            #     cnt_rot_up = cnt_rot - np.array(0, 1)
-            #     cnt_rot_down = cnt_rot + np.array(0, 1)
-            #     val_up = contour_mean_intensity(grey, cnt_rot_up)
-            #     val_down = contour_mean_intensity(grey, cnt_rot_down)
-            #     if val_up
-
-
-            print(f"ROI_{i+1}")
-            print(max_angle)
-            print(val)
-            print(original_val)
-
-            cv2.drawContours(grey, [inner_roi], -1, (255, 255, 0), 2)
-            if max_angle != 0:
-                cv2.drawContours(grey, [inner_cnt_rot], -1, (255, 0, 255), 2)
-
-
-            # fly_roi=cv2.bitwise_and(np.stack((mask,)*img.shape[2], axis=2), img)
-            # fly_roi = img[start_row:end_row, start_column:end_column]
-            # cv2.imshow(f"ROI_{i}", mask)
-            # cv2.waitKey(0)
+            final_contour, grey, max_angle, max_pixel = refine_contour(cnt, grey)
 
             ####
             # give it the shape expected by programs downstream
-            ct = cnt_rot.reshape((1,4,2)).astype(np.int32)
+            ct = final_contour.reshape((1,4,2)).astype(np.int32)
             # cv2.drawContours(img,[ct], -1, (255,0,0),1,LINE_AA)
             # initialize a ROI object to be returned to the control thread
             # with all the other detected ROIs in the rois list
             rois.append(ROI(ct, idx=i+1, side=side))
 
         logging.info("DETECTED ROIS")
-
-
-
 
         if debug:
             cv2.imshow("grey", grey)

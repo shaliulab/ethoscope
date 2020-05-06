@@ -40,6 +40,60 @@ def rotate_contour(cnt, angle, center_of_mass=None):
     else:
         return cnt
 
+def move_contour(cnt, pixels, axis=1):
+    if pixels != 0:
+        return cnt
+    else
+        cnt_moved = [[pt[0] + pixels*(axis==0), pt[1] + pixels*(axis==1)] for pt in cnt]
+        return cnt_moved
+
+
+def refine_contour(cnt, grey):
+    max_angle = 0.0
+    learning_rate = 0.01
+    cnt_rot = rotate_contour(cnt, +learning_rate, center_of_mass)
+    mean_pos = contour_mean_intensity(grey, cnt_rot)
+    cnt_rot = rotate_contour(cnt, -learning_rate, center_of_mass)
+    mean_neg = contour_mean_intensity(grey, cnt_rot)
+    gradient = np.array([-1,1])[np.argmin(np.array([mean_neg, mean_pos]))]
+
+    original_val = contour_mean_intensity(grey, cnt)
+    max_val = original_val
+    for angle in np.arange(-.25, .25, learning_rate):
+    # while not min_found and n_iters < 100:
+        inner_cnt_rot = rotate_contour(inner_roi, angle, center_of_mass)
+        val = contour_mean_intensity(grey, inner_cnt_rot)
+        if val > max_val:
+            max_val = val
+            max_angle = angle
+
+    cnt_rot = rotate_contour(cnt, max_angle, center_of_mass)
+    if max_angle != 0:
+        cv2.drawContours(grey, [inner_cnt_rot], -1, (255, 0, 255), 2)
+        
+    cv2.drawContours(grey, [inner_roi], -1, (255, 255, 0), 2)
+
+
+    print(f"ROI_{i+1}")
+    print(max_angle)
+    print(val)
+    print(original_val)
+
+    original_val = contour_mean_intensity(grey, cnt_rot)
+    max_val = original_val
+    max_pixel = 0
+    for pixel in np.arange(-10 10, 1):
+    # while not min_found and n_iters < 100:
+        inner_cnt_moved = move_contour(cnt_rot, pixel)
+        val = contour_mean_intensity(grey, inner_cnt_moved)
+        if val > max_val:
+            max_val = val
+            max_pixel = pixel
+
+    final_contour = move_contour(cnt_rot, max_pixel)
+
+    return final_contour, grey, max_angle, max_pixel
+
 def contour_mean_intensity(grey, cnt):
 
     grey = cv2.cvtColor(grey, cv2.COLOR_BGR2GRAY)
