@@ -88,7 +88,7 @@ class BaseROIBuilder(DescribedObject):
         
             roi_build_with_dots = img.copy()
             for pt in self._sorted_src_pts:
-                roi_build_with_dots = cv2.circle(roi_build_with_dots, pt, 5, (0,255,0), -1)
+                roi_build_with_dots = cv2.circle(roi_build_with_dots, tuple(pt), 5, (0,255,0), -1)
             
             cv2.imwrite("/root/roi_build_with_dots.png", roi_build_with_dots)
 
