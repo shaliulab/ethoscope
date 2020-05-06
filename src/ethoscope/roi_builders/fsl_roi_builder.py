@@ -31,6 +31,7 @@ from scipy.optimize import minimize
 
 class FSLTargetROIBuilder(SleepMonitorWithTargetROIBuilder):
 
+    _target_coord_file = "/etc/target_coordinates.conf"
     _adaptive_med_rad = 0.05
     _expected__min_target_dist = 10 # the minimal distance between two targets, in 'target diameter'
     _n_rows = 10
