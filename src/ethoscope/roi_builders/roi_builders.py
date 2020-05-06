@@ -10,6 +10,7 @@ import time
 
 from ethoscope.utils.description import DescribedObject
 from ethoscope.core.roi import ROI
+from ethoscope.hardware.input.cameras import OurPiCameraAsync
 
 
 class BaseROIBuilder(DescribedObject):
@@ -48,15 +49,18 @@ class BaseROIBuilder(DescribedObject):
                     break
                 if mode is not None:
                     mean_intensity = np.mean(frame)
-                    diff = abs(mean_intensity - means[mode])
-                    logging.warning(f'Difference with reference for {mode} is {diff}')
-                    if diff < 10:
-                        i += 1
+                    if isinstance(input, OurPiCameraAsync):
+                        diff = abs(mean_intensity - means[mode])
+                        logging.warning(f'Difference with reference for {mode} is {diff}')
+                        if diff < 10:
+                            i += 1
+                        else:
+                            gain = 'analog_gain' if mode == 'target_detection' else 'awb_gains'
+                            sign = abs(mean_intensity - means[mode]) / (mean_intensity - means[mode])
+                            input.change_gain(gain, -sign)
+                            time.sleep(1)       
                     else:
-                        gain = 'analog_gain' if mode == 'target_detection' else 'awb_gains'
-                        sign = abs(mean_intensity - means[mode]) / (mean_intensity - means[mode])
-                        input.change_gain(gain, -sign)
-                        time.sleep(1)                    
+                        i += 1             
 
                     if mean_intensity < modes_min[mode]:
                         modes_n[next_mode[mode]] -= 1

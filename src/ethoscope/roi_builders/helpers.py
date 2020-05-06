@@ -51,6 +51,9 @@ def move_contour(cnt, pixels, axis=1):
 def refine_contour(cnt, grey):
     max_angle = 0.0
     learning_rate = 0.01
+    center_of_mass = contour_center(cnt)
+
+
     cnt_rot = rotate_contour(cnt, +learning_rate, center_of_mass)
     mean_pos = contour_mean_intensity(grey, cnt_rot)
     cnt_rot = rotate_contour(cnt, -learning_rate, center_of_mass)

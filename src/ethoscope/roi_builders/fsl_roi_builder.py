@@ -408,8 +408,6 @@ class FSLTargetROIBuilder(SleepMonitorWithTargetROIBuilder):
                 corrected_roi = center2rect((median_x_right, center[1]), height, left = short_side, right = long_side, angle=angle)
                 inner_roi = center2rect((median_x_right, center[1]), height, left = short_side/3, right = long_side/2, angle=angle)
 
-            center_of_mass = contour_center(corrected_roi)
-
             final_contour, grey, max_angle, max_pixel = refine_contour(cnt, grey)
 
             ####
