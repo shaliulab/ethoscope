@@ -6,6 +6,7 @@ import logging
 import traceback
 import cv2
 import os
+import time
 
 from ethoscope.utils.description import DescribedObject
 from ethoscope.core.roi import ROI
