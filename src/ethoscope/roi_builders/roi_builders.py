@@ -13,9 +13,7 @@ from ethoscope.core.roi import ROI
 
 class BaseROIBuilder(DescribedObject):
 
-    _target_coord_file = "/etc/target_coordinates.conf"
-
-    def __init__(self, target_coordinates_file):
+    def __init__(self, target_coordinates_file=None):
         """
         Template to design ROIBuilders. Subclasses must implement a ``_rois_from_img`` method.
         """

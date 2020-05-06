@@ -34,6 +34,7 @@ class TargetGridROIBuilder(BaseROIBuilder):
     _right_margin = None
     _horizontal_fill = 1
     _vertical_fill = None
+    _target_coord_file = "/etc/target_coordinates.conf"
 
     _description = {"overview": "A flexible ROI builder that allows users to select parameters for the ROI layout."
                                "Lengths are relative to the distance between the two bottom targets (width)",
