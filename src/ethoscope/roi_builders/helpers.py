@@ -1,5 +1,7 @@
 import cv2
 import numpy as np
+import logging
+logging.basicConfig(level=logging.INFO)
 
 
 def center2rect(center, height, left, right, angle):
@@ -39,7 +41,16 @@ def rotate_contour(cnt, angle, center_of_mass=None):
         return cnt
 
 def contour_mean_intensity(grey, cnt):
+
+    grey = cv2.cvtColor(grey, cv2.COLOR_BGR2GRAY)
+
     mask = np.zeros_like(grey, dtype=np.uint8)
     mask = cv2.drawContours(mask, [cnt], -1, 255, -1)
+    logging.info(grey.shape)
+    logging.info(grey.dtype)
+
+
+    logging.info(mask.shape)
+    logging.info(mask.dtype)
     mean = cv2.mean(grey, mask=mask)[0]
     return mean

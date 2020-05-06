@@ -13,13 +13,19 @@ from ethoscope.core.roi import ROI
 
 class BaseROIBuilder(DescribedObject):
 
-    def __init__(self):
+    _target_coord_file = "/etc/target_coordinates.conf"
+
+    def __init__(self, target_coordinates_file):
         """
         Template to design ROIBuilders. Subclasses must implement a ``_rois_from_img`` method.
         """
-        pass
 
-
+        if "target_coordinates_file" is not None:
+            self._target_coord_file = target_coordinates_file
+#        if "target_coordinates_file" in kwargs.keys():
+#
+#            self._target_coord_file = kwargs.pop("target_coordinates_file") 
+        
     @staticmethod
     def fetch_frames(input, mode=None):
         # If input is an image, make a copy

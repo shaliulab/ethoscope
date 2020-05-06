@@ -395,7 +395,10 @@ class ControlThread(Thread):
                 cv2.imwrite('/root/last_img.png', frame)
                 break
 
-        roi_builder = ROIBuilderClass(**roi_builder_kwargs)
+        logging.info(ROIBuilderClass)
+        logging.info(roi_builder_kwargs)
+
+        roi_builder = ROIBuilderClass(args=(), kwargs=roi_builder_kwargs)
   
         try:
             if roi_builder.__class__.__name__ == "FSLTargetROIBuilder":

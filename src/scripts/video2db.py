@@ -1,22 +1,24 @@
 __author__ = 'quentin'
 
-from ethoscope.web_utils.control_thread import ControlThread
-from ethoscope.web_utils.helpers import get_git_version
-
 import argparse
 import logging
+import os.path
 logging.basicConfig(level=logging.INFO)
+
+from ethoscope.web_utils.control_thread import ControlThread
+from ethoscope.web_utils.helpers import get_git_version
 
 if __name__ == "__main__":
 
     # run from the src/scripts directory!!!
 
     ap = argparse.ArgumentParser()
-    ap.add_argument("--input", help="Input mp4 file", type=str)
-    ap.add_argument("--output", help="Resulting sqlite3 db file", type=str)
-    ap.add_argument("--machine_id", type=str, default=None)
+    ap.add_argument("-i", "--input", help="Input mp4 file", type=str)
+    ap.add_argument("-o", "--output", help="Resulting sqlite3 db file", type=str)
+    ap.add_argument("--machine_id", type=str, required=False)
     ap.add_argument("--name", type=str, default="ETHOSCOPE_CV1")
-    ap.add_argument("--roi_builder", type=str, default="FSLTargetROiBuilder")
+    ap.add_argument("-r", "--roi_builder", type=str, default="FSLTargetROiBuilder")
+    ap.add_argument("-t", "--target_coordinates_file", type=str, required=False)
 
     ETHOSCOPE_DIR = "/ethoscope_data/results"
 
@@ -24,22 +26,29 @@ if __name__ == "__main__":
 
     if ARGS["machine_id"] is None:
         # get machine id form filename assuming it is in the third
-        # value (0-based index 2) if we split it by underscore 
-        MACHINE_ID = ARGS["input"].split("/")[::-1][0].split("_")[2]
+        # value (0-based index 2) if we split it by underscore
+        MACHINE_ID = ARGS["input"].split("/")[::-1][0].split("_")[3]
     else:
         MACHINE_ID = ARGS["machine_id"]
 
+
     NAME = ARGS["name"]
     VERSION = get_git_version()
+
+    if ARGS["output"] is None:
+        DATE = ARGS["input"].split("/")[::-1][1]
+        OUTPUT = os.path.join(ETHOSCOPE_DIR, MACHINE_ID, NAME, DATE, DATE + "_" + MACHINE_ID + ".db")
+    else:
+        OUTPUT = ARGS["output"]
 
 
     data = {
         "camera":
             {"name": "MovieVirtualCamera", "arguments": {"path": ARGS["input"]}},
         "result_writer":
-           {"name": "SQLiteResultWriter", "arguments": {"path": ARGS["output"], "take_frame_shots": False}},
+           {"name": "SQLiteResultWriter", "arguments": {"path": OUTPUT, "take_frame_shots": False}},
         "roi_builder":
-           {"name": ARGS["roi_builder"], "arguments": {}},
+        {"name": ARGS["roi_builder"], "arguments": {"target_coordinates_file": ARGS["target_coordinates_file"]}},
     }
 
     control = ControlThread(MACHINE_ID, NAME, VERSION, ethoscope_dir=ETHOSCOPE_DIR, data=data, verbose=True)

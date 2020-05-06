@@ -47,9 +47,9 @@ class TargetGridROIBuilder(BaseROIBuilder):
                                     {"type": "number", "min": 0.0, "max": 1.0, "step":.001, "name": "horizontal_fill", "description": "The proportion of the grid space used by the roi, horizontally.","default":0.90},
                                     {"type": "number", "min": 0.0, "max": 1.0, "step":.001, "name": "vertical_fill", "description": "Same as horizontal_margin, but vertically.","default":0.90}
                                    ]}
-                                   
+
     def __init__(self, n_rows=1, n_cols=1, top_margin=0, bottom_margin=0,
-                 left_margin=0, right_margin=0, horizontal_fill=.9, vertical_fill=.9):
+                 left_margin=0, right_margin=0, horizontal_fill=.9, vertical_fill=.9, args=(), kwargs={}):
         """
         This roi builder uses three black circles drawn on the arena (targets) to align a grid layout:
 
@@ -88,7 +88,42 @@ class TargetGridROIBuilder(BaseROIBuilder):
         # if self._bottom_margin is None:
         #     self._bottom_margin = self._top_margin
 
-        super(TargetGridROIBuilder,self).__init__()
+        super(TargetGridROIBuilder,self).__init__(*args, **kwargs)
+
+    def _sort_src_pts(self, src_points):
+        a, b, c = src_points
+
+        #if debug:
+        #    for pt in src_points:
+        #        pt = tuple((int(e) for e in pt))
+        #        thresh = cv2.circle(thresh, pt, 5, 0, -1)
+
+        pairs = [(a,b), (b,c), (a,c)]
+
+        dists = [self._points_distance(*p) for p in pairs]
+        # that is the AC pair
+        hypo_vertices = pairs[np.argmax(dists)]
+
+        # this is B : the only point not in (a,c)
+        for sp in src_points:
+            if not sp in hypo_vertices:
+                break
+        sorted_b = sp
+
+        dist = 0
+        for sp in src_points:
+            if sorted_b is sp:
+                continue
+            # b-c is the largest distance, so we can infer what point is c
+            if self._points_distance(sp, sorted_b) > dist:
+                dist = self._points_distance(sp, sorted_b)
+                sorted_c = sp
+
+        # the remaining point is a
+        sorted_a = [sp for sp in src_points if not sp is sorted_b and not sp is sorted_c][0]
+        sorted_src_pts = np.array([sorted_a, sorted_b, sorted_c], dtype=np.float32)
+
+        return sorted_src_pts
 
     def _find_blobs(self, im, scoring_fun=None):
 
@@ -124,7 +159,7 @@ class TargetGridROIBuilder(BaseROIBuilder):
         return score_map
 
     def _find_blobs_new(self, img, scoring_fun=None):
-    
+
         grey = img
         if scoring_fun is None:
             scoring_fun = self._score_circles
@@ -149,7 +184,7 @@ class TargetGridROIBuilder(BaseROIBuilder):
             non_zero_pixels = np.count_nonzero(bin)
             # if this threshold operation leaves
             # more than 70% white pixels, continue
-            # until loop is over           
+            # until loop is over
             if non_zero_pixels > 0.7 * grey.shape[0] * grey.shape[1]:
                 continue
 
@@ -226,7 +261,7 @@ class TargetGridROIBuilder(BaseROIBuilder):
         if circul < .8: # fixme magic number
             return 0
         return 1
-    
+
     def _score_circles(self, contour):
 
         area = cv2.contourArea(contour)
@@ -235,10 +270,10 @@ class TargetGridROIBuilder(BaseROIBuilder):
             return 0
 
         ((x, y), radius) = cv2.minEnclosingCircle(contour)
-        # if area was zero the functionw would have already returned                
+        # if area was zero the functionw would have already returned
         ratio = np.pi*radius**2 / area
         # print(ratio)
-       
+
         if ratio > 1 and ratio < 1.5:
             return 1
         else:
@@ -279,31 +314,7 @@ class TargetGridROIBuilder(BaseROIBuilder):
             x , y = moms["m10"]/moms["m00"],  moms["m01"]/moms["m00"]
             src_points.append((x,y))
 
-        a ,b, c = src_points
-        pairs = [(a,b), (b,c), (a,c)]
-
-        dists = [self._points_distance(*p) for p in pairs]
-        # that is the AC pair
-        hypo_vertices = pairs[np.argmax(dists)]
-
-        # this is B : the only point not in (a,c)
-        for sp in src_points:
-            if not sp in hypo_vertices:
-                break
-        sorted_b = sp
-
-        dist = 0
-        for sp in src_points:
-            if sorted_b is sp:
-                continue
-            # b-c is the largest distance, so we can infer what point is c
-            if self._points_distance(sp, sorted_b) > dist:
-                dist = self._points_distance(sp, sorted_b)
-                sorted_c = sp
-
-        # the remaining point is a
-        sorted_a = [sp for sp in src_points if not sp is sorted_b and not sp is sorted_c][0]
-        sorted_src_pts = np.array([sorted_a, sorted_b, sorted_c], dtype=np.float32)
+        sorted_src_pts = self._sort_src_pts(src_points)
         return sorted_src_pts
 
     def _rois_from_img(self,img):
@@ -337,7 +348,7 @@ class TargetGridROIBuilder(BaseROIBuilder):
             # cv2.imshow("dbg",img)
             # cv2.waitKey(0)
         return rois
-    
+
     @staticmethod
     def _adjust(centres, n_col, n_row, pad, offset, direction=1, axis=0):
 
@@ -383,7 +394,7 @@ class ThirtyFliesMonitorWithTargetROIBuilder(TargetGridROIBuilder):
     _description = {"overview": "The default sleep monitor arena with ten rows of two tubes.",
                     "arguments": []}
 
-    def __init__(self):
+    def __init__(self, args, kwargs):
         r"""
         Class to build ROIs for a two-columns, ten-rows for the sleep monitor
         (`see here <https://github.com/gilestrolab/ethoscope_hardware/tree/master/arenas/arena_10x2_shortTubes>`_).
@@ -397,7 +408,8 @@ class ThirtyFliesMonitorWithTargetROIBuilder(TargetGridROIBuilder):
                                                                left_margin = -.033,
                                                                right_margin = -.033,
                                                                horizontal_fill = .975,
-                                                               vertical_fill= .7
+                                                               vertical_fill= .7,
+                                                               args=args, kwargs=kwargs
                                                                )
 
 class SleepMonitorWithTargetROIBuilder(TargetGridROIBuilder):
@@ -405,7 +417,7 @@ class SleepMonitorWithTargetROIBuilder(TargetGridROIBuilder):
     _description = {"overview": "The default sleep monitor arena with ten rows of two tubes.",
                     "arguments": []}
 
-    def __init__(self):
+    def __init__(self, args, kwargs):
         r"""
         Class to build ROIs for a two-columns, ten-rows for the sleep monitor
         (`see here <https://github.com/gilestrolab/ethoscope_hardware/tree/master/arenas/arena_10x2_shortTubes>`_).
@@ -419,7 +431,8 @@ class SleepMonitorWithTargetROIBuilder(TargetGridROIBuilder):
                                                                left_margin = -.033,
                                                                right_margin = -.033,
                                                                horizontal_fill = .975,
-                                                               vertical_fill= .7
+                                                               vertical_fill= .7,
+                                                               args=args, kwargs=kwargs
                                                                )
 
 

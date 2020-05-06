@@ -17,18 +17,19 @@ except ImportError:
 
 import numpy as np
 import logging
-debug=True
+debug=False
 # level = CFG.content["logging"]["level"]
 level = logging.DEBUG
 logging.basicConfig(level=level)
 from ethoscope.roi_builders.roi_builders import BaseROIBuilder
+from ethoscope.roi_builders.target_roi_builder import SleepMonitorWithTargetROIBuilder
 from ethoscope.core.roi import ROI
 from ethoscope.utils.debug import EthoscopeException
 import itertools
 from ethoscope.roi_builders.helpers import center2rect, find_quadrant, contour_center, rotate_contour, contour_mean_intensity
 from scipy.optimize import minimize
 
-class FSLTargetROIBuilder(BaseROIBuilder):
+class FSLTargetROIBuilder(SleepMonitorWithTargetROIBuilder):
 
     _adaptive_med_rad = 0.05
     _expected__min_target_dist = 10 # the minimal distance between two targets, in 'target diameter'
@@ -50,7 +51,7 @@ class FSLTargetROIBuilder(BaseROIBuilder):
                     #              ]
                     }
 
-    def __init__(self, n_rows=10, n_cols=21, debug=debug, long_side_fraction = 0.24, short_side_fraction = 0.18, mint=100, maxt=255):
+    def __init__(self, n_rows=10, n_cols=21, debug=debug, long_side_fraction = 0.24, short_side_fraction = 0.18, mint=100, maxt=255, args = (), kwargs={}):
         """
         This roi builder uses three black circles drawn on the arena (targets) to align a grid layout:
 
@@ -75,8 +76,9 @@ class FSLTargetROIBuilder(BaseROIBuilder):
         #     self._right_margin = self._left_margin
         # if self._bottom_margin is None:
         #     self._bottom_margin = self._top_margin
+        print(kwargs)
 
-        super(BaseROIBuilder,self).__init__()
+        super(FSLTargetROIBuilder, self).__init__(args, kwargs)
 
     def _find_blobs(self, img, scoring_fun=None):
 
@@ -259,37 +261,7 @@ class FSLTargetROIBuilder(BaseROIBuilder):
             x, y = moms["m10"]/moms["m00"],  moms["m01"]/moms["m00"]
             src_points.append((x, y))
 
-        a, b, c = src_points
-
-        if debug:
-            for pt in src_points:
-                pt = tuple((int(e) for e in pt))
-                thresh = cv2.circle(thresh, pt, 5, 0, -1)
-
-        pairs = [(a,b), (b,c), (a,c)]
-
-        dists = [self._points_distance(*p) for p in pairs]
-        # that is the AC pair
-        hypo_vertices = pairs[np.argmax(dists)]
-
-        # this is B : the only point not in (a,c)
-        for sp in src_points:
-            if not sp in hypo_vertices:
-                break
-        sorted_b = sp
-
-        dist = 0
-        for sp in src_points:
-            if sorted_b is sp:
-                continue
-            # b-c is the largest distance, so we can infer what point is c
-            if self._points_distance(sp, sorted_b) > dist:
-                dist = self._points_distance(sp, sorted_b)
-                sorted_c = sp
-
-        # the remaining point is a
-        sorted_a = [sp for sp in src_points if not sp is sorted_b and not sp is sorted_c][0]
-        sorted_src_pts = np.array([sorted_a, sorted_b, sorted_c], dtype=np.float32)
+        sorted_src_pts = self._sort_src_pts(src_points)
         return sorted_src_pts
 
     def _split_rois(self, bin, orig):
@@ -522,7 +494,7 @@ class FSLTargetROIBuilder(BaseROIBuilder):
         if len(img.shape) == 3:
             if img.shape[2] == 3:
                 img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-            
+
         bin = self._segment_rois(img)
         # cv2.imshow("segmented_bin",bin)
         # cv2.waitKey(0)
@@ -647,7 +619,31 @@ class FSLTargetROIBuilder(BaseROIBuilder):
             # logging.warning("Fall back to find_blobs_new")
         try:
             logging.info("Detecting targets")
-            sorted_src_pts = self._find_target_coordinates(grey, self._find_blobs_new)
+
+
+            try:
+                sorted_src_pts = self._find_target_coordinates(grey, self._find_blobs_new)
+            except EthoscopeException as e:
+                import os.path
+                logging.info(self._target_coord_file)
+                if os.path.exists(self._target_coord_file):
+                    logging.warning(e)
+                    # if could not find targets but there is a conf file
+                    # with human annotation of the dots, just read it
+                    with open(self._target_coord_file, "r") as fh:
+                        data = fh.read()
+
+                    logging.info(data)
+
+                    # each dot is in a newline
+                    data = data.split("\n")[:3]
+                    # each dot is made by two numbers separated by comma
+                    src_points = [tuple([int(f) for f in e.split(",")]) for e in data]
+                    sorted_src_pts = self._sort_src_pts(src_points)
+                    logging.info(sorted_src_pts)
+                else:
+                    raise e
+
             self._sorted_src_pts = sorted_src_pts
             logging.info("Computing affine transformation")
             wrap_mat = cv2.getAffineTransform(self._dst_points, sorted_src_pts)
@@ -700,6 +696,7 @@ class FSLTargetROIBuilder(BaseROIBuilder):
             logging.warning(img.shape)
             cv2.imwrite("/root/target_detection_find_arena.png", grey)
             sorted_src_pts, _ = self._find_arena(grey)
+
         # if is not None, the arena was already segmented
         # but we still need to find ROIs inside it
         else:

@@ -686,12 +686,7 @@ class AsyncSQLiteWriter(multiprocessing.Process):
         
     def _get_connection(self):
         import sqlite3
-<<<<<<< Updated upstream
         db =   sqlite3.connect(self._path)
-=======
-        logging.debug(self._db_name)
-        db =   sqlite3.connect(self._db_name)
->>>>>>> Stashed changes
         return db
 
 
