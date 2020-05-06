@@ -1,20 +1,5 @@
 __author__ = 'quentin'
 
-
-
-from ethoscope.hardware.input.cameras import MovieVirtualCamera
-
-# Build ROIs from greyscale image
-from ethoscope.roi_builders.fsl_roi_builder import FSLTargetROIBuilder as ROIBuilderClass
-
-# the robust self learning tracker
-from ethoscope.trackers.adaptive_bg_tracker import AdaptiveBGModel
-
-from ethoscope.utils.io import SQLiteResultWriter
-
-# the standard monitor
-from ethoscope.core.monitor import Monitor
-
 from ethoscope.web_utils.control_thread import ControlThread
 from ethoscope.web_utils.helpers import get_git_version
 
@@ -31,6 +16,7 @@ if __name__ == "__main__":
     ap.add_argument("--output", help="Resulting sqlite3 db file", type=str)
     ap.add_argument("--machine_id", type=str, default=None)
     ap.add_argument("--name", type=str, default="ETHOSCOPE_CV1")
+    ap.add_argument("--roi_builder", type=str, default="FSLTargetROiBuilder")
 
     ETHOSCOPE_DIR = "/ethoscope_data/results"
 
@@ -53,7 +39,7 @@ if __name__ == "__main__":
         "result_writer":
            {"name": "SQLiteResultWriter", "arguments": {"path": ARGS["output"], "take_frame_shots": False}},
         "roi_builder":
-           {"name": "FSLTargetROIBuilder", "arguments": {}},
+           {"name": ARGS["roi_builder"], "arguments": {}},
     }
 
     control = ControlThread(MACHINE_ID, NAME, VERSION, ethoscope_dir=ETHOSCOPE_DIR, data=data, verbose=True)

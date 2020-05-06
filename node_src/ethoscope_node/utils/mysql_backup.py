@@ -195,7 +195,11 @@ class MySQLdbToSQlite(object):
 
         src_command = "SELECT * FROM %s " % table_name
 
-        src_cur.execute(src_command)
+        try:
+            src_cur.execute(src_command)
+        except KeyboardInterrupt as e:
+            logging.warning(src_command)
+            raise e
 
         to_insert = []
         i = 0

@@ -3,6 +3,7 @@ import os
 import traceback
 import shutil
 import logging
+logging.basicConfig(level=logging.INFO)
 import time
 import re
 import cv2
@@ -432,6 +433,9 @@ class ControlThread(Thread):
         else:
             sensor = None
         
+
+        logging.info("Generating metadata of this run")
+        logging.info(self._info)
         self._metadata = {
             "machine_id": self._info["id"],
             "machine_name": self._info["name"],
