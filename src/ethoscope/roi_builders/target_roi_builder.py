@@ -351,6 +351,7 @@ class TargetGridROIBuilder(BaseROIBuilder):
             mapped_rectangle = np.dot(wrap_mat, r.T).T
             mapped_rectangle -= shift
             ct = mapped_rectangle.reshape((1,4,2)).astype(np.int32)
+            ct = refine_contour(ct, img)
             cv2.drawContours(img,[ct], -1, (255,0,0),1,LINE_AA)
             rois.append(ROI(ct, idx=i+1))
 
