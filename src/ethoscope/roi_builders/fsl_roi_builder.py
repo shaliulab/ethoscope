@@ -31,7 +31,6 @@ from scipy.optimize import minimize
 
 class FSLTargetROIBuilder(SleepMonitorWithTargetROIBuilder):
 
-    _target_coord_file = "/etc/target_coordinates.conf"
     _adaptive_med_rad = 0.05
     _expected__min_target_dist = 10 # the minimal distance between two targets, in 'target diameter'
     _n_rows = 10
@@ -71,13 +70,6 @@ class FSLTargetROIBuilder(SleepMonitorWithTargetROIBuilder):
         self._short_side_fraction = short_side_fraction
         self._mint = mint
         self._maxt = maxt
-        # if self._vertical_fill is None:
-        #     self._vertical_fill = self._horizontal_fill
-        # if self._right_margin is None:
-        #     self._right_margin = self._left_margin
-        # if self._bottom_margin is None:
-        #     self._bottom_margin = self._top_margin
-        print(kwargs)
 
         super(FSLTargetROIBuilder, self).__init__(args, kwargs)
 
@@ -577,6 +569,7 @@ class FSLTargetROIBuilder(SleepMonitorWithTargetROIBuilder):
         logging.info("Detecting targets")
 
         import os.path
+        logging.info(self._target_coord_file)
         if os.path.exists(self._target_coord_file):
             # if could not find targets but there is a conf file
             # with human annotation of the dots, just read it
