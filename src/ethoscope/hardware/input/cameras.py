@@ -371,9 +371,9 @@ class PiFrameGrabber(multiprocessing.Process):
             val = float(original_val) + val_change
 
         logging.info(f'Adjusting camera {gain} from {original_val} to {val}')
-        CameraParameter(val)
-        CameraParameter.validate()
-        camera = CameraParameter.update_cam(camera)
+        cp = CameraParameter(val)
+        cp.validate()
+        camera = cp.update_cam(camera)
         return camera
 
 
