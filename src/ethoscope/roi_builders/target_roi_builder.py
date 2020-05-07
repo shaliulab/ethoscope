@@ -508,7 +508,7 @@ class FSLSleepMonitorWithTargetROIBuilder(TargetGridROIBuilder):
                                                                bottom_margin = 6.99 / 111.00,
                                                                left_margin = -.033,
                                                                right_margin = -.033,
-                                                               horizontal_fill = .8,
+                                                               horizontal_fill = .85,
                                                                vertical_fill= .6,
                                                                inside_pad = 0.07,
                                                                outside_pad = 0.0,

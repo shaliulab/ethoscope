@@ -118,7 +118,7 @@ def refine_contour(cnt, grey, rotate=True, move=True):
         original_val = max_val
         max_pixel = 0
         print("Running moving algorithm for ONE contour")    
-        for pixel in np.arange(-30, 30, 1):
+        for pixel in np.arange(-200, 200, 10):
             inner_cnt_moved = move_contour(cnt=optim_vertical, pixel=pixel,axis=0)
             # import ipdb; ipdb.set_trace()
             val = contour_mean_intensity(grey, inner_cnt_moved)
