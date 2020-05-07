@@ -39,6 +39,7 @@ class BaseROIBuilder(DescribedObject):
 
         else:
             i = 0
+            j = 0
             for _, frame in input:
                 
                 output_path = os.path.join('/root', f"frame_{str(i).zfill(3)}_{mode}.png")
@@ -50,17 +51,20 @@ class BaseROIBuilder(DescribedObject):
                 if mode is not None:
                     mean_intensity = np.mean(frame)
                     if isinstance(input, OurPiCameraAsync):
-                        diff = abs(mean_intensity - means[mode])
+                        diff = mean_intensity - means[mode]
                         logging.warning(f'Difference with reference for {mode} is {diff}')
-                        if diff < 10:
+                        if abs(diff) < 20 or j>20:
                             i += 1
                         else:
                             gain = 'analog_gain' if mode == 'target_detection' else 'awb_gains'
                             sign = abs(mean_intensity - means[mode]) / (mean_intensity - means[mode])
                             input.change_gain(gain, -sign)
-                            time.sleep(1)       
+                            time.sleep(1)
+                            continue
                     else:
-                        i += 1             
+                        i += 1
+
+                    j+=1
 
                     if mean_intensity < modes_min[mode]:
                         modes_n[next_mode[mode]] -= 1
