@@ -31,7 +31,7 @@ class BaseROIBuilder(DescribedObject):
         modes_min = {"target_detection": 90, "roi_builder": 20, "tracker": 0}
         modes_n = {"target_detection": 5, "roi_builder": 5}
         next_mode = {"target_detection": "roi_builder", "roi_builder": "tracker"}
-        means = {"target_detection": 150, "roi_builder": 26}
+        means = {"target_detection": (140, 230), "roi_builder": (20,40)}
 
         accum = []
         if isinstance(input, np.ndarray):
@@ -51,13 +51,12 @@ class BaseROIBuilder(DescribedObject):
                 if mode is not None:
                     mean_intensity = np.mean(frame)
                     if isinstance(input, OurPiCameraAsync):
-                        diff = mean_intensity - means[mode]
-                        logging.warning(f'Difference with reference for {mode} is {diff}')
-                        if abs(diff) < 20 or j>20:
+                        within = mean_intensity > means[mode][0] and mean_intensity < means[mode][1]
+                        if within or j>20:
                             i += 1
                         else:
                             gain = 'analog_gain' if mode == 'target_detection' else 'awb_gains'
-                            sign = abs(mean_intensity - means[mode]) / (mean_intensity - means[mode])
+                            sign = 1 if mean_intensity < means[mode][0] else -1
                             input.change_gain(gain, -sign)
                             time.sleep(1)
                             continue
