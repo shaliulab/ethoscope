@@ -19,7 +19,7 @@ class BaseROIBuilder(DescribedObject):
         """
         Template to design ROIBuilders. Subclasses must implement a ``_rois_from_img`` method.
         """
-        
+
     @staticmethod
     def fetch_frames(input, mode=None):
         # If input is an image, make a copy
@@ -31,7 +31,7 @@ class BaseROIBuilder(DescribedObject):
         modes_min = {"target_detection": 90, "roi_builder": 20, "tracker": 0}
         modes_n = {"target_detection": 5, "roi_builder": 5}
         next_mode = {"target_detection": "roi_builder", "roi_builder": "tracker"}
-        means = {"target_detection": (140, 230), "roi_builder": (20,40)}
+        means = {"target_detection": (140, 190), "roi_builder": (20,40)}
 
         accum = []
         if isinstance(input, np.ndarray):
@@ -41,7 +41,7 @@ class BaseROIBuilder(DescribedObject):
             i = 0
             j = 0
             for _, frame in input:
-                
+
                 output_path = os.path.join('/root', f"frame_{str(i).zfill(3)}_{mode}.png")
                 cv2.imwrite(output_path, frame)
                 logging.warning(f"I: {i}")
@@ -74,7 +74,7 @@ class BaseROIBuilder(DescribedObject):
         output_path = os.path.join(os.environ["HOME"], f"{mode}_input.png")
         logging.info(f"Saving {mode} accum to {output_path}")
         cv2.imwrite(output_path, accum)
-        
+
         return accum
 
     def build(self, input):
@@ -87,7 +87,7 @@ class BaseROIBuilder(DescribedObject):
         :return: list(:class:`~ethoscope.core.roi.ROI`)
         """
 
-        accum = self.fetch_frames(input, mode="target_detection")     
+        accum = self.fetch_frames(input, mode="target_detection")
 
         try:
             if self.__class__.__name__ == "HighContrastTargetRoiBuilder":
@@ -95,11 +95,11 @@ class BaseROIBuilder(DescribedObject):
             else:
                 rois = self._rois_from_img(accum)
                 img = accum
-        
+
             roi_build_with_dots = img.copy()
             for pt in self._sorted_src_pts:
                 roi_build_with_dots = cv2.circle(roi_build_with_dots, tuple(pt), 5, (0,255,0), -1)
-        
+
             cv2.imwrite(os.path.join(os.environ["HOME"], "roi_build_with_dots.png"), roi_build_with_dots)
 
         except Exception as e:
