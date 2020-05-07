@@ -9,7 +9,7 @@ import time
 import sys
 from ethoscope.utils.debug import EthoscopeException
 
-from ethoscope.roi_builders.target_roi_builder import FSLSleepMonitorWithTargetROIBuilder, TargetGridROIBuilder
+from ethoscope.roi_builders.target_roi_builder import FSLSleepMonitorWithTargetROIBuilder, SleepMonitorWithTargetROIBuilder
 from ethoscope.roi_builders.fsl_roi_builder import HighContrastTargetROIBuilder
 from ethoscope.roi_builders.helpers import place_dots
 print(os.getcwd())
@@ -28,7 +28,7 @@ LOG_DIR = "./test_logs/"
 
 class TestTargetROIBuilder(unittest.TestCase):
 
-    roi_builder = FSLSleepMonitorWithTargetROIBuilder()
+    roi_builder = SleepMonitorWithTargetROIBuilder()
 
 
     def setUp(self):
@@ -141,12 +141,12 @@ if __name__ == '__main__':
     args = vars(ap.parse_args())
     print(args)
     message = args['message']
-    #TestFSLROIBuilder.message = message
-    #test_instance = TestFSLROIBuilder()
-    #if args['path'] is not None:
-    #    test_instance._path = args['path']
-    #test_instance.setUp()
-    #test_instance._test_live()
+    TestFSLROIBuilder.message = message
+    test_instance = TestFSLROIBuilder()
+    if args['path'] is not None:
+       test_instance._path = args['path']
+    test_instance.setUp()
+    test_instance._test_live()
 
     TestTargetROIBuilder.message = message
     test_instance = TestTargetROIBuilder()

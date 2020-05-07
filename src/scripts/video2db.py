@@ -3,6 +3,7 @@ __author__ = 'quentin'
 import argparse
 import logging
 import os.path
+import sys
 logging.basicConfig(level=logging.INFO)
 
 from ethoscope.web_utils.control_thread import ControlThread
@@ -17,8 +18,9 @@ if __name__ == "__main__":
     ap.add_argument("-o", "--output", help="Resulting sqlite3 db file", type=str)
     ap.add_argument("--machine_id", type=str, required=False)
     ap.add_argument("--name", type=str, default="ETHOSCOPE_CV1")
-    ap.add_argument("-r", "--roi_builder", type=str, default="FSLTargetROIBuilder")
+    ap.add_argument("-r", "--roi_builder", type=str, default="FSLSleepMonitorWithTargetROIBuilder")
     ap.add_argument("-t", "--target_coordinates_file", type=str, required=False)
+    ap.add_argument("-d", "--downsample", type=int, default=1)
 
     ETHOSCOPE_DIR = "/ethoscope_data/results"
 
@@ -33,6 +35,8 @@ if __name__ == "__main__":
 
 
     NAME = ARGS["name"]
+    DOWNSAMPLE = ARGS["downsample"]
+    
     VERSION = get_git_version()
 
     if ARGS["output"] is None:
@@ -40,6 +44,8 @@ if __name__ == "__main__":
         OUTPUT = os.path.join(ETHOSCOPE_DIR, MACHINE_ID, NAME, DATE, DATE + "_" + MACHINE_ID + ".db")
     else:
         OUTPUT = ARGS["output"]
+
+    logging.info(OUTPUT)
 
 
     data = {
@@ -51,7 +57,7 @@ if __name__ == "__main__":
         {"name": ARGS["roi_builder"], "arguments": {"target_coordinates_file": ARGS["target_coordinates_file"]}},
     }
 
-    control = ControlThread(MACHINE_ID, NAME, VERSION, ethoscope_dir=ETHOSCOPE_DIR, data=data, verbose=True)
+    control = ControlThread(MACHINE_ID, NAME, VERSION, ethoscope_dir=ETHOSCOPE_DIR, data=data, verbose=True, downsample=DOWNSAMPLE)
     control.start()
 
     # # this replicates the code in ControlThread._set_tracking_from_scratch

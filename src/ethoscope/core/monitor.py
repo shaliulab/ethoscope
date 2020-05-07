@@ -44,16 +44,23 @@ class Monitor(object):
         self._last_positions = {}
         self._last_time_stamp = 0
         self._is_running = False
+        
         try:
             self._verbose = kwargs.pop("verbose")
         except KeyError:
             self._verbose = False
-
+        
+        try:
+            self._downsample = kwargs.pop("downsample")
+        except KeyError:
+            self._downsample = 1          
+        
 
         if self._verbose:
             try:
                 from tqdm import tqdm
-                self._monitor_iterator = enumerate(tqdm(self._camera))
+                #self._monitor_iterator = enumerate(tqdm(self._camera))
+                self._monitor_iterator = enumerate(self._camera)
             except ImportError:
                 self._monitor_iterator = enumerate(self._camera)
 
@@ -115,6 +122,7 @@ class Monitor(object):
         try:
             logging.info("Monitor starting a run")
             for t, frame in self._camera:
+                print(t)
                 logging.warning("unit trackers")
                 logging.warning(self._unit_trackers)
                 img = drawer.draw(frame, tracking_units=self._unit_trackers, positions=None)
@@ -128,6 +136,10 @@ class Monitor(object):
             self._camera.set_tracker()
 
             for i,(t, frame) in self._monitor_iterator:
+
+                if i % self._downsample != 0:
+                    continue
+                
 
                 if M is not None:
                     logging.debug('Rotating input frame')

@@ -15,7 +15,7 @@ import urllib.request, urllib.error, urllib.parse
 import json
 
 class AsyncMySQLWriter(multiprocessing.Process):
-    
+
     _db_host = "localhost"
     #_db_host = "node" #uncomment this to save data on the node
 
@@ -42,11 +42,11 @@ class AsyncMySQLWriter(multiprocessing.Process):
                                          passwd=self._db_user_pass,
                                          db=self._db_name,
                                          buffered=True)
-                                         
+
         except mysql.connector.errors.OperationalError:
             logging.warning("Database %s does not exist. Cannot delete it" % self._db_name)
             return
-            
+
         except Exception as e:
             logging.error(traceback.format_exc())
             return
@@ -94,13 +94,13 @@ class AsyncMySQLWriter(multiprocessing.Process):
         cmd = "CREATE DATABASE %s" % self._db_name
         c.execute(cmd)
         logging.info("Database created")
-        
+
         #create a read-only node user that the node will use to get data from
         #it's better to have a second user for remote operation for reasons of debug and have better control
         cmd = "GRANT SELECT ON %s.* to 'node' identified by 'node'" % self._db_name
         c.execute(cmd)
         logging.info("Node user created")
-        
+
 
         #set some innodb specific values that cannot be set on the config file
         cmd = "SET GLOBAL innodb_file_per_table=1"
@@ -125,7 +125,7 @@ class AsyncMySQLWriter(multiprocessing.Process):
         """
         Processes the queue to commit changes to the db
         """
-        
+
         db = None
         do_run = True
         try:
@@ -189,9 +189,9 @@ class AsyncMySQLWriter(multiprocessing.Process):
 
 class SensorDataToMySQLHelper(object):
     _table_name = "SENSORS"
-    _base_headers = {"id" : "INT NOT NULL AUTO_INCREMENT PRIMARY KEY", 
+    _base_headers = {"id" : "INT NOT NULL AUTO_INCREMENT PRIMARY KEY",
                      "t"  : "INT" }
-                          
+
     def __init__(self, sensor, period=120.0):
         """
         :param sensor: the sensor object to be interrogated
@@ -202,8 +202,8 @@ class SensorDataToMySQLHelper(object):
         self._last_tick = 0
         self.sensor = sensor
         self._table_headers = {**self._base_headers, **self.sensor.sensor_types}
-        
-                            
+
+
     def flush(self, t):
         """
         :param t: the time since start of the experiment, in ms
@@ -221,19 +221,19 @@ class SensorDataToMySQLHelper(object):
             cmd = (
                     "INSERT into "
                     + self._table_name
-                    + " VALUES (" 
-                    + ','.join(values) 
+                    + " VALUES ("
+                    + ','.join(values)
                     + ")"
                    )
 
             self._last_tick = tick
             return cmd, None
-    
+
         except:
             logging.error("The sensor data are not available")
             self._last_tick = tick
             return
-  
+
     @property
     def table_name (self):
         return self._table_name
@@ -246,7 +246,7 @@ class SensorDataToMySQLHelper(object):
 
 class ImgToMySQLHelper(object):
     _table_name = "IMG_SNAPSHOTS"
-    _table_headers = {"id" : "INT NOT NULL AUTO_INCREMENT PRIMARY KEY", 
+    _table_headers = {"id" : "INT NOT NULL AUTO_INCREMENT PRIMARY KEY",
                       "t"  : "INT",
                       "img" : "LONGBLOB"}
 
@@ -257,7 +257,7 @@ class ImgToMySQLHelper(object):
     @property
     def create_command(self):
         return ",".join([ "%s %s" % (key, self._table_headers[key]) for key in self._table_headers])
-    
+
     def __init__(self, period=300.0):
         """
         :param period: how often snapshots are saved, in seconds
@@ -292,7 +292,7 @@ class ImgToMySQLHelper(object):
 
         with open(self._tmp_file, "rb") as f:
                 bstring = f.read()
-                
+
         cmd = 'INSERT INTO ' + self._table_name + '(id,t,img) VALUES (%s,%s,%s)'
 
         args = (0, int(t), bstring)
@@ -412,7 +412,7 @@ class ResultWriter(object):
     _max_insert_string_len = 1000
     _async_writing_class = AsyncMySQLWriter
     _null = 0
-    
+
     def __init__(self, db_credentials, rois, metadata=None, make_dam_like_table=True, take_frame_shots=True, erase_old_db=True, sensor=None, *args, **kwargs):
         self._queue = multiprocessing.JoinableQueue()
         self._async_writer = self._async_writing_class(db_credentials, self._queue, erase_old_db, **kwargs)
@@ -449,7 +449,7 @@ class ResultWriter(object):
             logging.info("Creating connection to a sensor to store its data in the db")
         else:
             self._sensor_saver = None
-        
+
         self._var_map_initialised = False
         if erase_old_db:
             logging.warning("Erasing the old database and recreating the tables")
@@ -460,7 +460,7 @@ class ResultWriter(object):
             self._write_async_command(command)
 
         logging.info("Result writer initialised")
-        
+
     def _create_all_tables(self):
         logging.info("Creating master table 'ROI_MAP'")
         self._create_table("ROI_MAP", "roi_idx SMALLINT, roi_value SMALLINT, x SMALLINT,y SMALLINT,w SMALLINT,h SMALLINT")
@@ -502,7 +502,7 @@ class ResultWriter(object):
         for k,v in list(self.metadata.items()):
             command = "INSERT INTO METADATA VALUES %s" % str((k, v))
             self._write_async_command(command)
-        
+
         while not self._queue.empty():
             logging.info("waiting for queue to be processed")
             time.sleep(.1)
@@ -533,7 +533,7 @@ class ResultWriter(object):
         """
         This is were we actually write SQL commands
         """
-        
+
         if self._dam_file_helper is not None:
             out = self._dam_file_helper.flush(t)
             for c in out:
@@ -654,7 +654,7 @@ class AsyncSQLiteWriter(multiprocessing.Process):
                 "locking_mode":  "EXCLUSIVE"}
 
     def __init__(self, db_credentials, queue, erase_old_db=True, **kwargs):
-        
+
         self._db_name = db_credentials["name"]
         self._db_user_name = db_credentials["user"]
         self._db_user_pass = db_credentials["password"]
@@ -663,6 +663,7 @@ class AsyncSQLiteWriter(multiprocessing.Process):
         logging.warning(kwargs)
 
         path = kwargs.pop("path")
+        logging.warning(path)
         self._path = path
 
         self._queue = queue
@@ -683,13 +684,16 @@ class AsyncSQLiteWriter(multiprocessing.Process):
                 command = "PRAGMA %s = %s" %(str(k), str(v))
                 c.execute(command)
 
-        
+
     def _get_connection(self):
         import sqlite3
 
         FOLDER = os.path.dirname(self._path)
-        os.makedirs(FOLDER, exist_ok=True)
-        db =   sqlite3.connect(self._path)
+        if FOLDER != '':
+            logging.warning(f'Creating folder {FOLDER}')
+            os.makedirs(FOLDER, exist_ok=True)
+
+        db = sqlite3.connect(self._path)
         return db
 
 

@@ -368,15 +368,25 @@ class TargetGridROIBuilder(BaseROIBuilder):
     def _rois_from_img(self,img):
         
         self._img = img
+        if os.path.exists(self._target_coord_file):
+            with open(self._target_coord_file, "r") as fh:
+                    data = fh.read()
 
-        try:
-            sorted_src_pts = self._find_target_coordinates(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY), self._find_blobs)
-        except EthoscopeException as e:
-            logging.warning("Fall back to find_blobs_new")
-            sorted_src_pts = self._find_target_coordinates(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY), self._find_blobs_new)
-        # sorted_src_pts = self._find_target_coordinates(img)
-        except Exception as e:
-            raise e
+            # each dot is in a newline
+            data = data.split("\n")[:3]
+            # each dot is made by two numbers separated by comma
+            src_points = [tuple([int(f) for f in e.split(",")]) for e in data]
+            sorted_src_pts = self._sort_src_pts(src_points)
+        else:
+            try:
+                sorted_src_pts = self._find_target_coordinates(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY), self._find_blobs)
+            except EthoscopeException as e:
+                # raise e
+                logging.warning("Fall back to find_blobs_new")
+                sorted_src_pts = self._find_target_coordinates(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY), self._find_blobs_new)
+            # sorted_src_pts = self._find_target_coordinates(img)
+            except Exception as e:
+                raise e
 
         dst_points = np.array([(0,-1),
                                (0,0),
@@ -507,8 +517,8 @@ class FSLSleepMonitorWithTargetROIBuilder(TargetGridROIBuilder):
                                                                bottom_margin = 6.99 / 111.00,
                                                                left_margin = -.033,
                                                                right_margin = -.033,
-                                                               horizontal_fill = .85,
-                                                               vertical_fill= .6,
+                                                               horizontal_fill = .8,
+                                                               vertical_fill= .5,
                                                                inside_pad = 0.07,
                                                                outside_pad = 0.0,
                                                                args=args, kwargs=kwargs
