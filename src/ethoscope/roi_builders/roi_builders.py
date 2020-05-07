@@ -57,7 +57,7 @@ class BaseROIBuilder(DescribedObject):
                         else:
                             gain = 'analog_gain' if mode == 'target_detection' else 'awb_gains'
                             sign = 1 if mean_intensity < means[mode][0] else -1
-                            input.change_gain(gain, -sign)
+                            input.change_gain(gain, sign)
                             time.sleep(1)
                             continue
                     else:
