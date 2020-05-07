@@ -376,7 +376,7 @@ if __name__ == '__main__':
     parser.add_option("-s", "--stop-after-run", dest="stop_after_run", default=False, help="When -r, stops immediately after. otherwise, server waits", action="store_true")
     parser.add_option("-v", "--record-video", dest="record_video", default=False, help="Records video instead of tracking", action="store_true")
     parser.add_option("-j", "--json", dest="json", default=None, help="A JSON config file")
-    parser.add_option("-p", "--port", dest="port", default=9000, help="port")
+    parser.add_option("-p", "--port", dest="port", type=int, default=9000, help="port")
     parser.add_option("-n", "--node", dest="node", default="node", help="The hostname of the computer running the node")
     parser.add_option("-e", "--results-dir", dest="results_dir", default=ETHOSCOPE_DIR, help="Where temporary result files are stored")
     parser.add_option("-D", "--debug", dest="debug", default=False, help="Shows all logging messages", action="store_true")
