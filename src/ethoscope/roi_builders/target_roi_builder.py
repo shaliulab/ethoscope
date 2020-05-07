@@ -16,10 +16,12 @@ except ImportError:
 
 import numpy as np
 import logging
+logging.basicConfig(level=logging.INFO)
 from ethoscope.roi_builders.roi_builders import BaseROIBuilder
 from ethoscope.core.roi import ROI
 from ethoscope.utils.debug import EthoscopeException
 import itertools
+import os
 from ethoscope.roi_builders.helpers import *
 
 
@@ -35,6 +37,9 @@ class TargetGridROIBuilder(BaseROIBuilder):
     _right_margin = None
     _horizontal_fill = 1
     _vertical_fill = None
+    _inside_pad = 0.0
+    _outside_pad = 0.0
+    
     _target_coord_file = "/etc/target_coordinates.conf"
 
     _description = {"overview": "A flexible ROI builder that allows users to select parameters for the ROI layout."
@@ -51,7 +56,7 @@ class TargetGridROIBuilder(BaseROIBuilder):
                                    ]}
 
     def __init__(self, n_rows=1, n_cols=1, top_margin=0, bottom_margin=0,
-                 left_margin=0, right_margin=0, horizontal_fill=.9, vertical_fill=.9, args=(), kwargs={}):
+                 left_margin=0, right_margin=0, horizontal_fill=.9, vertical_fill=.9, inside_pad=.0, outside_pad=.0, args=(), kwargs={}):
         """
         This roi builder uses three black circles drawn on the arena (targets) to align a grid layout:
 
@@ -83,6 +88,9 @@ class TargetGridROIBuilder(BaseROIBuilder):
         self._right_margin = right_margin
         self._horizontal_fill = horizontal_fill
         self._vertical_fill = vertical_fill
+
+        self._inside_pad = inside_pad
+        self._outside_pad = outside_pad
         # if self._vertical_fill is None:
         #     self._vertical_fill = self._horizontal_fill
         # if self._right_margin is None:
@@ -109,9 +117,16 @@ class TargetGridROIBuilder(BaseROIBuilder):
         for d in dists:
             logging.info(d)
             if d < self._expected_min_target_dist:
+                img = self._img if len(self._img.shape) == 2 else cv2.cvtColor(self._img, cv2.COLOR_BGR2GRAY)
+                img = place_dots(self._img, src_points)
+                output_path = os.path.join(os.environ["HOME"], "target_detection_fail_output.png")
+
+                logging.info(f"Saving failed detection to {output_path}")
+                cv2.imwrite(output_path, img)
+
                 raise EthoscopeException(f"""The detected targets are too close.
                                          If you think this is correct, please decrease the value of _expected_min_target_dist
-                                         to something that fits your setup. It is now set to {self._expected_min_target_dist}""")
+                                         to something that fits your setup. It is set to {self._expected_min_target_dist}""")
         # that is the AC pair
         hypo_vertices = pairs[np.argmax(dists)]
 
@@ -134,6 +149,8 @@ class TargetGridROIBuilder(BaseROIBuilder):
         sorted_a = [sp for sp in src_points if not sp is sorted_b and not sp is sorted_c][0]
         sorted_src_pts = np.array([sorted_a, sorted_b, sorted_c], dtype=np.float32)
         self._sorted_src_pts = sorted_src_pts
+        logging.warning("Sorted detection")
+        logging.warning(sorted_src_pts)
 
         return sorted_src_pts
 
@@ -207,9 +224,9 @@ class TargetGridROIBuilder(BaseROIBuilder):
 
             foreground_model = cv2.drawContours(grey.copy(), contours, -1, 255, -1)
             _, foreground_model = cv2.threshold(foreground_model, 254, 255, cv2.THRESH_BINARY)
-            for i in range(10):
-                foreground_model = cv2.morphologyEx(foreground_model, cv2.MORPH_CLOSE, (5, 5))
-
+            foreground_model = cv2.morphologyEx(foreground_model, cv2.MORPH_CLOSE, kernel = np.ones((3,3)), iterations=1)
+            # cv2.imshow("foreground_model", foreground_model)
+            # cv2.waitKey(0)
 
             if CV_VERSION == 3:
                 _, contours, h = cv2.findContours(foreground_model, cv2.RETR_EXTERNAL, CHAIN_APPROX_SIMPLE)
@@ -238,11 +255,25 @@ class TargetGridROIBuilder(BaseROIBuilder):
     def _make_grid(self, n_col, n_row,
               top_margin=0.0, bottom_margin=0.0,
               left_margin=0.0, right_margin=0.0,
-              horizontal_fill = 1.0, vertical_fill=1.0):
+              horizontal_fill=1.0, vertical_fill=1.0,
+              inside_pad=0.0, outside_pad=0.0):
 
         y_positions = (np.arange(n_row) * 2.0 + 1) * (1-top_margin-bottom_margin)/(2*n_row) + top_margin
         x_positions = (np.arange(n_col) * 2.0 + 1) * (1-left_margin-right_margin)/(2*n_col) + left_margin
         all_centres = [np.array([x,y]) for x,y in itertools.product(x_positions, y_positions)]
+
+        padded_centres = []
+        for center in all_centres:  
+            left, top = find_quadrant((1,1), center)
+            if left:
+                center[0] -= inside_pad
+                center[0] += outside_pad
+            else:
+                center[0] += inside_pad
+                center[0] -= outside_pad
+            
+            padded_centres.append(center)
+        all_centres = padded_centres
 
         sign_mat = np.array([
             [-1, -1],
@@ -295,6 +326,8 @@ class TargetGridROIBuilder(BaseROIBuilder):
     def _find_target_coordinates(self, img, blob_function):
         map = blob_function(img)
 
+        _, map_bin = cv2.threshold(map, 1, 255, cv2.THRESH_BINARY)
+
         bin = np.zeros_like(map)
 
         # as soon as we have three objects, we stop
@@ -326,16 +359,25 @@ class TargetGridROIBuilder(BaseROIBuilder):
             x , y = moms["m10"]/moms["m00"],  moms["m01"]/moms["m00"]
             src_points.append((x,y))
 
+        # map_bin_dots1 = place_dots(map_bin.copy(), src_points, color = 0)
         sorted_src_pts = self._sort_src_pts(src_points)
+        map_bin_dots = place_dots(map_bin.copy(), sorted_src_pts, color = 0)
+        # cv2.imwrite(os.path.join(os.environ["HOME"], "target_detection_segmented_dots2.png" ), map_bin_dots)
         return sorted_src_pts
 
     def _rois_from_img(self,img):
+        
+        self._img = img
+
         try:
-            sorted_src_pts = self._find_target_coordinates(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY), self._find_blobs)
-        except EthoscopeException:
+            # sorted_src_pts = self._find_target_coordinates(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY), self._find_blobs)
+        # except EthoscopeException as e:
+            # raise e
             logging.warning("Fall back to find_blobs_new")
             sorted_src_pts = self._find_target_coordinates(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY), self._find_blobs_new)
         # sorted_src_pts = self._find_target_coordinates(img)
+        except Exception as e:
+            raise e
 
         dst_points = np.array([(0,-1),
                                (0,0),
@@ -345,7 +387,8 @@ class TargetGridROIBuilder(BaseROIBuilder):
         rectangles = self._make_grid(self._n_cols, self._n_rows,
                                      self._top_margin, self._bottom_margin,
                                      self._left_margin,self._right_margin,
-                                     self._horizontal_fill, self._vertical_fill)
+                                     self._horizontal_fill, self._vertical_fill,
+                                     self._inside_pad, self._outside_pad)
 
         shift = np.dot(wrap_mat, [1,1,0]) - sorted_src_pts[1] # point 1 is the ref, at 0,0
         rois = []
@@ -353,13 +396,12 @@ class TargetGridROIBuilder(BaseROIBuilder):
             r = np.append(r, np.zeros((4,1)), axis=1)
             mapped_rectangle = np.dot(wrap_mat, r.T).T
             mapped_rectangle -= shift
-            ct = mapped_rectangle.reshape((1,4,2)).astype(np.int32)
-            ct = refine_contour(ct, img)
-            cv2.drawContours(img,[ct], -1, (255,0,0),1,LINE_AA)
+            ct = mapped_rectangle.astype(np.int32)
+            # logging.warning(i)
+            ct, _, _, _ = refine_contour(ct, img, rotate=False)
+            cv2.drawContours(img, [ct.reshape((1,4,2))], -1, (255,0,0),1,LINE_AA)
             rois.append(ROI(ct, idx=i+1))
 
-            # cv2.imshow("dbg",img)
-            # cv2.waitKey(0)
         return rois
 
     @staticmethod
@@ -430,7 +472,7 @@ class SleepMonitorWithTargetROIBuilder(TargetGridROIBuilder):
     _description = {"overview": "The default sleep monitor arena with ten rows of two tubes.",
                     "arguments": []}
 
-    def __init__(self, args, kwargs):
+    def __init__(self, args=(), kwargs={}):
         r"""
         Class to build ROIs for a two-columns, ten-rows for the sleep monitor
         (`see here <https://github.com/gilestrolab/ethoscope_hardware/tree/master/arenas/arena_10x2_shortTubes>`_).
@@ -445,6 +487,31 @@ class SleepMonitorWithTargetROIBuilder(TargetGridROIBuilder):
                                                                right_margin = -.033,
                                                                horizontal_fill = .975,
                                                                vertical_fill= .7,
+                                                               args=args, kwargs=kwargs
+                                                               )
+
+class FSLSleepMonitorWithTargetROIBuilder(TargetGridROIBuilder):
+    
+    _description = {"overview": "The default sleep monitor arena with ten rows of two tubes.",
+                    "arguments": []}
+
+    def __init__(self, args=(), kwargs={}):
+        r"""
+        Class to build ROIs for a two-columns, ten-rows for the sleep monitor
+        (`see here <https://github.com/gilestrolab/ethoscope_hardware/tree/master/arenas/arena_10x2_shortTubes>`_).
+        """
+        #`sleep monitor tube holder arena <todo>`_
+
+        super(FSLSleepMonitorWithTargetROIBuilder, self).__init__(n_rows=10,
+                                                               n_cols=2,
+                                                               top_margin= 6.99 / 111.00,
+                                                               bottom_margin = 6.99 / 111.00,
+                                                               left_margin = -.033,
+                                                               right_margin = -.033,
+                                                               horizontal_fill = .8,
+                                                               vertical_fill= .6,
+                                                               inside_pad = 0.07,
+                                                               outside_pad = 0.0,
                                                                args=args, kwargs=kwargs
                                                                )
 

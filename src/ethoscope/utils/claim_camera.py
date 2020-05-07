@@ -1,6 +1,7 @@
 import time
 import logging
 import os
+import os.path
 import sys
 import signal
 import shutil
@@ -36,7 +37,7 @@ def create_pidfile(framerate, resolution, pidfile=pidfile):
 
         #remove_pidfile(pidfile)
             try:
-                shutil.move(pidfile, "/root/old_pidfile")
+                shutil.move(pidfile, os.path.join(os.environ["HOME"], "old_pidfile"))
             except OSError:
                 pass
 

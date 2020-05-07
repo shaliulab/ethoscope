@@ -13,8 +13,8 @@ import secrets
 
 import trace
 from ethoscope.hardware.input.cameras import OurPiCameraAsync, MovieVirtualCamera, DummyPiCameraAsync, V4L2Camera
-from ethoscope.roi_builders.target_roi_builder import OlfactionAssayROIBuilder, SleepMonitorWithTargetROIBuilder, TargetGridROIBuilder, ElectricShockAssayROIBuilder
-from ethoscope.roi_builders.fsl_roi_builder import FSLTargetROIBuilder
+from ethoscope.roi_builders.target_roi_builder import OlfactionAssayROIBuilder, FSLSleepMonitorWithTargetROIBuilder, SleepMonitorWithTargetROIBuilder, TargetGridROIBuilder, ElectricShockAssayROIBuilder
+from ethoscope.roi_builders.fsl_roi_builder import HighContrastTargetROIBuilder
 from ethoscope.roi_builders.roi_builders import  DefaultROIBuilder
 from ethoscope.core.monitor import Monitor
 from ethoscope.core.qc import QualityControl
@@ -71,7 +71,7 @@ class ControlThread(Thread):
     _evanescent = False
     _option_dict = {
         "roi_builder":{
-                "possible_classes":[SleepMonitorWithTargetROIBuilder, FSLTargetROIBuilder, DefaultROIBuilder, TargetGridROIBuilder, OlfactionAssayROIBuilder, ElectricShockAssayROIBuilder],
+                "possible_classes":[SleepMonitorWithTargetROIBuilder, FSLSleepMonitorWithTargetROIBuilder, HighContrastTargetROIBuilder, DefaultROIBuilder, TargetGridROIBuilder, OlfactionAssayROIBuilder, ElectricShockAssayROIBuilder],
             },
         "tracker":{
                 "possible_classes":[AdaptiveBGModel],
@@ -392,7 +392,7 @@ class ControlThread(Thread):
 
         if isinstance(cam, OurPiCameraAsync):
             for i,(t, frame) in enumerate(cam):
-                cv2.imwrite('/root/last_img.png', frame)
+                cv2.imwrite(os.path.join(os.environ["HOME"], 'last_img.png'), frame)
                 break
 
         logging.info(ROIBuilderClass)

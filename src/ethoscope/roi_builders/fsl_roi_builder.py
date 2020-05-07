@@ -29,7 +29,7 @@ import itertools
 from ethoscope.roi_builders.helpers import *
 from scipy.optimize import minimize
 
-class FSLTargetROIBuilder(SleepMonitorWithTargetROIBuilder):
+class HighContrastTargetROIBuilder(SleepMonitorWithTargetROIBuilder):
 
     _adaptive_med_rad = 0.05
     _expected__min_target_dist = 10 # the minimal distance between two targets, in 'target diameter'
@@ -71,7 +71,7 @@ class FSLTargetROIBuilder(SleepMonitorWithTargetROIBuilder):
         self._mint = mint
         self._maxt = maxt
 
-        super(FSLTargetROIBuilder, self).__init__(args, kwargs)
+        super(HighContrastTargetROIBuilder, self).__init__(args, kwargs)
 
     def _find_blobs(self, img, scoring_fun=None):
 
@@ -209,10 +209,10 @@ class FSLTargetROIBuilder(SleepMonitorWithTargetROIBuilder):
         return 1
 
     def _find_target_coordinates(self, img, blob_function):
-        cv2.imwrite("/root/target_dection_find_target_coordinates.png", img)
+        cv2.imwrite(os.path.join(os.environ["HOME"], "target_dection_find_target_coordinates.png"), img)
 
         map = blob_function(img)
-        cv2.imwrite("/root/target_dection_find_target_coordinates_after.png", img)
+        cv2.imwrite(os.path.join(os.environ["HOME"], "target_dection_find_target_coordinates_after.png"), img)
 
         if debug:
             thresh = cv2.threshold(map, 1, 255, cv2.THRESH_BINARY)[1]
@@ -290,8 +290,8 @@ class FSLTargetROIBuilder(SleepMonitorWithTargetROIBuilder):
 
         if np.count_nonzero(bin) == 0:
             # TODO Adapt to any number of ROIs
-            cv2.imwrite('/root/failed_roi_builder_binary.png', bin_orig)
-            cv2.imwrite('/root/failed_roi_builder_orig', orig)
+            cv2.imwrite(os.path.join(os.environ["HOME"], 'failed_roi_builder_binary.png'), bin_orig)
+            cv2.imwrite(os.path.join(os.environ["HOME"], 'failed_roi_builder_orig'), orig)
             
             raise EthoscopeException('I could not find 20 ROIs. Please try again or change the lighting conditions', np.stack((bin_orig, cv2.cvtColor(orig,cv2.COLOR_BGR2GRAY)), axis=1))
 
@@ -303,7 +303,7 @@ class FSLTargetROIBuilder(SleepMonitorWithTargetROIBuilder):
         grey = cv2.cvtColor(grey, cv2.COLOR_GRAY2BGR)
 
         self._orig = grey
-        cv2.imwrite("/root/accum_rois_from_img.png", img)
+        cv2.imwrite(os.path.join(os.environ["HOME"], "accum_rois_from_img.png"), img)
 
         # rotate the image so ROIs are horizontal
         rotated, M = self._rotate_img(img)
@@ -313,7 +313,7 @@ class FSLTargetROIBuilder(SleepMonitorWithTargetROIBuilder):
             camera.set_roi_builder()
             time.sleep(5)
             accum = self.fetch_frames(camera, mode="roi_builder")
-            cv2.imwrite("/root/accum.png", accum)
+            cv2.imwrite(os.path.join(os.environ["HOME"], "accum.png"), accum)
             img = accum
 
         rotated = cv2.warpAffine(grey, M, grey.shape[:2][::-1], flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE)
@@ -634,7 +634,7 @@ class FSLTargetROIBuilder(SleepMonitorWithTargetROIBuilder):
         if self._sorted_src_pts is None:
             logging.info("CALLING FIND_ARENA")
             logging.warning(img.shape)
-            cv2.imwrite("/root/target_detection_find_arena.png", grey)
+            cv2.imwrite(os.path.join(os.environ["HOME"], "target_detection_find_arena.png"), grey)
             sorted_src_pts, _ = self._find_arena(grey)
 
         # if is not None, the arena was already segmented

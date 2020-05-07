@@ -67,11 +67,8 @@ class BaseROIBuilder(DescribedObject):
                 accum.append(frame)
 
             accum = np.median(np.array(accum),0).astype(np.uint8)
-            
-        logging.info('OS.ENVIRON')
-        logging.info(os.environ)
-            
-        output_path = os.path.join('/root', f"{mode}.png")
+
+        output_path = os.path.join(os.environ["HOME"], f"{mode}_input.png")
         logging.info(f"Saving {mode} accum to {output_path}")
         cv2.imwrite(output_path, accum)
         
@@ -90,7 +87,7 @@ class BaseROIBuilder(DescribedObject):
         accum = self.fetch_frames(input, mode="target_detection")     
 
         try:
-            if self.__class__.__name__ == "FSLTargetROIBuilder":
+            if self.__class__.__name__ == "HighContrastTargetRoiBuilder":
                 img, M, rois = self._rois_from_img(accum, camera=input)
             else:
                 rois = self._rois_from_img(accum)
@@ -99,8 +96,8 @@ class BaseROIBuilder(DescribedObject):
             roi_build_with_dots = img.copy()
             for pt in self._sorted_src_pts:
                 roi_build_with_dots = cv2.circle(roi_build_with_dots, tuple(pt), 5, (0,255,0), -1)
-            
-            cv2.imwrite("/root/roi_build_with_dots.png", roi_build_with_dots)
+        
+            cv2.imwrite(os.path.join(os.environ["HOME"], "roi_build_with_dots.png"), roi_build_with_dots)
 
         except Exception as e:
             if not isinstance(input, np.ndarray):

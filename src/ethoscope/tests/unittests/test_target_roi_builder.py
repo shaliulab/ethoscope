@@ -9,8 +9,9 @@ import time
 import sys
 from ethoscope.utils.debug import EthoscopeException
 
-from ethoscope.roi_builders.target_roi_builder import SleepMonitorWithTargetROIBuilder, TargetGridROIBuilder
-from ethoscope.roi_builders.fsl_roi_builder import FSLTargetROIBuilder
+from ethoscope.roi_builders.target_roi_builder import FSLSleepMonitorWithTargetROIBuilder, TargetGridROIBuilder
+from ethoscope.roi_builders.fsl_roi_builder import HighContrastTargetROIBuilder
+from ethoscope.roi_builders.helpers import place_dots
 print(os.getcwd())
 
 try:
@@ -27,8 +28,8 @@ LOG_DIR = "./test_logs/"
 
 class TestTargetROIBuilder(unittest.TestCase):
 
-    roi_builder = SleepMonitorWithTargetROIBuilder()
-    
+    roi_builder = FSLSleepMonitorWithTargetROIBuilder()
+
 
     def setUp(self):
 
@@ -38,8 +39,14 @@ class TestTargetROIBuilder(unittest.TestCase):
 
     def _draw(self,img, rois, arena=None):
         for r in rois:
-            cv2.drawContours(img,r.polygon,-1, (255,255,0), 2, LINE_AA)
+            cv2.drawContours(img,[r.polygon.reshape((4,2))],-1, (255,255,0), 2, LINE_AA)
 
+        # print(self.roi_builder._sorted_src_pts)
+        # print("Wrong coordinates")
+        # print(img.shape)
+
+        img = place_dots(img, self.roi_builder._sorted_src_pts)
+        cv2.imwrite(os.path.join(os.environ["HOME"], "test_result.png"), img)
 
         if arena is not None:
             pass
@@ -69,15 +76,15 @@ class TestTargetROIBuilder(unittest.TestCase):
 
             img = cv2.imread(self._path)
             id = self._path[::-1].split("/")[0][::-1].split(".")[0]
- 
+
 
         try:
-            if self.roi_builder.__class__.__name__ == "FSLTargetROIBuilder":
+            if self.roi_builder.__class__.__name__ == "HighContrastTargetRoiBuilder":
                 img, M, rois = self.roi_builder.build(img)
             else:
                 rois = self.roi_builder.build(img)
 
-            
+
         except EthoscopeException:
             cv2.imwrite(f'/tmp/fail_rois_{self.message}.png',img)
             return
@@ -90,19 +97,21 @@ class TestTargetROIBuilder(unittest.TestCase):
 
 
     def _test_one_img(self,path, out):
-        
+
         img = cv2.imread(path)
-        
+
         rois = self.roi_builder.build(img)
         angle = self.roi_builder._angle
         M = self.roi_builder._M
         arena = self.roi_builder._arena
-        
+
         img = cv2.warpAffine(img, self.roi_builder._M, img.shape[:2][::-1], flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE)
 
         pickle_file = os.path.join(LOG_DIR, self.class_name + "_rois.pickle")
         with open(pickle_file, "wb") as fh:
             pickle.dump(rois, fh)
+
+        print(rois)
         self._draw(img, rois, arena)
         if out is None:
             out = os.path.join(LOG_DIR, f'{self.__class__.__name__}_{now}_annot.png')
@@ -120,7 +129,7 @@ class TestTargetROIBuilder(unittest.TestCase):
 
 class TestFSLROIBuilder(TestTargetROIBuilder):
 
-    roi_builder = FSLTargetROIBuilder()
+    roi_builder = FSLSleepMonitorWithTargetROIBuilder()
 
 
 
@@ -132,12 +141,12 @@ if __name__ == '__main__':
     args = vars(ap.parse_args())
     print(args)
     message = args['message']
-    TestFSLROIBuilder.message = message
-    test_instance = TestFSLROIBuilder()
-    if args['path'] is not None:
-        test_instance._path = args['path']
-    test_instance.setUp()
-    test_instance._test_live()
+    #TestFSLROIBuilder.message = message
+    #test_instance = TestFSLROIBuilder()
+    #if args['path'] is not None:
+    #    test_instance._path = args['path']
+    #test_instance.setUp()
+    #test_instance._test_live()
 
     TestTargetROIBuilder.message = message
     test_instance = TestTargetROIBuilder()
@@ -147,5 +156,5 @@ if __name__ == '__main__':
     test_instance._test_live()
 
 
-    
+
 
