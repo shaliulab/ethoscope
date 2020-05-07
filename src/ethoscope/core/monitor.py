@@ -44,23 +44,23 @@ class Monitor(object):
         self._last_positions = {}
         self._last_time_stamp = 0
         self._is_running = False
-        
+
         try:
             self._verbose = kwargs.pop("verbose")
         except KeyError:
             self._verbose = False
-        
+
         try:
             self._downsample = kwargs.pop("downsample")
         except KeyError:
-            self._downsample = 1          
-        
+            self._downsample = 1
+
 
         if self._verbose:
             try:
                 from tqdm import tqdm
-                #self._monitor_iterator = enumerate(tqdm(self._camera))
-                self._monitor_iterator = enumerate(self._camera)
+                self._monitor_iterator = enumerate(tqdm(self._camera))
+                #self._monitor_iterator = enumerate(self._camera)
             except ImportError:
                 self._monitor_iterator = enumerate(self._camera)
 
@@ -139,7 +139,7 @@ class Monitor(object):
 
                 if i % self._downsample != 0:
                     continue
-                
+
 
                 if M is not None:
                     logging.debug('Rotating input frame')

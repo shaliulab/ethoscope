@@ -401,7 +401,7 @@ class ControlThread(Thread):
         roi_builder = ROIBuilderClass(args=(), kwargs=roi_builder_kwargs)
   
         try:
-            if roi_builder.__class__.__name__ == "FSLTargetROIBuilder":
+            if roi_builder.__class__.__name__ == "HighContrastTargetROIBuilder":
                 img, M, rois = roi_builder.build(cam)
             else:
                 rois = roi_builder.build(cam)
@@ -476,7 +476,8 @@ class ControlThread(Thread):
 
             else:
                 cam, rw, rois, M, TrackerClass, tracker_kwargs, hardware_connection, StimulatorClass, stimulator_kwargs = self._set_tracking_from_scratch()
-                
+                        # return  (cam, rw, rois, M, TrackerClass, tracker_kwargs,
+                        # hardware_connection, StimulatorClass, stimulator_kwargs)
             
             with rw as result_writer:
                 if cam.canbepickled:
