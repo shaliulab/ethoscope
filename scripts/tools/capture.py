@@ -19,10 +19,11 @@ except ImportError:
 suffix = ".png"
 temp = tempfile.NamedTemporaryFile(prefix = prefix, suffix=".png", delete=False)
 
-with PiCamera() as capture:
+with PiCamera(framerate=12, resolution=(1280,960)) as capture:
     capture.resolution = (1024, 768)
-    capture = configure_camera(capture, (1280, 960), 12)
+    capture = configure_camera(capture, mode = "target_detection")
 
+    time.sleep(2)
 
     logging.warning(f'camera framerate: {capture.framerate}')
     logging.warning(f'camera resolution: {capture.resolution}')
@@ -30,8 +31,8 @@ with PiCamera() as capture:
     logging.warning(f'camera shutter_speed: {capture.shutter_speed}')
     logging.warning(f'camera exposure_speed: {capture.exposure_speed}')
     logging.warning(f'camera awb_gains: {capture.awb_gains}')
-    logging.warning(f'camera analog_gain: {float(camera.analog_gain)}')
-    logging.warning(f'camera digital_gain: {float(camera.digital_gain)}')
+    logging.warning(f'camera analog_gain: {float(capture.analog_gain)}')
+    logging.warning(f'camera digital_gain: {float(capture.digital_gain)}')
 
 
     raw_capture = PiRGBArray(capture, size=capture.resolution)

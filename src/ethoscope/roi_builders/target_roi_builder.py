@@ -370,9 +370,8 @@ class TargetGridROIBuilder(BaseROIBuilder):
         self._img = img
 
         try:
-            # sorted_src_pts = self._find_target_coordinates(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY), self._find_blobs)
-        # except EthoscopeException as e:
-            # raise e
+            sorted_src_pts = self._find_target_coordinates(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY), self._find_blobs)
+        except EthoscopeException as e:
             logging.warning("Fall back to find_blobs_new")
             sorted_src_pts = self._find_target_coordinates(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY), self._find_blobs_new)
         # sorted_src_pts = self._find_target_coordinates(img)
