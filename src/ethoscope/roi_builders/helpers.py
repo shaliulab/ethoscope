@@ -138,15 +138,15 @@ def refine_contour(cnt, grey, rotate=True, move=True):
         final_contour = cnt_rot
         max_pixel = 0
 
-    if max_pixel != 0:
-        print("--")
-        print("Max value")
-        print(max_val)
-        print("Original contour")
-        print(cnt_rot)
-        print("Moved contour")
-        print(final_contour)
-        print("--")
+    # if max_pixel != 0:
+    #     print("--")
+    #     print("Max value")
+    #     print(max_val)
+    #     print("Original contour")
+    #     print(cnt_rot)
+    #     print("Moved contour")
+    #     print(final_contour)
+    #     print("--")
 
     return final_contour, grey, max_angle, max_pixel
 
@@ -171,3 +171,28 @@ def place_dots(grey, pts, color=255):
         pt = tuple([int(e) for e in pt])
         cv2.circle(grey, pt, 2, color, -1)
     return grey
+
+
+def pull_contour_h(cnt, point, side="left"):
+    max_dist = -10 
+    print("--")
+    print(cnt)
+    print(point)
+    sign = -1 if side == "left" else + 1
+    funcs = {"left": np.max, "right": np.min}
+    
+    distances = np.array([point[0] - corner[0] for corner in cnt])
+    
+
+    print(distances)
+    dist = funcs[side](distances)
+    print(dist)
+    
+    diff = int(dist - sign*max_dist)
+    
+    print(diff)
+    print("--")
+    
+    cnt = np.array([[corner[0] + diff, corner[1]] for corner in cnt])
+    print(cnt)
+    return cnt

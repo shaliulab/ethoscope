@@ -401,13 +401,21 @@ class TargetGridROIBuilder(BaseROIBuilder):
 
         shift = np.dot(wrap_mat, [1,1,0]) - sorted_src_pts[1] # point 1 is the ref, at 0,0
         rois = []
+        side = "left"
+        point = self._sorted_src_pts[2]
+
         for i,r in enumerate(rectangles):
+            if i > 9:
+                side = "right"
+                point = self._sorted_src_pts[1]
+
             r = np.append(r, np.zeros((4,1)), axis=1)
             mapped_rectangle = np.dot(wrap_mat, r.T).T
             mapped_rectangle -= shift
             ct = mapped_rectangle.astype(np.int32)
             # logging.warning(i)
             ct, _, _, _ = refine_contour(ct, img, rotate=False)
+            ct = pull_contour_h(ct, point, side)
             cv2.drawContours(img, [ct.reshape((1,4,2))], -1, (255,0,0),1,LINE_AA)
             rois.append(ROI(ct, idx=i+1))
 
