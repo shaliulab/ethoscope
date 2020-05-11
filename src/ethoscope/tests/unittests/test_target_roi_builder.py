@@ -28,11 +28,13 @@ LOG_DIR = "./test_logs/"
 
 class TestTargetROIBuilder(unittest.TestCase):
 
-    roi_builder = SleepMonitorWithTargetROIBuilder()
 
+    roi_builder_class = SleepMonitorWithTargetROIBuilder
+    target_coordinates_file='/etc/target_coordinates.conf'
 
     def setUp(self):
 
+        self.roi_builder = self.roi_builder_class()
         self.class_name = self.__class__.__name__
         print(self.class_name)
 
@@ -129,7 +131,13 @@ class TestTargetROIBuilder(unittest.TestCase):
 
 class TestFSLROIBuilder(TestTargetROIBuilder):
 
-    roi_builder = FSLSleepMonitorWithTargetROIBuilder()
+    roi_builder_class = FSLSleepMonitorWithTargetROIBuilder
+
+    def setUp(self):
+        self.roi_builder = self.roi_builder_class(kwargs={"target_coordinates_file": self.target_coordinates_file})
+        self.class_name = self.__class__.__name__
+        print(self.class_name)
+
 
 
 
@@ -138,11 +146,13 @@ if __name__ == '__main__':
     ap = argparse.ArgumentParser()
     ap.add_argument('-m', '--message', help='Message is written to the output file as a suffix')
     ap.add_argument('-p', '--path', help='Path to image to test the ROI Builder against')
+    ap.add_argument('-target_coordinates', help='Path to file with coordinates of 3 targets in frame', required=False, default='/etc/target_coordinates.conf')
     args = vars(ap.parse_args())
     print(args)
     message = args['message']
     TestFSLROIBuilder.message = message
     test_instance = TestFSLROIBuilder()
+    TestFSLROIBuilder.target_coordinates_file=args["target_coordinates"]
     if args['path'] is not None:
        test_instance._path = args['path']
     test_instance.setUp()
