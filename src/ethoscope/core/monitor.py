@@ -52,7 +52,10 @@ class Monitor(object):
 
         try:
             self._downsample = kwargs.pop("downsample")
+            logging.info(f'Downsample set to {self._downsample}')
+
         except KeyError:
+            logging.warning('No downsample is defined. I will use 1 i.e use all frames')
             self._downsample = 1
 
 
