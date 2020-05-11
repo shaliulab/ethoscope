@@ -137,29 +137,29 @@ class PiCameraProcess(multiprocessing.Process):
 
 
                     camera.start_recording(output, bitrate=self._bitrate)
-                    camera.wait_recording(10)
+                    camera.wait_recording(60)
                     camera.stop_recording()
 
-                    camera = configure_camera(camera, mode = "roi_builder")
-                    filename, extension = self._make_video_name(i).split(".")
-                    filename = filename + "_roi_builder"
-                    output = filename + "." + extension
-                    time.sleep(5)
-                    logging.info(f"Saving video to {output}")
-                    camera.start_recording(output, bitrate=self._bitrate)
-                    logging.warning(f'camera framerate: {camera.framerate}')
-                    logging.warning(f'camera resolution: {camera.resolution}')
-                    logging.warning(f'camera exposure_mode: {camera.exposure_mode}')
-                    logging.warning(f'camera shutter_speed: {camera.shutter_speed}')
-                    logging.warning(f'camera exposure_speed: {camera.exposure_speed}')
-                    logging.warning(f'camera awb_gains: {camera.awb_gains}')
-                    logging.warning(f'camera analog_gain: {float(camera.analog_gain)}')
-                    logging.warning(f'camera digital_gain: {float(camera.digital_gain)}')
-                    logging.warning(f'camera iso: {float(camera.iso)}')
+                    # camera = configure_camera(camera, mode = "roi_builder")
+                    # filename, extension = self._make_video_name(i).split(".")
+                    # filename = filename + "_roi_builder"
+                    # output = filename + "." + extension
+                    # time.sleep(5)
+                    # logging.info(f"Saving video to {output}")
+                    # camera.start_recording(output, bitrate=self._bitrate)
+                    # logging.warning(f'camera framerate: {camera.framerate}')
+                    # logging.warning(f'camera resolution: {camera.resolution}')
+                    # logging.warning(f'camera exposure_mode: {camera.exposure_mode}')
+                    # logging.warning(f'camera shutter_speed: {camera.shutter_speed}')
+                    # logging.warning(f'camera exposure_speed: {camera.exposure_speed}')
+                    # logging.warning(f'camera awb_gains: {camera.awb_gains}')
+                    # logging.warning(f'camera analog_gain: {float(camera.analog_gain)}')
+                    # logging.warning(f'camera digital_gain: {float(camera.digital_gain)}')
+                    # logging.warning(f'camera iso: {float(camera.iso)}')
 
 
-                    camera.wait_recording(10)
-                    camera.stop_recording()
+                    # camera.wait_recording(10)
+                    # camera.stop_recording()
 
                     camera = configure_camera(camera, mode = "tracker")
                     time.sleep(5)
