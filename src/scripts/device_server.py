@@ -390,11 +390,11 @@ if __name__ == '__main__':
     ap.add_argument("-i", "--input", help="Input mp4 file", type=str)
     ap.add_argument("-o", "--output", help="Resulting sqlite3 db file", type=str)
     ap.add_argument("--machine_id", type=str, required=False)
-    ap.add_argument("--name", type=str, default="ETHOSCOPE_CV1")
+    ap.add_argument("--name", type=str, default=None)
     ap.add_argument("-r", "--roi_builder", type=str, default="FSLSleepMonitorWithTargetROIBuilder")
     ap.add_argument("-t", "--target_coordinates_file", type=str, required=False, default = "/etc/target_coordinates.conf")
     ap.add_argument("-d", "--downsample", type=int, default=1)
-    ap.add_argument("-a", "--address", type=str, default="192.169.123.9")
+    ap.add_argument("-a", "--address", type=str, default=None)
 
     ARGS = vars(ap.parse_args())
 
@@ -406,8 +406,19 @@ if __name__ == '__main__':
 
     DEBUG = ARGS["debug"]
     NODE = ARGS["node"]
-
     ETHOSCOPE_DIR = "/ethoscope_data/results" or ARGS["results_dir"]
+    VERSION = get_git_version()
+    version = VERSION
+    DOWNSAMPLE = ARGS["downsample"]
+    ADDRESS = ARGS["address"]
+
+    if ARGS["name"] is None:
+        NAME = get_machine_name()
+    else:
+        NAME = ARGS["name"]
+
+    machine_name = NAME
+ 
 
     if ARGS["machine_id"] is None:
         # get machine id form filename assuming it is in the third
@@ -417,36 +428,8 @@ if __name__ == '__main__':
     else:
         MACHINE_ID = ARGS["machine_id"]
 
-
-
-    NAME = ARGS["name"]
-    DOWNSAMPLE = ARGS["downsample"]
-
-    VERSION = get_git_version()
-
-    if ARGS["output"] is None:
-        DATE = ARGS["input"].split("/")[::-1][1]
-        OUTPUT = os.path.join(ETHOSCOPE_DIR, MACHINE_ID, NAME, DATE, DATE + "_" + MACHINE_ID + ".db")
-    else:
-        OUTPUT = ARGS["output"]
-
-    logging.info(OUTPUT)
-
     machine_id = MACHINE_ID
-    version = VERSION
-    machine_name = NAME
-    ADDRESS = ARGS["address"]
 
-
-
-    data = {
-        "camera":
-            {"name": "MovieVirtualCamera", "arguments": {"path": ARGS["input"]}},
-        "result_writer":
-           {"name": "SQLiteResultWriter", "arguments": {"path": OUTPUT, "take_frame_shots": False}},
-        "roi_builder":
-        {"name": ARGS["roi_builder"], "arguments": {"target_coordinates_file": ARGS["target_coordinates_file"]}},
-    }
 
 
     if ARGS["json"]:
@@ -455,9 +438,6 @@ if __name__ == '__main__':
     else:
         json_data = {}
 
-    print(json_data)
-    print(data)
-    json_data.update(data)
 
     if ARGS["record_video"]:
         recording_json_data = json_data
@@ -468,11 +448,32 @@ if __name__ == '__main__':
                                               ethoscope_dir=ETHOSCOPE_DIR,
                                               data=recording_json_data)
 
-    else:
-
+    elif ARGS["run"]:
+    
+    
+        if ARGS["output"] is None:
+            DATE = ARGS["input"].split("/")[::-1][1]
+            OUTPUT = os.path.join(ETHOSCOPE_DIR, MACHINE_ID, NAME, DATE, DATE + "_" + MACHINE_ID + ".db")
+        else:
+            OUTPUT = ARGS["output"]
+    
+        logging.info(OUTPUT)
+    
+    
+        data = {
+            "camera":
+                {"name": "MovieVirtualCamera", "arguments": {"path": ARGS["input"]}},
+            "result_writer":
+               {"name": "SQLiteResultWriter", "arguments": {"path": OUTPUT, "take_frame_shots": False}},
+            "roi_builder":
+            {"name": ARGS["roi_builder"], "arguments": {"target_coordinates_file": ARGS["target_coordinates_file"]}},
+        }
+    
+        json_data.update(data)
         tracking_json_data = json_data
-        control = ControlThread(MACHINE_ID, NAME, VERSION, ethoscope_dir=ETHOSCOPE_DIR, data=tracking_json_data, verbose=True, downsample=DOWNSAMPLE)
 
+    control = ControlThread(MACHINE_ID, NAME, VERSION, ethoscope_dir=ETHOSCOPE_DIR, data=tracking_json_data, verbose=True, downsample=DOWNSAMPLE)
+    
     if DEBUG:
         logging.basicConfig(level=logging.DEBUG)
         logging.info("Logging using DEBUG SETTINGS")
@@ -518,6 +519,9 @@ if __name__ == '__main__':
                 #this returns '127.0.1.1' and it is useless
 
 
+        logging.info(f"UID {uid}")
+        logging.info(f"Address {address}")
+        logging.info(f"PORT {PORT}")
         serviceInfo = ServiceInfo("_ethoscope._tcp.local.",
                         uid + "._ethoscope._tcp.local.",
                         address = socket.inet_aton(address),
