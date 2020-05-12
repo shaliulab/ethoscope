@@ -1,6 +1,7 @@
 __author__ = 'luis'
 
 import logging
+logging.basicConfig(level=logging.INFO)
 import traceback
 from optparse import OptionParser
 import subprocess
@@ -25,16 +26,16 @@ def main():
         # interfaces will have different addresses). The python module zeroconf fails if I don't
         # provide one, and the way it gets supplied doesn't appear to be IPv6 compatible. I'll put
         # in whatever I get from "gethostbyname" but not trust that in the code on the node side.
-    
-        
+
+
         # we include the machine-id together with the hostname to make sure each device is really unique
         # moreover, we will burn the ETHOSCOPE_000 img with a non existing /etc/machine-id file
         # to make sure each burned image will get a unique machine-id at the first boot
-        
+
         hostname = socket.gethostname()
         uid = "%s-%s" % ( hostname, get_machine_id() )
-        
-        
+
+
         logging.warning("Waiting for a network connection")
         address = False
         while address is False:
@@ -46,8 +47,8 @@ def main():
                 pass
                 #address = socket.gethostbyname(hostname)
                 #this returns '127.0.1.1' and it is useless
-            
-            
+
+        logging.info(f"Registering service at PORT {PORT}")
         serviceInfo = ServiceInfo("_ethoscope._tcp.local.",
                         uid + "._ethoscope._tcp.local.",
                         address = socket.inet_aton(address),
@@ -96,3 +97,5 @@ def close(exit_status=0):
     os._exit(exit_status)
 
 
+
+main()
