@@ -2,7 +2,7 @@ __author__ = 'luis'
 
 import logging
 import traceback
-from optparse import OptionParser
+import argparse
 from ethoscope.web_utils.control_thread import ControlThread
 from ethoscope.web_utils.helpers import *
 from ethoscope.web_utils.record import ControlThreadVideoRecording
@@ -49,10 +49,10 @@ def error_decorator(func):
 
 @api.route('/upload/<id>', method='POST')
 def do_upload(id):
-    
+
     if id != machine_id:
         raise WrongMachineID
-    
+
     upload = bottle.request.files.get('upload')
     name, ext = os.path.splitext(upload.filename)
 
@@ -123,21 +123,21 @@ def update_machine_info(id):
     '''
     if id != machine_id:
         raise WrongMachineID
-        
+
     data = bottle.request.json
     update_machine_json_data.update(data['machine_options']['arguments'])
-    
+
     if update_machine_json_data['node_ip'] != get_machine_info(id)['etc_node_ip']:
         set_etc_hostname(update_machine_json_data['node_ip'])
-    
+
     if int(update_machine_json_data['etho_number']) != int(get_machine_info(id)['machine-number']):
         set_machine_name(update_machine_json_data['etho_number'])
         set_machine_id(update_machine_json_data['etho_number'])
-    
+
     set_WIFI(ssid=update_machine_json_data['ESSID'], wpakey=update_machine_json_data['Key'])
 
     return get_machine_info(id)
-    
+
 
 @api.post('/controls/<id>/<action>')
 @error_decorator
@@ -150,7 +150,7 @@ def controls(id, action):
     if action == 'start':
         data = bottle.request.json
         tracking_json_data.update(data)
-        
+
         control = None
         control = ControlThread(machine_id=machine_id,
                                 name=machine_name,
@@ -162,7 +162,7 @@ def controls(id, action):
         return info(id)
 
     elif action in ['stop', 'close', 'poweroff', 'reboot', 'restart']:
-        
+
         if control.info['status'] in ['running', 'recording', 'streaming'] :
             logging.info("Stopping monitor")
             control.stop()
@@ -204,7 +204,7 @@ def controls(id, action):
 
         control.start()
         return info(id)
-        
+
     else:
         raise Exception("No such action: %s" % action)
 
@@ -239,7 +239,7 @@ def get_machine_info(id):
 
     machine_info = {}
     machine_info['node_ip'] = bottle.request.environ.get('HTTP_X_FORWARDED_FOR') or bottle.request.environ.get('REMOTE_ADDR')
-    
+
     try:
         machine_info['etc_node_ip'] = get_etc_hostnames()[NODE]
     except:
@@ -247,30 +247,30 @@ def get_machine_info(id):
 
     machine_info['knows_node_ip'] = ( machine_info['node_ip'] == machine_info['etc_node_ip'] )
     machine_info['hostname'] = os.uname()[1]
-    
+
     machine_info['machine-name'] = get_machine_name()
-    
+
     try:
         machine_info['machine-number'] = int ( machine_info['machine-name'].split("_")[1] )
     except:
         machine_info['machine-number'] = 0
-        
-        
+
+
     machine_info['machine-id'] = get_machine_id()
     machine_info['kernel'] = os.uname()[2]
     machine_info['pi_version'] = pi_version()
     try:
         machine_info['WIFI_SSID'] = get_WIFI()['ESSID']
-    except: 
+    except:
         machine_info['WIFI_SSID'] = "not set"
-    try:    
+    try:
         machine_info['WIFI_PASSWORD'] = get_WIFI()['Key']
     except:
         machine_info['WIFI_PASSWORD'] = "not set"
-    
+
     machine_info['SD_CARD_AGE'] = get_SD_CARD_AGE()
     machine_info['partitions'] = get_partition_infos()
-    
+
     return machine_info
 
 
@@ -280,14 +280,15 @@ def info(id):
     """
     This is information that is changing in time as the machine operates, such as FPS during tracking, CPU temperature etc
     """
-    
+
     info = {}
     if machine_id != id:
+        logging.warning(f"machine_id is {machine_id} but id is {id}")
         raise WrongMachineID
-    
-    if control is not None: 
+
+    if control is not None:
         info = control.info
-        
+
     info["current_timestamp"] = bottle.time.time()
     info["CPU_temp"] = get_core_temperature()
     info["loadavg"] = get_loadavg()
@@ -301,9 +302,9 @@ def user_options(id):
     '''
     if machine_id != id:
         raise WrongMachineID
-    
-    
-        
+
+
+
     return {
         "tracking":ControlThread.user_options(),
         "recording":ControlThreadVideoRecording.user_options(),
@@ -342,6 +343,10 @@ def close(exit_status=0):
         control = None
     os._exit(exit_status)
 
+def is_port_in_use(port):
+    import socket
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        return s.connect_ex(('localhost', port)) == 0
 
 #======================================================================================================================#
 #############
@@ -371,40 +376,92 @@ if __name__ == '__main__':
     ETHOSCOPE_DIR = "/ethoscope_data/results"
     ETHOSCOPE_UPLOAD = "/ethoscope_data/upload"
 
-    parser = OptionParser()
-    parser.add_option("-r", "--run", dest="run", default=False, help="Runs tracking directly", action="store_true")
-    parser.add_option("-s", "--stop-after-run", dest="stop_after_run", default=False, help="When -r, stops immediately after. otherwise, server waits", action="store_true")
-    parser.add_option("-v", "--record-video", dest="record_video", default=False, help="Records video instead of tracking", action="store_true")
-    parser.add_option("-j", "--json", dest="json", default=None, help="A JSON config file")
-    parser.add_option("-p", "--port", dest="port", type=int, default=9000, help="port")
-    parser.add_option("-n", "--node", dest="node", default="node", help="The hostname of the computer running the node")
-    parser.add_option("-e", "--results-dir", dest="results_dir", default=ETHOSCOPE_DIR, help="Where temporary result files are stored")
-    parser.add_option("-D", "--debug", dest="debug", default=False, help="Shows all logging messages", action="store_true")
+    ap = argparse.ArgumentParser()
 
+    ap.add_argument("--run", dest="run", default=False, help="Runs tracking directly", action="store_true")
+    ap.add_argument("-s", "--stop-after-run", dest="stop_after_run", default=False, help="When -r, stops immediately after. otherwise, server waits", action="store_true")
+    ap.add_argument("-v", "--record-video", dest="record_video", default=False, help="Records video instead of tracking", action="store_true")
+    ap.add_argument("-j", "--json", dest="json", default=None, help="A JSON config file")
+    ap.add_argument("-p", "--port", dest="port", type=int, default=9000, help="port")
+    ap.add_argument("-n", "--node", dest="node", default="node", help="The hostname of the computer running the node")
+    ap.add_argument("-e", "--results-dir", dest="results_dir", default=ETHOSCOPE_DIR, help="Where temporary result files are stored")
+    ap.add_argument("-D", "--debug", dest="debug", default=False, help="Shows all logging messages", action="store_true")
 
-    (options, args) = parser.parse_args()
-    option_dict = vars(options)
+    ap.add_argument("-i", "--input", help="Input mp4 file", type=str)
+    ap.add_argument("-o", "--output", help="Resulting sqlite3 db file", type=str)
+    ap.add_argument("--machine_id", type=str, required=False)
+    ap.add_argument("--name", type=str, default="ETHOSCOPE_CV1")
+    ap.add_argument("-r", "--roi_builder", type=str, default="FSLSleepMonitorWithTargetROIBuilder")
+    ap.add_argument("-t", "--target_coordinates_file", type=str, required=False, default = "/etc/target_coordinates.conf")
+    ap.add_argument("-d", "--downsample", type=int, default=1)
+    ap.add_argument("-a", "--address", type=str, default="192.169.123.9")
 
-    PORT = option_dict["port"]
-    DEBUG = option_dict["debug"]
-    NODE = option_dict["node"]
+    ARGS = vars(ap.parse_args())
 
-    machine_id = get_machine_id()
-    machine_name = get_machine_name()
-    version = get_git_version()
+    PORT = ARGS["port"]
 
+    while is_port_in_use(PORT):
+        logging.warning(f"port {PORT} is in use. Trying port {PORT+1}")
+        PORT += 1
 
-    if option_dict["json"]:
-        with open(option_dict["json"]) as f:
-            json_data= json.loads(f.read())
+    DEBUG = ARGS["debug"]
+    NODE = ARGS["node"]
+
+    ETHOSCOPE_DIR = "/ethoscope_data/results" or ARGS["results_dir"]
+
+    if ARGS["machine_id"] is None:
+        # get machine id form filename assuming it is in the third
+        # value (0-based index 2) if we split it by underscore
+        #MACHINE_ID = ARGS["input"].split("/")[::-1][0].split("_")[3]
+        MACHINE_ID = get_machine_id()
     else:
-        data = None
+        MACHINE_ID = ARGS["machine_id"]
+
+
+
+    NAME = ARGS["name"]
+    DOWNSAMPLE = ARGS["downsample"]
+
+    VERSION = get_git_version()
+
+    if ARGS["output"] is None:
+        DATE = ARGS["input"].split("/")[::-1][1]
+        OUTPUT = os.path.join(ETHOSCOPE_DIR, MACHINE_ID, NAME, DATE, DATE + "_" + MACHINE_ID + ".db")
+    else:
+        OUTPUT = ARGS["output"]
+
+    logging.info(OUTPUT)
+
+    machine_id = MACHINE_ID
+    version = VERSION
+    machine_name = NAME
+    ADDRESS = ARGS["address"]
+
+
+
+    data = {
+        "camera":
+            {"name": "MovieVirtualCamera", "arguments": {"path": ARGS["input"]}},
+        "result_writer":
+           {"name": "SQLiteResultWriter", "arguments": {"path": OUTPUT, "take_frame_shots": False}},
+        "roi_builder":
+        {"name": ARGS["roi_builder"], "arguments": {"target_coordinates_file": ARGS["target_coordinates_file"]}},
+    }
+
+
+    if ARGS["json"]:
+        with open(ARGS["json"]) as f:
+            json_data = json.loads(f.read())
+    else:
         json_data = {}
 
-    ETHOSCOPE_DIR = option_dict["results_dir"]
+    print(json_data)
+    print(data)
+    json_data.update(data)
 
-    if option_dict["record_video"]:
+    if ARGS["record_video"]:
         recording_json_data = json_data
+
         control = ControlThreadVideoRecording(machine_id=machine_id,
                                               name=machine_name,
                                               version=version,
@@ -412,26 +469,22 @@ if __name__ == '__main__':
                                               data=recording_json_data)
 
     else:
-        tracking_json_data = json_data
-        control = ControlThread(machine_id=machine_id,
-                                name=machine_name,
-                                version=version,
-                                ethoscope_dir=ETHOSCOPE_DIR,
-                                data=tracking_json_data)
 
+        tracking_json_data = json_data
+        control = ControlThread(MACHINE_ID, NAME, VERSION, ethoscope_dir=ETHOSCOPE_DIR, data=tracking_json_data, verbose=True, downsample=DOWNSAMPLE)
 
     if DEBUG:
         logging.basicConfig(level=logging.DEBUG)
         logging.info("Logging using DEBUG SETTINGS")
 
-    if option_dict["stop_after_run"]:
+    if ARGS["stop_after_run"]:
          control.set_evanescent(True) # kill program after first run
 
-    if option_dict["run"] or control.was_interrupted:
+    if ARGS["run"] or control.was_interrupted:
         control.start()
 
 #    try:
-#        run(api, host='0.0.0.0', port=port, server='cherrypy',debug=option_dict["debug"])
+#        run(api, host='0.0.0.0', port=port, server='cherrypy',debug=ARGS["debug"])
 
     try:
         # Register the ethoscope using zeroconf so that the node knows about it.
@@ -440,28 +493,31 @@ if __name__ == '__main__':
         # provide one, and the way it gets supplied doesn't appear to be IPv6 compatible. I'll put
         # in whatever I get from "gethostbyname" but not trust that in the code on the node side.
 
-        
+
         # we include the machine-id together with the hostname to make sure each device is really unique
         # moreover, we will burn the ETHOSCOPE_000 img with a non existing /etc/machine-id file
         # to make sure each burned image will get a unique machine-id at the first boot
-        
+
         hostname = socket.gethostname()
         uid = "%s-%s" % ( hostname, get_machine_id() )
-        
+
         address = False
         logging.warning("Waiting for a network connection")
-        
+
         while address is False:
             try:
                 #address = socket.gethostbyname(hostname+".local")
-                address = socket.gethostbyname(hostname)
+                if ADDRESS is None:
+                    address = socket.gethostbyname(hostname)
+                else:
+                    address = ADDRESS
                 #this returns something like '192.168.1.4' - when both connected, ethernet IP has priority over wifi IP
             except:
                 pass
                 #address = socket.gethostbyname(hostname)
                 #this returns '127.0.1.1' and it is useless
-            
-            
+
+
         serviceInfo = ServiceInfo("_ethoscope._tcp.local.",
                         uid + "._ethoscope._tcp.local.",
                         address = socket.inet_aton(address),
@@ -503,7 +559,7 @@ if __name__ == '__main__':
         except:
             pass
         close(1)
-        
+
     finally:
         try:
             zeroconf.unregister_service(serviceInfo)
