@@ -70,3 +70,5 @@ docs/_build/
 *.mp4
 *.avi
 .syncthing*
+*.json
+**.db
