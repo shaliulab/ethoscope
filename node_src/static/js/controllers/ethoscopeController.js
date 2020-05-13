@@ -392,6 +392,7 @@ app.controller('ethoscopeController', function($scope, $http, $routeParams, $int
                 }
                 
                 $scope.device.url_img = "/device/"+ $scope.device.id  + "/last_img" + '?' + Math.floor(new Date().getTime()/1000.0);
+                $scope.device.url_img_annotated = "/device/"+ $scope.device.id  + "/last_img_annotated" + '?' + Math.floor(new Date().getTime()/1000.0);
                 $scope.device.url_stream = '/device/'+device_id+'/stream';
                 
                 //TODO: this needs to be fixed to point to local server upload!
