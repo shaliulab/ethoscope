@@ -120,48 +120,54 @@ class PiCameraProcess(multiprocessing.Process):
             logging.info("Initializing camera")
             with picamera.PiCamera(resolution = self._resolution, framerate = self._fps) as camera:
 
-                    # Prepare camera and output filename
-                    camera = configure_camera(camera, mode = "target_detection")
-                    filename, extension = self._make_video_name(i).split(".")
-                    filename = filename + "_target_detection"
-                    output = filename + "." + extension
-                    logging.info(f"Saving video to {output}")
-                    time.sleep(2)
+                # Prepare camera and output filename
+                camera = configure_camera(camera, mode = "target_detection")
+                filename, extension = self._make_video_name(i).split(".")
+                filename = filename + "_target_detection"
+                output = filename + "." + extension
+                logging.info(f"Saving video to {output}")
+                time.sleep(2)
 
-                    # Log camera status and start recording
+                # Log camera status and start recording
+                report_camera(camera)
+                camera.start_recording(output, bitrate=self._bitrate)
+
+                # Record for one minute and report the status every second
+                # This is so problems with camera settings not being stable
+                # can be easily debugged by checking the logs (journalctl)
+                j = 0
+                while j < 60:
                     report_camera(camera)
-                    camera.start_recording(output, bitrate=self._bitrate)
-
-                    # Record for one minute and report the status every second
-                    # This is so problems with camera settings not being stable
-                    # can be easily debugged by checking the logs (journalctl)
-                    j = 0
-                    while j < 60:
-                        report_camera(camera)
-                        camera.wait_recording(1)
-                        j += 1
-                        
-                    camera.stop_recording()
-        
-                    # now actually check this video
-                    # this partially replicates the functionality in
-                    # ControlThread_set_tracking_from_scratch method
-                    # generate an mp4 video file
-                    cmd = f"ffmpeg -framerate {self._fps} -i {output} -c copy {output}.mp4"
-                    cmd = cmd.split(" ")
-                    subprocess.call(cmd)
-        
-                    # find the dots on this video
-                    cam = MovieVirtualCamera(path = f"{outut}.mp4")
-                    roi_builder = FSLSleepMonitorWithTargetROIBuilder(args=(), kwargs={})
-                    try:
-                        rois = roi_builder.build(cam)
-                        M = None
-                        
-                    except EthoscopeException as e:
-                        cam._close()
-                        raise e
+                    camera.wait_recording(1)
+                    j += 1
                     
+                camera.stop_recording()
+    
+                # now actually check this video
+                # this partially replicates the functionality in
+                # ControlThread_set_tracking_from_scratch method
+                # generate an mp4 video file
+                cmd = f"ffmpeg -framerate {self._fps} -i {output} -c copy {output}.mp4"
+                cmd = cmd.split(" ")
+                subprocess.call(cmd)
+    
+                # find the dots on this video
+                cam = MovieVirtualCamera(path = f"{outut}.mp4")
+                roi_builder = FSLSleepMonitorWithTargetROIBuilder(args=(), kwargs={})
+                try:
+                    rois = roi_builder.build(cam)
+                    M = None
+                    
+                except EthoscopeException as e:
+                    cam._close()
+                    raise e
+
+                # TODO save the result in a way that the offline analysis
+                # can easily make use of it
+
+        except Exception as e:
+            logging.error("Error on starting video recording process:" + traceback.format_exc())
+
 
     def run(self):
         import picamera
