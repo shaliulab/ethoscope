@@ -117,8 +117,11 @@ class PiCameraProcess(multiprocessing.Process):
         
         # to analyzs the same frames offline
         from ethoscope.hardware.input.cameras import MovieVirtualCamera
-
         from ethoscope.roi_builders.target_roi_builder import FSLSleepMonitorWithTargetROIBuilder
+        from ethoscope.drawers.drawers import DefaultDrawer
+        from ethoscope.core.tracking_unit import TrackingUnit
+        from ethoscope.trackers.adaptive_bg_tracker import AdaptiveBGModel as tracker_class
+
         i = 0
         try:
             # Log camera status and take shot
@@ -126,8 +129,11 @@ class PiCameraProcess(multiprocessing.Process):
             camera = configure_camera(camera, mode = "target_detection")
             n = 0
             roi_builder = FSLSleepMonitorWithTargetROIBuilder()
+            drawer = DefaultDrawer()
+
             target_coord_file = self._video_prefix + "targets.pickle"
             rois_file = self._video_prefix + "rois.pickle"
+            
 
             while n < 5:
                 try:
@@ -137,6 +143,16 @@ class PiCameraProcess(multiprocessing.Process):
                     time.sleep(1)
                     img = cv2.imread(target_detection_path.format(n))
                     rois = roi_builder.build(img)
+
+                    logging.info("Annotating frame for human supervision")
+                    unit_trackers = [TrackingUnit(tracker_class, r, None) for r in rois]
+                    annotated = drawer.draw(img, tracking_units=unit_trackers, positions=None)
+                    tmp_dir, last_img_file = self._img_path.split("/")
+                    annotated_path = os.path.join(tmp_dir, "last_img_annotated.png")
+                    logging.info(f"Saving annotated frame to {annotated_path}")
+                    cv2.imwrite(annotated_path, annotated)
+
+                    logging.info("Saving pickle files")
                     with open(target_coord_file, "wb") as fh:
                         pickle.dump(roi_builder._sorted_src_pts, fh)
                     with open(rois_file, "wb") as fh:
