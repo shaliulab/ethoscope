@@ -126,14 +126,17 @@ class Sensor(Thread):
                 raise ScanException("Could not parse Json object")
         
         except urllib.error.HTTPError as e:
+            logging.error(f"HTTPError trying to access url {url}")
             raise ScanException("Error" + str(e.code))
             #return e
         
         except urllib.error.URLError as e:
+            logging.error(f"URLError trying to access url {url}")
             raise ScanException("Error" + str(e.reason))
             #return e
         
         except Exception as e:
+            logging.error(f"Exception trying to acces url {url}")
             raise ScanException("Unexpected error" + str(e))
 
     def _reset_info(self):
@@ -384,10 +387,12 @@ class Ethoscope(Thread):
                 raise ScanException("Could not parse Json object")
         
         except urllib.error.HTTPError as e:
+            logging.error(f"HTTPError trying to access url {url}")
             raise ScanException("Error" + str(e.code))
             #return e
         
         except urllib.error.URLError as e:
+            logging.error(f"URLError trying to access url {url}")
             raise ScanException("Error" + str(e.reason))
             #return e
         
@@ -432,9 +437,15 @@ class Ethoscope(Thread):
         except ScanException:
             self._reset_info()
 
-            if 'run_id' in self._info['experimental_info']:
-                run_id = self._info['experimental_info']['run_id']
-                self._edb.flagProblem( run_id = run_id, message = "unreached" ) #ethoscope went offline while running
+            try:
+                if 'run_id' in self._info['experimental_info']:
+                    run_id = self._info['experimental_info']['run_id']
+                    self._edb.flagProblem( run_id = run_id, message = "unreached" ) #ethoscope went offline while running
+
+            except Exception as e:
+                logging.warning(e)
+                logging.warning(traceback.print_exc())
+                pass
 
             return
 
@@ -460,30 +471,34 @@ class Ethoscope(Thread):
             user_name = ""
             location = ""
 
-        if 'run_id' in self._info['experimental_info']:
-            run_id = self._info['experimental_info']['run_id']
-            
-            #TODO
-            user_uid = "" 
-            send_alerts = True
+        try:
+            if 'run_id' in self._info['experimental_info']:
+                run_id = self._info['experimental_info']['run_id']
+                
+                #TODO
+                user_uid = "" 
+                send_alerts = True
 
-            db_file_name = self._info['backup_path']
-            
-            if previous_status == 'stopped'      and new_status == 'initialising': pass #started tracking, looking for targets, no need to log this step
-            if previous_status == 'initialising' and new_status == 'running': self._edb.addRun( run_id = run_id, experiment_type = "tracking", ethoscope_name = self._info['name'], ethoscope_id = self._id, username = user_name, user_id = user_uid, location = location, alert = send_alerts, comments = "", experimental_data = db_file_name ) #tracking started succesfully
-            if previous_status == 'initialising' and new_status == 'stopping': self._edb.flagProblem( run_id = run_id, message = "self-stopped" )
-            if previous_status == 'running'      and new_status == 'stopped': self._edb.stopRun( run_id = run_id ) #ethoscope manually stopped
-            #not sure the unreach ones actually ever happen
-            if previous_status == 'running'      and new_status == 'unreached': self._edb.updateEthoscopes(ethoscope_id = self._id, status="unreached")
-            if previous_status == 'stopped'      and new_status == 'unreached': self._edb.updateEthoscopes(ethoscope_id = self._id, status="offline")
+                db_file_name = self._info['backup_path']
+                
+                if previous_status == 'stopped'      and new_status == 'initialising': pass #started tracking, looking for targets, no need to log this step
+                if previous_status == 'initialising' and new_status == 'running': self._edb.addRun( run_id = run_id, experiment_type = "tracking", ethoscope_name = self._info['name'], ethoscope_id = self._id, username = user_name, user_id = user_uid, location = location, alert = send_alerts, comments = "", experimental_data = db_file_name ) #tracking started succesfully
+                if previous_status == 'initialising' and new_status == 'stopping': self._edb.flagProblem( run_id = run_id, message = "self-stopped" )
+                if previous_status == 'running'      and new_status == 'stopped': self._edb.stopRun( run_id = run_id ) #ethoscope manually stopped
+                #not sure the unreach ones actually ever happen
+                if previous_status == 'running'      and new_status == 'unreached': self._edb.updateEthoscopes(ethoscope_id = self._id, status="unreached")
+                if previous_status == 'stopped'      and new_status == 'unreached': self._edb.updateEthoscopes(ethoscope_id = self._id, status="offline")
 
-            
-            #if previous_status == 'running'      and new_status == 'unreached': self._edb.flagProblem( run_id = run_id, message = "unreached" ) #ethoscope went offline during tracking!
+                
+                #if previous_status == 'running'      and new_status == 'unreached': self._edb.flagProblem( run_id = run_id, message = "unreached" ) #ethoscope went offline during tracking!
 
 
-        # update the record on the ethoscope table
-        if new_status != previous_status and previous_status != "offline":
-            self._edb.updateEthoscopes(ethoscope_id = self._id, status=new_status)
+            # update the record on the ethoscope table
+            if new_status != previous_status and previous_status != "offline":
+                self._edb.updateEthoscopes(ethoscope_id = self._id, status=new_status)
+
+        except KeyError as e:
+            pass
 
     def _make_backup_path(self,  timeout=30):
         '''
@@ -608,14 +623,23 @@ class DeviceScanner(object):
         
         try:
             info = zeroconf.get_service_info(type, name)
+            logging.warning("info")
+            logging.warning(info)
+            logging.warning("type")
+            logging.warning(type)
 
             if info:
                 #ip = socket.inet_ntoa(info.address)
                 ip = socket.inet_ntoa(info.addresses[0])
+                logging.warning("ip")
+                logging.warning(ip)
+                logging.warning("name")
+                logging.warning(name)
                 self.add( ip, name )
         
-        except Exception as error:
-            logging.error("Exception trying to add zeroconf service '"+name+"' of type '"+type+"': "+str(error))
+        except Exception as e:
+            logging.error(e)
+            logging.error("Exception trying to add zeroconf service '"+name+"' of type '"+type+"': "+str(e))
             
     def remove_service(self, zeroconf, type, name):
         """
