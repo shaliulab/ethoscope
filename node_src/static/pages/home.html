@@ -184,7 +184,7 @@
 		<!-- <td>{{elapsedtime(device.time_since_backup)}}</td> -->
                 <td>
                 <span ng-if="device.status == 'running'" >{{elapsedtime(device.time_since_backup)}}</span>
-		<span ng-if="device.status == 'recording'">{{device.fraction_backed_up}} %</span>
+		<span ng-if="device.status == 'recording'">{{device.fraction_backed_up}}</span>
                 </td>
 
                 <td>{{device.experimental_info.name}}</td>
