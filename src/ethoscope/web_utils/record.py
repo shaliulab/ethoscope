@@ -164,15 +164,14 @@ class PiCameraProcess(multiprocessing.Process):
         except Exception as e:
             logging.error("Error on starting video recording process:" + traceback.format_exc())
 
-
-    def run(self, validate=False):
+    def run(self):
         import picamera
         i = 0
 
         try:
-            with picamera.PiCamera(resolution = self._resolution, framerate = self._fps) as camera:
+            with picamera.PiCamera(resolution=self._resolution, framerate=self._fps) as camera:
 
-                if validate:
+                if not self._stream:
                     try:
                         validation = self.find_target_coordinates(camera)
 
@@ -406,10 +405,10 @@ class ControlThreadVideoRecording(ControlThread):
 
             if self._recorder.__class__.__name__ == "Streamer":
                 self._info["status"] = "streaming"
-                self._recorder.run(validate=False)
             else:
                 self._info["status"] = "recording"
-                self._recorder.run(validate=True)
+
+            self._recorder.run()
                 
             logging.warning("recording RUN finished")
 
