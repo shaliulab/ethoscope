@@ -5,7 +5,7 @@ import logging
 logging.basicConfig(level=logging.INFO)
 import time
 from ethoscope.web_utils.control_thread import ControlThread, ExperimentalInformation
-from ethoscope.hardware.input.camera_settings import configure_camera
+from ethoscope.hardware.input.camera_settings import configure_camera, report_camera
 from ethoscope.utils.description import DescribedObject
 import os
 import tempfile
@@ -114,31 +114,36 @@ class PiCameraProcess(multiprocessing.Process):
 
                 if not self._stream:
 
-                    camera = configure_camera(camera, mode = "target_detection")
-                
-                    #output = self._make_video_name(i)
-                    #folder = "/".join(output.split("/")[::-1][1:][::-1])
-                    #logging.info(os.path.exists(folder))
-                    #logging.info(folder)
                     filename, extension = self._make_video_name(i).split(".")
                     filename = filename + "_target_detection"
                     output = filename + "." + extension
-                    time.sleep(5)
                     logging.info(f"Saving video to {output}")
-                    logging.warning(f'camera framerate: {camera.framerate}')
-                    logging.warning(f'camera resolution: {camera.resolution}')
-                    logging.warning(f'camera exposure_mode: {camera.exposure_mode}')
-                    logging.warning(f'camera shutter_speed: {camera.shutter_speed}')
-                    logging.warning(f'camera exposure_speed: {camera.exposure_speed}')
-                    logging.warning(f'camera awb_gains: {camera.awb_gains}')
-                    logging.warning(f'camera analog_gain: {float(camera.analog_gain)}')
-                    logging.warning(f'camera digital_gain: {float(camera.digital_gain)}')
-                    logging.warning(f'camera iso: {float(camera.iso)}')
 
+                    camera = configure_camera(camera, mode = "target_detection")
+                    time.sleep(2)
+                    report_camera(camera)
 
                     camera.start_recording(output, bitrate=self._bitrate)
-                    camera.wait_recording(60)
+                    j = 0
+                    while j < 60:
+                        report_camera(camera)
+                        camera.wait_recording(1)
+                        j += 1
+                        
                     camera.stop_recording()
+
+
+                    # check the target_detection video is good for target detection
+
+                    # generate an mp4 video file
+                    cmd = f"ffmpeg -framerate {self._fps} -i {output} -c copy {output}.mp4"
+                    cmd = cmd.split(" ")
+                    subprocess.call(cmd)
+
+                    # find the dots on this file
+                    camera = MovieVirtualCamera(path = f"{outut}.mp4")
+                    roi_builder = ROIBuilderClass()
+
 
                     # camera = configure_camera(camera, mode = "roi_builder")
                     # filename, extension = self._make_video_name(i).split(".")
