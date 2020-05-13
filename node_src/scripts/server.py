@@ -2,6 +2,7 @@ import bottle
 import subprocess
 import socket
 import logging
+logging.basicConfig(level=logging.INFO)
 import traceback
 import os
 import optparse
@@ -210,10 +211,11 @@ def get_device_last_img(id, img):
     device = device_scanner.get_device(id)
     if "status" not in list(device.info().keys()) or device.info()["status"] == "not_in use":
         raise Exception("Device %s is not in use, no image" % id )
-    file_like = device.last_image()
+    file_like = device.last_image(img)
     if not file_like:
         raise Exception("No image for %s" % id)
-    basename = os.path.join(tmp_imgs_dir, id + f"_{img}.jpg")
+    basename = os.path.join(tmp_imgs_dir, id + f"{img}.jpg")
+    logging.info(basename)
     return cache_img(file_like, basename)
 
 @app.get('/device/<id>/dbg_img')

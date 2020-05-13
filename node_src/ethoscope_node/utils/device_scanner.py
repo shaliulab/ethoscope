@@ -336,7 +336,7 @@ class Ethoscope(Thread):
         out = self._get_json(log_url)
         return out
 
-    def last_image(self):
+    def last_image(self, img="last_img"):
         """
         Collects the last drawn image fromt the device
         TODO: on the device side, this should not rely on an actuale image file but be fished from memory
@@ -346,6 +346,8 @@ class Ethoscope(Thread):
             return None
         try:
             img_path = self._info["last_drawn_img"]
+            img_dir = os.path.dirname(img_path)
+            img_path = os.path.join(img_dir, img + ".jpg")
         except KeyError:
             raise KeyError("Cannot find last image for device %s" % self._id)
 
@@ -455,9 +457,13 @@ class Ethoscope(Thread):
 
             new_status = new_info['status']
             self._info.update(new_info)
+            if new_status == "tracking":
+                resp = self._make_backup_path()
+                self._info.update(resp)
+            elif new_status == "recording":
+                resp = self._get_backup_progress()
+                self._info.update(resp)
 
-            resp = self._make_backup_path()
-            self._info.update(resp)
 
         except ScanException:
             new_status = 'unreached'
@@ -499,6 +505,54 @@ class Ethoscope(Thread):
 
         except KeyError as e:
             pass
+
+    def _get_remote_chunk_count(self, index_file, last_date=None, ip=None, port=9000):
+
+        static_dir = "static"
+
+        if ip is None:
+            ip = self._info["ip"]
+
+        url = "/".join(["http://%s:%i"%(ip, port), static_dir, index_file])
+        logging.info("Backup progress url")
+        logging.info(url)
+        response = urllib.request.urlopen(url)
+        out = [r.decode('utf-8').rstrip() for r in response]
+        dates = [e.split("/")[5] for e in out]
+        if last_date is None:
+            last_date = sorted(list(set(dates)))[::-1][0]
+
+        remote_chunks_count = sum([e == last_date for e in dates])
+        return remote_chunks_count, last_date
+
+
+    def _get_backup_progress(self, port=9000, static_dir="static", index_file="ethoscope_data/results/index.html", timeout=30):
+
+        fraction_backed_up = 0
+
+        try:
+            remote_chunks_count, last_date = self._get_remote_chunk_count(index_file=index_file)
+            # assume videos path is in the same folder as results_dir
+            try:
+                backed_chunks_count, _ = self._get_remote_chunk_count(index_file="ethoscope_data/videos/index.html", last_date=last_date, ip="localhost")
+
+            except Exception as e:
+                logging.warning(e)
+                # TODO Dont hardcode this and instead give it in the config!!!!
+                # assume it's available on ip 192.169.123.9 (cv1)
+                backed_chunks_count, _ = self._get_remote_chunk_count(index_file="ethoscope_data/videos/index.html", last_date=last_date, ip="192.169.123.9")
+
+            except Exception as e:
+                raise e
+
+            fraction_backed_up = local_chunks_count / backed_chunks_count
+
+        except Exception as e:
+            logging.warning("Could not get last video date")
+            logging.warning(traceback.print_exc())
+
+        return {"fraction_backed_up": fraction_backed_up}
+
 
     def _make_backup_path(self,  timeout=30):
         '''

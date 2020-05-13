@@ -180,7 +180,19 @@
                 <span ng-if="device.status == 'streaming'" class="fa fa-play-circle color-red" title={{device.status}}></span>
                 <span ng-if="device.status == 'stopped'" class="fa fa-stop-circle" title={{device.status}}></span></td>
                 <td>{{secToDate(device.time)}}</td>
-                <td>{{elapsedtime(device.time_since_backup)}}</td>
+
+		<!-- <td>{{elapsedtime(device.time_since_backup)}}</td> -->
+                <td>
+
+                <button type="button" class="btn btn-primary" ng-if="device.status == 'tracking'" ng-click="ethoscope.backup(device.id)" data-toggle="modal" >
+                {{elapsedtime(device.time_since_backup)}}
+                </button>
+                 <button type="button" class="btn btn-primary" ng-if="device.status == 'recording'" ng-click="ethoscope.backup(device.id)" data-toggle="modal" >
+                {{device.fraction_backed_up}}
+                </button>
+
+                </td>
+
                 <td>{{device.experimental_info.name}}</td>
                 <td>{{device.experimental_info.location}}</td>
                 <td>
