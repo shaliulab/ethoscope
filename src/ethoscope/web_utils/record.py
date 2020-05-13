@@ -105,62 +105,58 @@ class PiCameraProcess(multiprocessing.Process):
     #         for f in all_video_files:
     #             index.write(f + "\n")
 
-    def find_target_coordinates(self):
+    def find_target_coordinates(self, camera):
 
         logging.info("Checking targets in resulting video are visible and video is suitable for offline analysis")
         
-        # to fetch frames from the arena
-        import picamera
         # to analyzs the same frames offline
         from ethoscope.hardware.input.cameras import MovieVirtualCamera
 
         from ethoscope.roi_builders.target_roi_builder import FSLSleepMonitorWithTargetROIBuilder
         i = 0
         try:
-            logging.info("Initializing camera")
-            with picamera.PiCamera(resolution = self._resolution, framerate = self._fps) as camera:
 
-                # Prepare camera and output filename
-                camera = configure_camera(camera, mode = "target_detection")
-                filename, extension = self._make_video_name(i).split(".")
-                filename = filename + "_target_detection"
-                output = filename + "." + extension
-                logging.info(f"Saving video to {output}")
-                time.sleep(2)
+            # Prepare camera and output filename
+            camera = configure_camera(camera, mode = "target_detection")
+            filename, extension = self._make_video_name(i).split(".")
+            filename = filename + "_target_detection"
+            output = filename + "." + extension
+            logging.info(f"Saving video to {output}")
+            time.sleep(2)
 
-                # Log camera status and start recording
+            # Log camera status and start recording
+            report_camera(camera)
+            camera.start_recording(output, bitrate=self._bitrate)
+
+            # Record for one minute and report the status every second
+            # This is so problems with camera settings not being stable
+            # can be easily debugged by checking the logs (journalctl)
+            j = 0
+            while j < 60:
                 report_camera(camera)
-                camera.start_recording(output, bitrate=self._bitrate)
+                camera.wait_recording(1)
+                j += 1
+                
+            camera.stop_recording()
 
-                # Record for one minute and report the status every second
-                # This is so problems with camera settings not being stable
-                # can be easily debugged by checking the logs (journalctl)
-                j = 0
-                while j < 60:
-                    report_camera(camera)
-                    camera.wait_recording(1)
-                    j += 1
-                    
-                camera.stop_recording()
-    
-                # now actually check this video
-                # this partially replicates the functionality in
-                # ControlThread_set_tracking_from_scratch method
-                # generate an mp4 video file
-                cmd = f"ffmpeg -framerate {self._fps} -i {output} -c copy {output}.mp4"
-                cmd = cmd.split(" ")
-                subprocess.call(cmd)
-    
-                # find the dots on this video
-                cam = MovieVirtualCamera(path = f"{outut}.mp4")
-                roi_builder = FSLSleepMonitorWithTargetROIBuilder(args=(), kwargs={})
-                try:
-                    rois = roi_builder.build(cam)
-                    M = None
-                    
-                except EthoscopeException as e:
-                    cam._close()
-                    raise e
+            # now actually check this video
+            # this partially replicates the functionality in
+            # ControlThread_set_tracking_from_scratch method
+            # generate an mp4 video file
+            cmd = f"ffmpeg -framerate {self._fps} -i {output} -c copy {output}.mp4"
+            cmd = cmd.split(" ")
+            subprocess.call(cmd)
+
+            # find the dots on this video
+            cam = MovieVirtualCamera(path = f"{outut}.mp4")
+            roi_builder = FSLSleepMonitorWithTargetROIBuilder(args=(), kwargs={})
+            try:
+                rois = roi_builder.build(cam)
+                M = None
+                return True
+            except EthoscopeException as e:
+                cam._close()
+                raise e
 
                 # TODO save the result in a way that the offline analysis
                 # can easily make use of it
@@ -169,12 +165,20 @@ class PiCameraProcess(multiprocessing.Process):
             logging.error("Error on starting video recording process:" + traceback.format_exc())
 
 
-    def run(self):
+    def run(self, validate=False):
         import picamera
         i = 0
 
         try:
             with picamera.PiCamera(resolution = self._resolution, framerate = self._fps) as camera:
+
+                if validate:
+                    try:
+                        validation = self.find_target_coordinates(camera)
+
+                    except Exception as e:
+                        logging.error("Sorry, the targets will not be visible in this video. Try again!")
+                        raise e
 
                 # put the camera in tracker mode
                 # this mode is defined by the camera_settings module
@@ -402,11 +406,11 @@ class ControlThreadVideoRecording(ControlThread):
 
             if self._recorder.__class__.__name__ == "Streamer":
                 self._info["status"] = "streaming"
+                self._recorder.run(validate=False)
             else:
                 self._info["status"] = "recording"
-                self.find_target_coordinates()
+                self._recorder.run(validate=True)
                 
-            self._recorder.run()
             logging.warning("recording RUN finished")
 
 
