@@ -41,6 +41,7 @@ class TargetGridROIBuilder(BaseROIBuilder):
     _outside_pad = 0.0
     
     _target_coord_file = "/etc/target_coordinates.conf"
+    _rois_pickle_file = "rois.pickle"
 
     _description = {"overview": "A flexible ROI builder that allows users to select parameters for the ROI layout."
                                "Lengths are relative to the distance between the two bottom targets (width)",
@@ -99,6 +100,9 @@ class TargetGridROIBuilder(BaseROIBuilder):
         #     self._bottom_margin = self._top_margin
         if 'target_coordinates_file' in kwargs.keys():
             self._target_coord_file = kwargs.pop('target_coordinates_file')
+
+        if 'rois_pickle_file' in kwargs.keys():
+            self._rois_pickle_file = kwargs.pop('rois_pickle_file')
 
         super(TargetGridROIBuilder,self).__init__()
 
@@ -365,59 +369,66 @@ class TargetGridROIBuilder(BaseROIBuilder):
         # cv2.imwrite(os.path.join(os.environ["HOME"], "target_detection_segmented_dots2.png" ), map_bin_dots)
         return sorted_src_pts
 
-    def _rois_from_img(self,img):
+    def _rois_from_img(self, img):
         
         self._img = img
-        if os.path.exists(self._target_coord_file):
-            with open(self._target_coord_file, "r") as fh:
+        if os.path.exists(self._rois_pickle_file):
+            with open(self._rois_pickle_file, "rb") as fh:
+                rois = pickle.load(fh)
+            return rois
+
+        else:
+            if os.path.exists(self._target_coord_file):
+                with open(self._target_coord_file, "r") as fh:
                     data = fh.read()
 
-            # each dot is in a newline
-            data = data.split("\n")[:3]
-            # each dot is made by two numbers separated by comma
-            src_points = [tuple([int(f) for f in e.split(",")]) for e in data]
-            sorted_src_pts = self._sort_src_pts(src_points)
-        else:
-            try:
-                sorted_src_pts = self._find_target_coordinates(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY), self._find_blobs)
-            except EthoscopeException as e:
-                # raise e
-                logging.warning("Fall back to find_blobs_new")
-                sorted_src_pts = self._find_target_coordinates(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY), self._find_blobs_new)
-            # sorted_src_pts = self._find_target_coordinates(img)
-            except Exception as e:
-                raise e
+                # each dot is in a newline
+                data = data.split("\n")[:3]
+                # each dot is made by two numbers separated by comma
+                src_points = [tuple([int(f) for f in e.split(",")]) for e in data]
+                sorted_src_pts = self._sort_src_pts(src_points)
 
-        dst_points = np.array([(0,-1),
-                               (0,0),
-                               (-1,0)], dtype=np.float32)
-        wrap_mat = cv2.getAffineTransform(dst_points, sorted_src_pts)
+            else:
+                try:
+                    sorted_src_pts = self._find_target_coordinates(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY), self._find_blobs)
+                except EthoscopeException as e:
+                    # raise e
+                    logging.warning("Fall back to find_blobs_new")
+                    sorted_src_pts = self._find_target_coordinates(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY), self._find_blobs_new)
+                # sorted_src_pts = self._find_target_coordinates(img)
+                except Exception as e:
+                    raise e
 
-        rectangles = self._make_grid(self._n_cols, self._n_rows,
-                                     self._top_margin, self._bottom_margin,
-                                     self._left_margin,self._right_margin,
-                                     self._horizontal_fill, self._vertical_fill,
-                                     self._inside_pad, self._outside_pad)
+            dst_points = np.array([(0,-1),
+                                   (0,0),
+                                   (-1,0)], dtype=np.float32)
+            wrap_mat = cv2.getAffineTransform(dst_points, sorted_src_pts)
 
-        shift = np.dot(wrap_mat, [1,1,0]) - sorted_src_pts[1] # point 1 is the ref, at 0,0
-        rois = []
-        side = "left"
-        point = self._sorted_src_pts[2]
+            rectangles = self._make_grid(self._n_cols, self._n_rows,
+                                         self._top_margin, self._bottom_margin,
+                                         self._left_margin,self._right_margin,
+                                         self._horizontal_fill, self._vertical_fill,
+                                         self._inside_pad, self._outside_pad)
 
-        for i,r in enumerate(rectangles):
-            if i > 9:
-                side = "right"
-                point = self._sorted_src_pts[1]
+            shift = np.dot(wrap_mat, [1,1,0]) - sorted_src_pts[1] # point 1 is the ref, at 0,0
+            rois = []
+            side = "left"
+            point = self._sorted_src_pts[2]
 
-            r = np.append(r, np.zeros((4,1)), axis=1)
-            mapped_rectangle = np.dot(wrap_mat, r.T).T
-            mapped_rectangle -= shift
-            ct = mapped_rectangle.astype(np.int32)
-            # logging.warning(i)
-            ct, _, _, _ = refine_contour(ct, img, rotate=False)
-            ct = pull_contour_h(ct, point, side)
-            cv2.drawContours(img, [ct.reshape((1,4,2))], -1, (255,0,0),1,LINE_AA)
-            rois.append(ROI(ct, idx=i+1))
+            for i,r in enumerate(rectangles):
+                if i > 9:
+                    side = "right"
+                    point = self._sorted_src_pts[1]
+
+                r = np.append(r, np.zeros((4,1)), axis=1)
+                mapped_rectangle = np.dot(wrap_mat, r.T).T
+                mapped_rectangle -= shift
+                ct = mapped_rectangle.astype(np.int32)
+                # logging.warning(i)
+                ct, _, _, _ = refine_contour(ct, img, rotate=False)
+                ct = pull_contour_h(ct, point, side)
+                cv2.drawContours(img, [ct.reshape((1,4,2))], -1, (255,0,0),1,LINE_AA)
+                rois.append(ROI(ct, idx=i+1))
 
         return rois
 
