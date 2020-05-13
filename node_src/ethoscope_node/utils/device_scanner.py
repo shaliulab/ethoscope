@@ -457,13 +457,12 @@ class Ethoscope(Thread):
 
             new_status = new_info['status']
             self._info.update(new_info)
-            if new_status == "tracking":
+            if new_status == "running":
                 resp = self._make_backup_path()
                 self._info.update(resp)
             elif new_status == "recording":
                 resp = self._get_backup_progress()
                 self._info.update(resp)
-
 
         except ScanException:
             new_status = 'unreached'
@@ -545,7 +544,7 @@ class Ethoscope(Thread):
             except Exception as e:
                 raise e
 
-            fraction_backed_up = local_chunks_count / backed_chunks_count
+            fraction_backed_up = 100 * backed_chunks_count / remote_chunks_count
 
         except Exception as e:
             logging.warning("Could not get last video date")

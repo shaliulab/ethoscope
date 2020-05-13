@@ -183,14 +183,8 @@
 
 		<!-- <td>{{elapsedtime(device.time_since_backup)}}</td> -->
                 <td>
-
-                <button type="button" class="btn btn-primary" ng-if="device.status == 'tracking'" ng-click="ethoscope.backup(device.id)" data-toggle="modal" >
-                {{elapsedtime(device.time_since_backup)}}
-                </button>
-                 <button type="button" class="btn btn-primary" ng-if="device.status == 'recording'" ng-click="ethoscope.backup(device.id)" data-toggle="modal" >
-                {{device.fraction_backed_up}}
-                </button>
-
+                <span ng-if="device.status == 'running'" >{{elapsedtime(device.time_since_backup)}}</span>
+		<span ng-if="device.status == 'recording'">{{device.fraction_backed_up}}</span>
                 </td>
 
                 <td>{{device.experimental_info.name}}</td>
