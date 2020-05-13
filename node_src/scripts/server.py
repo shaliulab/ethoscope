@@ -204,16 +204,16 @@ def get_device_videofiles(id):
 
 
 #Get the information of one Sleep Monitor
-@app.get('/device/<id>/last_img')
+@app.get('/device/<id>/<img>')
 @error_decorator
-def get_device_last_img(id):
+def get_device_last_img(id, img):
     device = device_scanner.get_device(id)
     if "status" not in list(device.info().keys()) or device.info()["status"] == "not_in use":
         raise Exception("Device %s is not in use, no image" % id )
     file_like = device.last_image()
     if not file_like:
         raise Exception("No image for %s" % id)
-    basename = os.path.join(tmp_imgs_dir, id + "_last_img.jpg")
+    basename = os.path.join(tmp_imgs_dir, id + f"_{img}.jpg")
     return cache_img(file_like, basename)
 
 @app.get('/device/<id>/dbg_img')
