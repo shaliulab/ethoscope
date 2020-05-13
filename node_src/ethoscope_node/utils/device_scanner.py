@@ -544,13 +544,14 @@ class Ethoscope(Thread):
             except Exception as e:
                 raise e
 
-            fraction_backed_up = 100 * backed_chunks_count / remote_chunks_count
+            fraction_backed_up = backed_chunks_count / remote_chunks_count
+            percentage_backed_up = round(100 * fraction_backed_up, 2)
 
         except Exception as e:
             logging.warning("Could not get last video date")
             logging.warning(traceback.print_exc())
 
-        return {"fraction_backed_up": fraction_backed_up}
+        return {"fraction_backed_up": percentage_backed_up}
 
 
     def _make_backup_path(self,  timeout=30):
