@@ -178,6 +178,7 @@ class GenericBackupWrapper(object):
                 t1 = time.time()
                 logging.info("Backup finished at t=%i" % t1)
                 t0 = t1
+                urllib.request.Request("http://localhost/make_index")
 
         finally:
             if not devices:

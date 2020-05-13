@@ -151,6 +151,20 @@ def get_devices_list():
 def sensors():
     return sensor_scanner.get_all_devices_info()
 
+@api.get('/make_index')
+@error_decorator
+def make_index():
+    
+    video_dir = CFG.content['folders']['video']['path']
+
+    index_file = os.path.join(video_dir, "index.html")
+    all_video_files = [y for x in os.walk(video_dir) for y in glob.glob(os.path.join(x[0], '*.h264'))]
+    all_pickle_files = [y for x in os.walk(video_dir) for y in glob.glob(os.path.join(x[0], '*.pickle'))]
+    all_files = all_video_files + all_pickle_files
+    with open(index_file, "w") as index:
+        for f in all_files:
+            index.write(f + "\n")
+    return {}
 
 #Get the information of one device
 @app.get('/device/<id>/data')
