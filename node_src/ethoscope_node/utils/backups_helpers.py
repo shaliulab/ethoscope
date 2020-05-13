@@ -1,6 +1,6 @@
 from ethoscope_node.utils.device_scanner import EthoscopeScanner
 from ethoscope_node.utils.mysql_backup import MySQLdbToSQlite, DBNotReadyError
-
+from ethoscope_node.utils.configuration import EthoscopeConfiguration
 import os
 import logging
 import time
@@ -14,6 +14,21 @@ import re
 
 CPUS_AVAILABLE = multiprocessing.cpu_count()
 MINUTES_WAITING = 1
+CFG = EthoscopeConfiguration()
+
+def make_index():
+    ''''''
+    video_dir = CFG.content['folders']['video']['path']
+
+    index_file = os.path.join(video_dir, "index.html")
+    all_video_files = [y for x in os.walk(video_dir) for y in glob.glob(os.path.join(x[0], '*.h264'))]
+    all_pickle_files = [y for x in os.walk(video_dir) for y in glob.glob(os.path.join(x[0], '*.pickle'))]
+    all_files = all_video_files + all_pickle_files
+    with open(index_file, "w") as index:
+        for f in all_files:
+            index.write(f + "\n")
+    return {}
+
 
 def filter_by_regex(devices, regex):
     pattern = re.compile(regex)
@@ -178,7 +193,11 @@ class GenericBackupWrapper(object):
                 t1 = time.time()
                 logging.info("Backup finished at t=%i" % t1)
                 t0 = t1
-                urllib.request.Request("http://localhost/make_index")
+                # TODO
+                # When the node backs up both SQL and videos, we can uncomment this line
+                # For now just call make_index and let it work locally
+                #urllib.request.Request(f"http://{self._server}/make_index")
+                make_index()
 
         finally:
             if not devices:
