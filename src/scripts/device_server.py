@@ -91,8 +91,10 @@ def name():
 def make_index():
     index_file = os.path.join(ETHOSCOPE_DIR, "index.html")
     all_video_files = [y for x in os.walk(ETHOSCOPE_DIR) for y in glob.glob(os.path.join(x[0], '*.h264'))]
+    all_pickle_files = [y for x in os.walk(ETHOSCOPE_DIR) for y in glob.glob(os.path.join(x[0], '*.pickle'))]
+    all_files = all_video_files + all_pickle_files
     with open(index_file, "w") as index:
-        for f in all_video_files:
+        for f in all_files:
             index.write(f + "\n")
     return {}
 

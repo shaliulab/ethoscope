@@ -7,6 +7,8 @@ import time
 from ethoscope.web_utils.control_thread import ControlThread, ExperimentalInformation
 from ethoscope.hardware.input.camera_settings import configure_camera, report_camera
 from ethoscope.utils.description import DescribedObject
+from ethoscope.utils.debug import EthoscopeException
+
 import os
 import tempfile
 import shutil
@@ -14,6 +16,10 @@ import multiprocessing
 import glob
 import datetime
 import time
+import subprocess
+import cv2
+import pickle
+import os.path
 
 #For streaming
 from http.server import BaseHTTPRequestHandler, HTTPServer
@@ -115,48 +121,37 @@ class PiCameraProcess(multiprocessing.Process):
         from ethoscope.roi_builders.target_roi_builder import FSLSleepMonitorWithTargetROIBuilder
         i = 0
         try:
-
-            # Prepare camera and output filename
+            # Log camera status and take shot
+            target_detection_path = "/tmp/target_detection_{}.png"
             camera = configure_camera(camera, mode = "target_detection")
-            filename, extension = self._make_video_name(i).split(".")
-            filename = filename + "_target_detection"
-            output = filename + "." + extension
-            logging.info(f"Saving video to {output}")
-            time.sleep(2)
+            n = 0
+            roi_builder = FSLSleepMonitorWithTargetROIBuilder()
+            target_coord_file = self._video_prefix + "targets.pickle"
+            rois_file = self._video_prefix + "rois.pickle"
 
-            # Log camera status and start recording
-            report_camera(camera)
-            camera.start_recording(output, bitrate=self._bitrate)
+            while n < 5:
+                try:
+                    camera = configure_camera(camera, mode = "target_detection")
+                    report_camera(camera)
+                    camera.capture(target_detection_path.format(n))
+                    time.sleep(1)
+                    img = cv2.imread(target_detection_path.format(n))
+                    rois = roi_builder.build(img)
+                    with open(target_coord_file, "wb") as fh:
+                        pickle.dump(roi_builder._sorted_src_pts, fh)
+                    with open(rois_file, "wb") as fh:
+                        pickle.dump(rois, fh)
 
-            # Record for one minute and report the status every second
-            # This is so problems with camera settings not being stable
-            # can be easily debugged by checking the logs (journalctl)
-            j = 0
-            while j < 60:
-                report_camera(camera)
-                camera.wait_recording(1)
-                j += 1
-                
-            camera.stop_recording()
+                    logging.info("Success")
+                    return True
 
-            # now actually check this video
-            # this partially replicates the functionality in
-            # ControlThread_set_tracking_from_scratch method
-            # generate an mp4 video file
-            cmd = f"ffmpeg -framerate {self._fps} -i {output} -c copy {output}.mp4"
-            cmd = cmd.split(" ")
-            subprocess.call(cmd)
+                except Exception as e:
+                    n += 1
+                    pass
 
-            # find the dots on this video
-            cam = MovieVirtualCamera(path = f"{outut}.mp4")
-            roi_builder = FSLSleepMonitorWithTargetROIBuilder(args=(), kwargs={})
-            try:
-                rois = roi_builder.build(cam)
-                M = None
-                return True
-            except EthoscopeException as e:
-                cam._close()
-                raise e
+            cam._close()
+            logging.info("Failure")
+            raise EthoscopeException("I tried taking 5 shots and none is good! Check them at /tmp/target_detection_{i}.png")
 
                 # TODO save the result in a way that the offline analysis
                 # can easily make use of it
@@ -207,6 +202,7 @@ class PiCameraProcess(multiprocessing.Process):
                     i += 1
                     while True:
                         camera.wait_recording(2)
+                        camera = configure_camera(camera, mode = "tracker")
                         report_camera(camera)
                         camera.capture(self._img_path, use_video_port=True, quality=50)
     
