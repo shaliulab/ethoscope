@@ -133,9 +133,10 @@ class PiCameraProcess(multiprocessing.Process):
 
             target_coord_file = self._video_prefix + "targets.pickle"
             rois_file = self._video_prefix + "rois.pickle"
+            failure = True
             
 
-            while n < 5:
+            while failure and n < 5:
                 try:
                     camera = configure_camera(camera, mode = "target_detection")
                     report_camera(camera)
@@ -147,8 +148,8 @@ class PiCameraProcess(multiprocessing.Process):
                     logging.info("Annotating frame for human supervision")
                     unit_trackers = [TrackingUnit(tracker_class, r, None) for r in rois]
                     annotated = drawer.draw(img, tracking_units=unit_trackers, positions=None)
-                    tmp_dir, last_img_file = self._img_path.split("/")
-                    annotated_path = os.path.join(tmp_dir, "last_img_annotated.png")
+                    tmp_dir = os.path.dirname(self._img_path)
+                    annotated_path = os.path.join(tmp_dir, "_last_img_annotated.jpg")
                     logging.info(f"Saving annotated frame to {annotated_path}")
                     cv2.imwrite(annotated_path, annotated)
 
@@ -157,20 +158,22 @@ class PiCameraProcess(multiprocessing.Process):
                         pickle.dump(roi_builder._sorted_src_pts, fh)
                     with open(rois_file, "wb") as fh:
                         pickle.dump(rois, fh)
+                    failure = False
 
-                    logging.info("Success")
-                    return True
 
                 except Exception as e:
+                    logging.info(e)
+                    failure = True # not needed, but for readability
                     n += 1
-                    pass
 
-            cam._close()
-            logging.info("Failure")
-            raise EthoscopeException("I tried taking 5 shots and none is good! Check them at /tmp/target_detection_{i}.png")
+            if failure:
+                logging.info("Failure")
+                raise EthoscopeException("I tried taking 5 shots and none is good! Check them at /tmp/target_detection_{i}.png")
 
-                # TODO save the result in a way that the offline analysis
-                # can easily make use of it
+            else:
+                logging.info("Success")
+                return True
+
 
         except Exception as e:
             logging.error("Error on starting video recording process:" + traceback.format_exc())
