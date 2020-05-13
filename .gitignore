@@ -68,6 +68,7 @@ docs/_build/
 *.pdf
 
 *.mp4
+*.h264
 *.avi
 .syncthing*
 *.json

@@ -105,25 +105,36 @@ class PiCameraProcess(multiprocessing.Process):
     #         for f in all_video_files:
     #             index.write(f + "\n")
 
-    def run(self):
-        import picamera
-        i = 0
+    def find_target_coordinates(self):
 
+        logging.info("Checking targets in resulting video are visible and video is suitable for offline analysis")
+        
+        # to fetch frames from the arena
+        import picamera
+        # to analyzs the same frames offline
+        from ethoscope.hardware.input.cameras import MovieVirtualCamera
+
+        from ethoscope.roi_builders.target_roi_builder import FSLSleepMonitorWithTargetROIBuilder
+        i = 0
         try:
+            logging.info("Initializing camera")
             with picamera.PiCamera(resolution = self._resolution, framerate = self._fps) as camera:
 
-                if not self._stream:
-
+                    # Prepare camera and output filename
+                    camera = configure_camera(camera, mode = "target_detection")
                     filename, extension = self._make_video_name(i).split(".")
                     filename = filename + "_target_detection"
                     output = filename + "." + extension
                     logging.info(f"Saving video to {output}")
-
-                    camera = configure_camera(camera, mode = "target_detection")
                     time.sleep(2)
-                    report_camera(camera)
 
+                    # Log camera status and start recording
+                    report_camera(camera)
                     camera.start_recording(output, bitrate=self._bitrate)
+
+                    # Record for one minute and report the status every second
+                    # This is so problems with camera settings not being stable
+                    # can be easily debugged by checking the logs (journalctl)
                     j = 0
                     while j < 60:
                         report_camera(camera)
@@ -131,86 +142,64 @@ class PiCameraProcess(multiprocessing.Process):
                         j += 1
                         
                     camera.stop_recording()
-
-
-                    # check the target_detection video is good for target detection
-
+        
+                    # now actually check this video
+                    # this partially replicates the functionality in
+                    # ControlThread_set_tracking_from_scratch method
                     # generate an mp4 video file
                     cmd = f"ffmpeg -framerate {self._fps} -i {output} -c copy {output}.mp4"
                     cmd = cmd.split(" ")
                     subprocess.call(cmd)
+        
+                    # find the dots on this video
+                    cam = MovieVirtualCamera(path = f"{outut}.mp4")
+                    roi_builder = FSLSleepMonitorWithTargetROIBuilder(args=(), kwargs={})
+                    try:
+                        rois = roi_builder.build(cam)
+                        M = None
+                        
+                    except EthoscopeException as e:
+                        cam._close()
+                        raise e
+                    
 
-                    # find the dots on this file
-                    camera = MovieVirtualCamera(path = f"{outut}.mp4")
-                    roi_builder = ROIBuilderClass()
+    def run(self):
+        import picamera
+        i = 0
 
+        try:
+            with picamera.PiCamera(resolution = self._resolution, framerate = self._fps) as camera:
 
-                    # camera = configure_camera(camera, mode = "roi_builder")
-                    # filename, extension = self._make_video_name(i).split(".")
-                    # filename = filename + "_roi_builder"
-                    # output = filename + "." + extension
-                    # time.sleep(5)
-                    # logging.info(f"Saving video to {output}")
-                    # camera.start_recording(output, bitrate=self._bitrate)
-                    # logging.warning(f'camera framerate: {camera.framerate}')
-                    # logging.warning(f'camera resolution: {camera.resolution}')
-                    # logging.warning(f'camera exposure_mode: {camera.exposure_mode}')
-                    # logging.warning(f'camera shutter_speed: {camera.shutter_speed}')
-                    # logging.warning(f'camera exposure_speed: {camera.exposure_speed}')
-                    # logging.warning(f'camera awb_gains: {camera.awb_gains}')
-                    # logging.warning(f'camera analog_gain: {float(camera.analog_gain)}')
-                    # logging.warning(f'camera digital_gain: {float(camera.digital_gain)}')
-                    # logging.warning(f'camera iso: {float(camera.iso)}')
+                # put the camera in tracker mode
+                # this mode is defined by the camera_settings module
+                camera = configure_camera(camera, mode="tracker")         
+                time.sleep(2)
 
-
-                    # camera.wait_recording(10)
-                    # camera.stop_recording()
-
-                    camera = configure_camera(camera, mode = "tracker")
-                    time.sleep(5)
+                # doing a video recording
+                if not self._stream:
                     output = self._make_video_name(i)
-                    logging.warning("I am tracking")
-                    logging.warning(f'camera framerate: {camera.framerate}')
-                    logging.warning(f'camera resolution: {camera.resolution}')
-                    logging.warning(f'camera exposure_mode: {camera.exposure_mode}')
-                    logging.warning(f'camera shutter_speed: {camera.shutter_speed}')
-                    logging.warning(f'camera exposure_speed: {camera.exposure_speed}')
-                    logging.warning(f'camera awb_gains: {camera.awb_gains}')
-                    logging.warning(f'camera analog_gain: {float(camera.analog_gain)}')
-                    logging.warning(f'camera digital_gain: {float(camera.digital_gain)}')
-                    logging.warning(f'camera iso: {float(camera.iso)}')
-
                     camera.start_recording(output, bitrate=self._bitrate)
                     
                 # self._write_video_index()
                 start_time = time.time()
                 
+                # doing a stream
                 if self._stream:
-                    camera = configure_camera(camera, mode = "tracker")         
-                    time.sleep(5)
                     try:
-                        self.server = CamStreamHTTPServer (camera, ('',8008), CamHandler)
+                        self.server = CamStreamHTTPServer(camera, ('', 8008), CamHandler)
                         self.server.serve_forever()
 
                     finally:
                         self.server.shutdown()
                         camera.close()
 
+                # continue the video recording
                 else:
                     i += 1
                     while True:
                         camera.wait_recording(2)
+                        report_camera(camera)
                         camera.capture(self._img_path, use_video_port=True, quality=50)
-                        camera = configure_camera(camera, mode = "tracker")
-
-                        logging.warning(f'camera framerate: {camera.framerate}')
-                        logging.warning(f'camera resolution: {camera.resolution}')
-                        logging.warning(f'camera exposure_mode: {camera.exposure_mode}')
-                        logging.warning(f'camera shutter_speed: {camera.shutter_speed}')
-                        logging.warning(f'camera exposure_speed: {camera.exposure_speed}')
-                        logging.warning(f'camera awb_gains: {camera.awb_gains}')
-                        logging.warning(f'camera analog_gain: {float(camera.analog_gain)}')
-                        logging.warning(f'camera digital_gain: {float(camera.digital_gain)}')
     
                         if time.time() - start_time >= self._VIDEO_CHUNCK_DURATION:
                             camera.split_recording(self._make_video_name(i))
@@ -409,6 +398,7 @@ class ControlThreadVideoRecording(ControlThread):
                 self._info["status"] = "streaming"
             else:
                 self._info["status"] = "recording"
+                self.find_target_coordinates()
                 
             self._recorder.run()
             logging.warning("recording RUN finished")
