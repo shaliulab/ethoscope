@@ -127,7 +127,7 @@ class PiCameraProcess(multiprocessing.Process):
             # Log camera status and take shot
             target_detection_path = "/tmp/target_detection_{}.png"
             camera.framerate = 2
-            tme.sleep(1)
+            time.sleep(1)
             camera = configure_camera(camera, mode = "target_detection")
             n = 0
             roi_builder = FSLSleepMonitorWithTargetROIBuilder()
