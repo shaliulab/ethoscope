@@ -126,6 +126,8 @@ class PiCameraProcess(multiprocessing.Process):
         try:
             # Log camera status and take shot
             target_detection_path = "/tmp/target_detection_{}.png"
+            camera.framerate = 2
+            tme.sleep(1)
             camera = configure_camera(camera, mode = "target_detection")
             n = 0
             roi_builder = FSLSleepMonitorWithTargetROIBuilder()
@@ -195,6 +197,8 @@ class PiCameraProcess(multiprocessing.Process):
 
                 # put the camera in tracker mode
                 # this mode is defined by the camera_settings module
+                camera.framerate = self._fps
+                time.sleep(2)
                 camera = configure_camera(camera, mode="tracker")         
                 time.sleep(2)
 
