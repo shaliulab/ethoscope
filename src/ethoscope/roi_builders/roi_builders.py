@@ -96,11 +96,16 @@ class BaseROIBuilder(DescribedObject):
                 rois = self._rois_from_img(accum)
                 img = accum
 
-            roi_build_with_dots = img.copy()
-            for pt in self._sorted_src_pts:
-                roi_build_with_dots = cv2.circle(roi_build_with_dots, tuple(pt), 5, (0,255,0), -1)
 
-            cv2.imwrite(os.path.join(os.environ["HOME"], "roi_build_with_dots.png"), roi_build_with_dots)
+            try:
+                for pt in self._sorted_src_pts:
+                    roi_build_with_dots = cv2.circle(roi_build_with_dots, tuple(pt), 5, (0,255,0), -1)
+
+                roi_build_with_dots = img.copy()
+                cv2.imwrite(os.path.join(os.environ["HOME"], "roi_build_with_dots.png"), roi_build_with_dots)
+            except AttributeError as e:
+                logging.warning(e)
+
 
         except Exception as e:
             if not isinstance(input, np.ndarray):
