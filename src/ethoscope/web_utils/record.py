@@ -126,6 +126,8 @@ class PiCameraProcess(multiprocessing.Process):
         try:
             # Log camera status and take shot
             target_detection_path = "/tmp/target_detection_{}.png"
+            camera.framerate = 2
+            time.sleep(1)
             camera = configure_camera(camera, mode = "target_detection")
             n = 0
             roi_builder = FSLSleepMonitorWithTargetROIBuilder()
@@ -149,7 +151,7 @@ class PiCameraProcess(multiprocessing.Process):
                     unit_trackers = [TrackingUnit(tracker_class, r, None) for r in rois]
                     annotated = drawer.draw(img, tracking_units=unit_trackers, positions=None)
                     tmp_dir = os.path.dirname(self._img_path)
-                    annotated_path = os.path.join(tmp_dir, "_last_img_annotated.jpg")
+                    annotated_path = os.path.join(tmp_dir, "last_img_annotated.jpg")
                     logging.info(f"Saving annotated frame to {annotated_path}")
                     cv2.imwrite(annotated_path, annotated)
 
@@ -195,6 +197,8 @@ class PiCameraProcess(multiprocessing.Process):
 
                 # put the camera in tracker mode
                 # this mode is defined by the camera_settings module
+                camera.framerate = self._fps
+                time.sleep(2)
                 camera = configure_camera(camera, mode="tracker")         
                 time.sleep(2)
 
