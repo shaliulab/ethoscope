@@ -370,10 +370,11 @@ class TargetGridROIBuilder(BaseROIBuilder):
         return sorted_src_pts
 
     def _rois_from_img(self, img):
-        
+
         self._img = img
         if os.path.exists(self._rois_pickle_file):
             with open(self._rois_pickle_file, "rb") as fh:
+                import pickle
                 rois = pickle.load(fh)
             return rois
 

@@ -395,7 +395,7 @@ if __name__ == '__main__':
     ap.add_argument("--name", type=str, default=None)
     ap.add_argument("-r", "--roi_builder", type=str, default="FSLSleepMonitorWithTargetROIBuilder")
     ap.add_argument("-t", "--target_coordinates_file", type=str, required=False, default="/etc/target_coordinates.conf")
-    ap.add_argument("--rois_pickle_file", type=str, required=False, default = "rois.pickle")
+    ap.add_argument("--rois_pickle_file", type=str, required=False, default="rois.pickle")
     ap.add_argument("-d", "--downsample", type=int, default=1)
     ap.add_argument("-a", "--address", type=str, default=None)
 
