@@ -164,7 +164,8 @@ class PiCameraProcess(multiprocessing.Process):
 
 
                 except Exception as e:
-                    logging.info(e)
+                    logging.warning(e)
+                    logging.warning(traceback.print_exc())
                     failure = True # not needed, but for readability
                     n += 1
 
