@@ -98,10 +98,10 @@ class BaseROIBuilder(DescribedObject):
 
 
             try:
+                roi_build_with_dots = img.copy()
                 for pt in self._sorted_src_pts:
                     roi_build_with_dots = cv2.circle(roi_build_with_dots, tuple(pt), 5, (0,255,0), -1)
 
-                roi_build_with_dots = img.copy()
                 cv2.imwrite(os.path.join(os.environ["HOME"], "roi_build_with_dots.png"), roi_build_with_dots)
             except AttributeError as e:
                 logging.warning(e)
