@@ -17,6 +17,8 @@ import datetime
 from http.server import BaseHTTPRequestHandler, HTTPServer
 import io
 
+logging.basicConfig(level=logging.INFO)
+
 class CamStreamHTTPServer(HTTPServer):
     '''
     A custom inheritance of HTTPServer
@@ -252,6 +254,7 @@ class ControlThreadVideoRecording(ControlThread):
                         "experimental_info": {}
                         }
 
+        logging.warning(data)
         self._parse_user_options(data)
         super(ControlThread, self).__init__()
 
