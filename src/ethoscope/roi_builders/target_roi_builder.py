@@ -39,9 +39,9 @@ class TargetGridROIBuilder(BaseROIBuilder):
     _vertical_fill = None
     _inside_pad = 0.0
     _outside_pad = 0.0
-    
+
     _target_coord_file = "/etc/target_coordinates.conf"
-    _rois_pickle_file = "rois.pickle"
+    #_rois_pickle_file = "rois.pickle"
 
     _description = {"overview": "A flexible ROI builder that allows users to select parameters for the ROI layout."
                                "Lengths are relative to the distance between the two bottom targets (width)",
@@ -98,6 +98,8 @@ class TargetGridROIBuilder(BaseROIBuilder):
         #     self._right_margin = self._left_margin
         # if self._bottom_margin is None:
         #     self._bottom_margin = self._top_margin
+        print("kwargs in TargetGridRoiBuilder")
+        print(kwargs)
         if 'target_coordinates_file' in kwargs.keys():
             self._target_coord_file = kwargs.pop('target_coordinates_file')
 
@@ -267,7 +269,7 @@ class TargetGridROIBuilder(BaseROIBuilder):
         all_centres = [np.array([x,y]) for x,y in itertools.product(x_positions, y_positions)]
 
         padded_centres = []
-        for center in all_centres:  
+        for center in all_centres:
             left, top = find_quadrant((1,1), center)
             if left:
                 center[0] -= inside_pad
@@ -275,7 +277,7 @@ class TargetGridROIBuilder(BaseROIBuilder):
             else:
                 center[0] += inside_pad
                 center[0] -= outside_pad
-            
+
             padded_centres.append(center)
         all_centres = padded_centres
 
@@ -520,7 +522,7 @@ class SleepMonitorWithTargetROIBuilder(TargetGridROIBuilder):
                                                                )
 
 class FSLSleepMonitorWithTargetROIBuilder(TargetGridROIBuilder):
-    
+
     _description = {"overview": "The default sleep monitor arena with ten rows of two tubes.",
                     "arguments": []}
 

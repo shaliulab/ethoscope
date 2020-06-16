@@ -34,7 +34,7 @@ def rotate_contour(cnt, angle, center_of_mass=None):
             center_of_mass = contour_center(cnt)
 
         M = cv2.getRotationMatrix2D(center_of_mass, angle, 1.0)
-            
+
         cnt_shape = list(cnt.shape)
         coord_slot = cnt_shape.index(2)
         cnt_shape[coord_slot] = 1
@@ -62,12 +62,12 @@ def move_contour(cnt, pixel=0, axis=1):
 
 
 def refine_contour(cnt, grey, rotate=True, move=True):
-    
+
     if rotate:
         max_angle = 0.0
         learning_rate = 0.01
         center_of_mass = contour_center(cnt)
-        
+
         cnt_rot = rotate_contour(cnt, +learning_rate, center_of_mass)
         mean_pos = contour_mean_intensity(grey, cnt_rot)
         cnt_rot = rotate_contour(cnt, -learning_rate, center_of_mass)
@@ -77,7 +77,7 @@ def refine_contour(cnt, grey, rotate=True, move=True):
         original_val = contour_mean_intensity(grey, cnt)
         max_val = original_val
         for angle in np.arange(-.25, .25, learning_rate):
-        
+
         # while not min_found and n_iters < 100:
             inner_cnt_rot = rotate_contour(cnt, angle, center_of_mass)
             val = contour_mean_intensity(grey, inner_cnt_rot)
@@ -88,7 +88,7 @@ def refine_contour(cnt, grey, rotate=True, move=True):
         cnt_rot = rotate_contour(cnt, max_angle, center_of_mass)
         if max_angle != 0:
             cv2.drawContours(grey, [inner_cnt_rot], -1, (255, 0, 255), 2)
-            
+
         cv2.drawContours(grey, [cnt_rot], -1, (255, 255, 0), 2)
 
         cnt_rot.reshape((1, *cnt_rot.shape))
@@ -102,7 +102,7 @@ def refine_contour(cnt, grey, rotate=True, move=True):
         original_val = contour_mean_intensity(grey, cnt_rot)
         max_val = original_val
         max_pixel = 0
-        # print("Running moving algorithm for ONE contour")    
+        # print("Running moving algorithm for ONE contour")
         for pixel in np.arange(-10, 10, 1):
             inner_cnt_moved = move_contour(cnt=cnt_rot, pixel=pixel)
             # import ipdb; ipdb.set_trace()
@@ -117,7 +117,7 @@ def refine_contour(cnt, grey, rotate=True, move=True):
         optim_vertical = move_contour(cnt=cnt_rot, pixel=max_pixel)
         original_val = max_val
         max_pixel = 0
-        # print("Running moving algorithm for ONE contour")    
+        # print("Running moving algorithm for ONE contour")
         for pixel in np.arange(-100, 100, 10):
             inner_cnt_moved = move_contour(cnt=optim_vertical, pixel=pixel,axis=0)
             # import ipdb; ipdb.set_trace()
@@ -130,7 +130,7 @@ def refine_contour(cnt, grey, rotate=True, move=True):
                 max_pixel = pixel
 
         final_contour = move_contour(cnt=optim_vertical, pixel=int(max_pixel*0.8),axis=0)
-        
+
 
 
 
@@ -160,11 +160,11 @@ def contour_mean_intensity(grey, cnt):
     mask = np.zeros_like(grey, dtype=np.uint8)
     mask = cv2.drawContours(mask, [cnt], -1, 255, -1)
     mean = cv2.mean(grey, mask=mask)[0]
-    
+
     return mean
 
 def place_dots(grey, pts, color=255):
-    
+
     # logging.warning("Placement")
     # logging.warning(pts)
     for pt in pts:
@@ -174,25 +174,25 @@ def place_dots(grey, pts, color=255):
 
 
 def pull_contour_h(cnt, point, side="left"):
-    max_dist = -10 
-    print("--")
-    print(cnt)
-    print(point)
+    max_dist = -10
+    #print("--")
+    #print(cnt)
+    #print(point)
     sign = -1 if side == "left" else + 1
     funcs = {"left": np.max, "right": np.min}
-    
-    distances = np.array([point[0] - corner[0] for corner in cnt])
-    
 
-    print(distances)
+    distances = np.array([point[0] - corner[0] for corner in cnt])
+
+
+    #print(distances)
     dist = funcs[side](distances)
-    print(dist)
-    
+    #print(dist)
+
     diff = int(dist - sign*max_dist)
-    
-    print(diff)
-    print("--")
-    
+
+    #print(diff)
+    #print("--")
+
     cnt = np.array([[corner[0] + diff, corner[1]] for corner in cnt])
-    print(cnt)
+    #print(cnt)
     return cnt

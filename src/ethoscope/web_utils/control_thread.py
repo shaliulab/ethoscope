@@ -12,7 +12,7 @@ import pickle
 import secrets
 
 import trace
-from ethoscope.hardware.input.cameras import OurPiCameraAsync, MovieVirtualCamera, DummyPiCameraAsync, V4L2Camera
+from ethoscope.hardware.input.cameras import OurPiCameraAsync, MovieVirtualCamera, DummyPiCameraAsync, V4L2Camera, FSLVirtualCamera
 from ethoscope.roi_builders.target_roi_builder import OlfactionAssayROIBuilder, FSLSleepMonitorWithTargetROIBuilder, SleepMonitorWithTargetROIBuilder, TargetGridROIBuilder, ElectricShockAssayROIBuilder
 from ethoscope.roi_builders.fsl_roi_builder import HighContrastTargetROIBuilder
 from ethoscope.roi_builders.roi_builders import  DefaultROIBuilder
@@ -32,7 +32,7 @@ from ethoscope.utils.description import DescribedObject
 from ethoscope.web_utils.helpers import isMachinePI, hasPiCamera, isExperimental, get_machine_name
 
 class ExperimentalInformation(DescribedObject):
-    
+
         _description  = {   "overview": "Optional information about your experiment",
                             "arguments": [
                                     {"type": "str", "name": "name", "description": "Who are you?", "default" : "", "asknode" : "users", "required" : "required"},
@@ -77,7 +77,7 @@ class ControlThread(Thread):
                 "possible_classes":[AdaptiveBGModel],
             },
         "interactor":{
-                        "possible_classes":[DefaultStimulator, 
+                        "possible_classes":[DefaultStimulator,
                                             SleepDepStimulator,
                                             OptomotorSleepDepriver,
                                             MiddleCrossingStimulator,
@@ -96,7 +96,7 @@ class ControlThread(Thread):
                         "possible_classes":[DefaultDrawer, NullDrawer],
                     },
         "camera":{
-                        "possible_classes":[OurPiCameraAsync, MovieVirtualCamera, DummyPiCameraAsync, V4L2Camera],
+                        "possible_classes":[OurPiCameraAsync, MovieVirtualCamera, DummyPiCameraAsync, V4L2Camera, FSLVirtualCamera],
                     },
         "result_writer":{
                         "possible_classes":[ResultWriter, SQLiteResultWriter],
@@ -105,12 +105,12 @@ class ControlThread(Thread):
                         "possible_classes":[ExperimentalInformation],
                 }
      }
-    
+
     #some classes do not need to be offered as choices to the user in normal conditions
     #these are shown only if the machine is not a PI
     _is_a_rPi = isMachinePI() and hasPiCamera() and not isExperimental()
     _hidden_options = {'camera', 'result_writer'}
-    
+
     for k in _option_dict:
         _option_dict[k]["class"] =_option_dict[k]["possible_classes"][0]
         _option_dict[k]["kwargs"] ={}
@@ -199,7 +199,7 @@ class ControlThread(Thread):
         return False
 #        logging.warning(f"Process with PID {os.getpid()} was interruped")
 #        persistent_state_file_exists = os.path.exists(self._persistent_state_file)
-#        control_thread_already_running = False 
+#        control_thread_already_running = False
 #
 #        try:
 #            r = requests.get(f"http://localhost:9000/data/{self._info['id']}", timeout = 5)
@@ -253,12 +253,33 @@ class ControlThread(Thread):
             subdata = data[field]
         except KeyError:
             logging.warning("No field %s, using default" % field)
-            return None, {}
+            return None, (), {}
 
         Class = eval(subdata["name"])
-        kwargs = subdata["arguments"]
-    
-        return Class, kwargs
+        try:
+            args = subdata["args"]
+        except KeyError:
+            args = ()
+
+        try:
+            kwargs = subdata["kwargs"]
+        except KeyError:
+            try:
+                kwargs = subdata["arguments"]
+            except KeyError:
+                kwargs = {}
+
+        logging.warning("Parsing %s", Class)
+        logging.warning("args:")
+        logging.warning(args)
+        logging.warning("kwargs:")
+        logging.warning(kwargs)
+        logging.warning("subdata")
+        logging.warning(subdata)
+
+
+
+        return Class, args, kwargs
 
 
     def _parse_user_options(self,data):
@@ -271,16 +292,17 @@ class ControlThread(Thread):
 
         for key in list(self._option_dict.keys()):
 
-            Class, kwargs = self._parse_one_user_option(key, data)
+            Class, args, kwargs = self._parse_one_user_option(key, data)
             # when no field is present in the JSON config, we get the default class
 
             if Class is None:
-
                 self._option_dict[key]["class"] = self._option_dict[key]["possible_classes"][0]
+                self._option_dict[key]["args"] = ()
                 self._option_dict[key]["kwargs"] = {}
                 continue
 
             self._option_dict[key]["class"] = Class
+            self._option_dict[key]["args"] = args
             self._option_dict[key]["kwargs"] = kwargs
 
 
@@ -323,7 +345,7 @@ class ControlThread(Thread):
 
         #Here the stimulator passes args. Hardware connection was previously open as thread.
         stimulators = [StimulatorClass(hardware_connection, **stimulator_kwargs) for _ in rois]
-        
+
         kwargs = self._monit_kwargs.copy()
         kwargs.update(tracker_kwargs)
 
@@ -373,6 +395,7 @@ class ControlThread(Thread):
         """
         """
         CameraClass = self._option_dict["camera"]["class"]
+        camera_args = self._option_dict["camera"]["args"]
         camera_kwargs = self._option_dict["camera"]["kwargs"]
 
         ROIBuilderClass = self._option_dict["roi_builder"]["class"]
@@ -388,7 +411,11 @@ class ControlThread(Thread):
         ResultWriterClass = self._option_dict["result_writer"]["class"]
         result_writer_kwargs = self._option_dict["result_writer"]["kwargs"]
 
-        cam = CameraClass(**camera_kwargs)
+        print("camera_args")
+        print(camera_args)
+        print("camera_kwargs")
+        print(camera_kwargs)
+        cam = CameraClass(*camera_args, **camera_kwargs)
 
         if isinstance(cam, OurPiCameraAsync):
             for i,(t, frame) in enumerate(cam):
@@ -399,14 +426,14 @@ class ControlThread(Thread):
         logging.info(roi_builder_kwargs)
 
         roi_builder = ROIBuilderClass(args=(), kwargs=roi_builder_kwargs)
-  
+
         try:
             if roi_builder.__class__.__name__ == "HighContrastTargetROIBuilder":
                 img, M, rois = roi_builder.build(cam)
             else:
                 rois = roi_builder.build(cam)
                 M = None
-                
+
         except EthoscopeException as e:
             cam._close()
             raise e
@@ -421,21 +448,21 @@ class ControlThread(Thread):
         exp_info_kwargs = self._option_dict["experimental_info"]["kwargs"]
         self._info["experimental_info"] = ExpInfoClass(**exp_info_kwargs).info_dic
         self._info["time"] = cam.start_time
-        
+
         #here the hardwareconnection call the interface class without passing any argument!
         hardware_connection = HardwareConnection(HardWareInterfaceClass)
-        
+
         #creates a unique tracking id to label this tracking run
         self._info["experimental_info"]["run_id"] = secrets.token_hex(8)
-        
-        
+
+
         if self._info["experimental_info"]["sensor"]:
             #if is URL:
             sensor = EthoscopeSensor(self._info["experimental_info"]["sensor"])
             logging.info("Using sensor with URL %s" % self._info["experimental_info"]["sensor"])
         else:
             sensor = None
-        
+
 
         logging.info("Generating metadata of this run")
         logging.info(self._info)
@@ -449,6 +476,8 @@ class ControlThread(Thread):
             "experimental_info": str(self._info["experimental_info"]),
             "selected_options": str(self._option_dict),
         }
+
+        logging.warning("Detected camera start time is %d", cam.start_time)
         # hardware_interface is a running thread
         rw = ResultWriterClass(self._db_credentials, rois, self._metadata, sensor=sensor, **result_writer_kwargs)
         return  (cam, rw, rois, M, TrackerClass, tracker_kwargs,
@@ -478,16 +507,16 @@ class ControlThread(Thread):
                 cam, rw, rois, M, TrackerClass, tracker_kwargs, hardware_connection, StimulatorClass, stimulator_kwargs = self._set_tracking_from_scratch()
                         # return  (cam, rw, rois, M, TrackerClass, tracker_kwargs,
                         # hardware_connection, StimulatorClass, stimulator_kwargs)
-            
+
             with rw as result_writer:
                 if cam.canbepickled:
                     self._save_pickled_state(cam, rw, rois, M, TrackerClass, tracker_kwargs, hardware_connection, StimulatorClass, stimulator_kwargs, self._info)
-                
-                
+
+
                 if M is not None:
                     logging.info(type(M))
                     logging.info(M.shape)
-                
+
                 else:
                     logging.info('M is None!')
 
@@ -499,7 +528,7 @@ class ControlThread(Thread):
             if e.img is not  None:
                 cv2.imwrite(self._info["dbg_img"], e.img)
             self.stop(traceback.format_exc())
-        
+
         except Exception as e:
             self.stop(traceback.format_exc())
 
@@ -533,10 +562,10 @@ class ControlThread(Thread):
     def stop(self, error=None):
         self._info["status"] = "stopping"
         self._info["time"] = time.time()
-        
+
         # we reset all the user data of the latest experiment except the run_id
         # a new run_id will be created when we start another experiment
-        
+
         if "experimental_info" in self._info and "run_id" in self._info["experimental_info"]:
             self._info["experimental_info"] = { "run_id" : self._info["experimental_info"]["run_id"] }
 

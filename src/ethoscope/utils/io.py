@@ -14,9 +14,26 @@ import os
 import urllib.request, urllib.error, urllib.parse
 import json
 
+class Null(object):
+    def __repr__(self):
+        return "NULL"
+    def __str__(self):
+        return "NULL"
+
+
 class AsyncMySQLWriter(multiprocessing.Process):
+    """
+    A class to be instantiated as the _async_writing_class of a ResultWriter
+    to make it populate a MySQL database with its recorded data
+    It runs as a separate process that fetches from a queue
+    shared with the main ResulWriter process
+    all the MySQL commands.
+    These commands are thus run _asynchronously_ since the execution is not simultaneous
+    to the command being issued by the ResultWriter
+    """
 
     _db_host = "localhost"
+    _sql_flavour = "MySQL"
     #_db_host = "node" #uncomment this to save data on the node
 
     def __init__(self, db_credentials, queue, erase_old_db=True, **kwargs):
@@ -61,7 +78,7 @@ class AsyncMySQLWriter(multiprocessing.Process):
         command = "RESET MASTER"
         c.execute(command)
 
-        to_execute  = []
+        to_execute = []
         # for t in c:
         #     t = t[0]
         #     command = "TRUNCATE TABLE %s" % t
@@ -187,6 +204,7 @@ class AsyncMySQLWriter(multiprocessing.Process):
             if db is not None:
                 db.close()
 
+
 class SensorDataToMySQLHelper(object):
     _table_name = "SENSORS"
     _base_headers = {"id" : "INT NOT NULL AUTO_INCREMENT PRIMARY KEY",
@@ -243,12 +261,15 @@ class SensorDataToMySQLHelper(object):
         return ",".join([ "%s %s" % (key, self._table_headers[key]) for key in self._table_headers])
 
 
-
 class ImgToMySQLHelper(object):
+
     _table_name = "IMG_SNAPSHOTS"
     _table_headers = {"id" : "INT NOT NULL AUTO_INCREMENT PRIMARY KEY",
                       "t"  : "INT",
                       "img" : "LONGBLOB"}
+
+    _value_placeholders = {"MySQL": "(%s, %s, %s)", "SQLite": "(?, ?, ?)"}
+    _id_placeholders = {"MySQL": 0, "SQLite": Null()}
 
     @property
     def table_name (self):
@@ -258,7 +279,15 @@ class ImgToMySQLHelper(object):
     def create_command(self):
         return ",".join([ "%s %s" % (key, self._table_headers[key]) for key in self._table_headers])
 
-    def __init__(self, period=300.0):
+    def placeholder(self, name="value"):
+        if name == "value":
+            return self._value_placeholders[self._sql_flavour]
+        elif name == "id":
+            return self._id_placeholders[self._sql_flavour]
+        else:
+            raise Exception("Invalid placeholder name. Please select value or id")
+
+    def __init__(self, period=300.0, sql_flavour="MySQL"):
         """
         :param period: how often snapshots are saved, in seconds
         :return:
@@ -267,17 +296,16 @@ class ImgToMySQLHelper(object):
         self._period = period
         self._last_tick = 0
         self._tmp_file = tempfile.mktemp(prefix="ethoscope_", suffix=".jpg")
+        self._sql_flavour = sql_flavour
 
     def __del__(self):
         try:
             os.remove(self._tmp_file)
         except:
-            logging.error("Could not remove temp file: %s" % self._tmp_file)
+            logging.error("Could not remove temp file: %s", self._tmp_file)
 
-
-    def flush(self, t, img):
+    def flush(self, t, img, frame_idx=None):
         """
-
         :param t: the time since start of the experiment, in ms
         :param img: an array representing an image.
         :type img: np.ndarray
@@ -285,28 +313,30 @@ class ImgToMySQLHelper(object):
         """
 
         tick = int(round((t/1000.0)/self._period))
+
         if tick == self._last_tick:
             return
 
         cv2.imwrite(self._tmp_file, img, [int(cv2.IMWRITE_JPEG_QUALITY), 50])
 
         with open(self._tmp_file, "rb") as f:
-                bstring = f.read()
+            bstring = f.read()
 
-        cmd = 'INSERT INTO ' + self._table_name + '(id,t,img) VALUES (%s,%s,%s)'
+        identity = self.placeholder("id") if frame_idx is None else frame_idx
 
-        args = (0, int(t), bstring)
+        cmd = 'INSERT INTO ' + self._table_name + '(id,t,img) VALUES %s' % self.placeholder("value")
+
+        args = (identity, int(t), bstring)
 
         self._last_tick = tick
 
         return cmd, args
 
+
 class DAMFileHelper(object):
 
     def __init__(self, period=60.0, n_rois=32):
         self._period = period
-
-
         self._activity_accum = OrderedDict()
         self._n_rois = n_rois
         self._distance_map ={}
@@ -368,7 +398,6 @@ class DAMFileHelper(object):
         command = '''INSERT INTO CSV_DAM_ACTIVITY VALUES %s''' % str(tuple(values))
         return command
 
-
     def flush(self, t):
 
         out =  OrderedDict()
@@ -389,16 +418,14 @@ class DAMFileHelper(object):
                 for r in range(1, self._n_rois +1):
                     self._activity_accum[i][r] = 0
 
-            out[i] =  self._activity_accum[i].copy()
+            out[i] = self._activity_accum[i].copy()
             todel.append(i)
 
             for r in range(1, self._n_rois + 1):
-                out[i][r] = round(out[i][r],5)
-
+                out[i][r] = round(out[i][r], 5)
 
         for i in todel:
             del self._activity_accum[i]
-
 
         if tick - m > 1:
             logging.warning("DAM file writer skipping a tick. No data for more than one period!")
@@ -407,13 +434,31 @@ class DAMFileHelper(object):
 
         return out
 
+
 class ResultWriter(object):
+    """
+    The main ResultWriter class, using by default a AsyncMySQLWriter
+    It exposes
+    * a write method receiving data_rows and storing the data via _insert_dict
+    or helper classes
+    * a flush method that pushes the data in _insert_dict to the async queue
+    controlled by the async_writing_class and calls the flush method of the helper classes
+    """
     # _flush_every_ns = 30 # flush every 10s of data
     _max_insert_string_len = 1000
     _async_writing_class = AsyncMySQLWriter
     _null = 0
 
     def __init__(self, db_credentials, rois, metadata=None, make_dam_like_table=True, take_frame_shots=True, erase_old_db=True, sensor=None, *args, **kwargs):
+
+        period = 300
+        try:
+            period = kwargs.pop("period")
+        except KeyError:
+            pass
+
+        sql_flavour = self._async_writing_class._sql_flavour
+
         self._queue = multiprocessing.JoinableQueue()
         self._async_writer = self._async_writing_class(db_credentials, self._queue, erase_old_db, **kwargs)
         self._async_writer.start()
@@ -436,13 +481,13 @@ class ResultWriter(object):
             self._dam_file_helper = None
 
         if take_frame_shots:
-            self._shot_saver = ImgToMySQLHelper()
+            self._shot_saver = ImgToMySQLHelper(period=period, sql_flavour=sql_flavour)
         else:
             self._shot_saver = None
 
         self._insert_dict = {}
         if self._metadata is None:
-            self._metadata  = {}
+            self._metadata = {}
 
         if sensor is not None:
             self._sensor_saver = SensorDataToMySQLHelper(sensor)
@@ -501,6 +546,7 @@ class ResultWriter(object):
 
         for k,v in list(self.metadata.items()):
             command = "INSERT INTO METADATA VALUES %s" % str((k, v))
+            logging.warning(command)
             self._write_async_command(command)
 
         while not self._queue.empty():
@@ -517,10 +563,16 @@ class ResultWriter(object):
         dr = data_rows[0]
 
         if not self._var_map_initialised:
+            logging.warning("Initalising")
+            logging.warning(dr)
             for r in self._rois:
                 self._initialise(r, dr)
             self._initialise_var_map(dr)
 
+        # call the _add method
+        # currently available are:
+        # * ResultWriter._add ()
+        # * But also SQLiteResultWriter
         self._add(t, roi, data_rows)
         self._last_t = t
 
@@ -529,7 +581,7 @@ class ResultWriter(object):
         if self._dam_file_helper is not None:
             self._dam_file_helper.input_roi_data(t, roi, dr)
 
-    def flush(self, t, img=None):
+    def flush(self, t, img=None, frame_idx=None):
         """
         This is were we actually write SQL commands
         """
@@ -540,9 +592,10 @@ class ResultWriter(object):
                 self._write_async_command(c)
 
         if self._shot_saver is not None and img is not None:
-            c_args = self._shot_saver.flush(t, img)
+            c_args = self._shot_saver.flush(t, img, frame_idx)
             if c_args is not None:
                 self._write_async_command(*c_args)
+                logging.warning("An image was successfully written to the SQLite database")
 
         if self._sensor_saver is not None:
             c_args = self._sensor_saver.flush(t)
@@ -555,8 +608,6 @@ class ResultWriter(object):
                 self._insert_dict[k] = ""
 
         return False
-
-
 
     def _add(self, t, roi, data_rows):
         t = int(round(t))
@@ -571,7 +622,7 @@ class ResultWriter(object):
             else:
                 self._insert_dict[roi_id] += ("," + str(tp))
 
-    def _initialise_var_map(self,  data_row):
+    def _initialise_var_map(self, data_row):
         logging.info("Filling 'VAR_MAP' with values")
         # we recreate var map so we do not have duplicate entries
         self._write_async_command("DELETE FROM VAR_MAP")
@@ -581,17 +632,15 @@ class ResultWriter(object):
             self._write_async_command(command)
         self._var_map_initialised = True
 
-
-
     def _initialise(self, roi, data_row):
         # We make a new dir to store results
         fields = ["id INT  NOT NULL AUTO_INCREMENT PRIMARY KEY" ,"t INT"]
+
         for dt in list(data_row.values()):
             fields.append("%s %s" % (dt.header_name, dt.sql_data_type))
         fields = ", ".join(fields)
         table_name = "ROI_%i" % roi.idx
         self._create_table(table_name, fields)
-
 
     def __enter__(self):
         return self
@@ -648,10 +697,16 @@ class ResultWriter(object):
     def __setstate__(self, state):
         self.__init__(**state["args"])
 
+
 class AsyncSQLiteWriter(multiprocessing.Process):
     _pragmas = {"temp_store": "MEMORY",
                 "journal_mode": "OFF",
                 "locking_mode":  "EXCLUSIVE"}
+
+    _sql_flavour = "SQLite"
+
+    def sql_flavour(self):
+        return self._sql_flavour
 
     def __init__(self, db_credentials, queue, erase_old_db=True, **kwargs):
 
@@ -684,7 +739,6 @@ class AsyncSQLiteWriter(multiprocessing.Process):
                 command = "PRAGMA %s = %s" %(str(k), str(v))
                 c.execute(command)
 
-
     def _get_connection(self):
         import sqlite3
 
@@ -695,7 +749,6 @@ class AsyncSQLiteWriter(multiprocessing.Process):
 
         db = sqlite3.connect(self._path)
         return db
-
 
     def run(self):
 
@@ -709,11 +762,10 @@ class AsyncSQLiteWriter(multiprocessing.Process):
 
                     if (msg == 'DONE'):
                         print(msg)
-                        do_run=False
+                        do_run = False
                         continue
 
                     command, args = msg
-
 
                     c = db.cursor()
                     if args is None:
@@ -723,10 +775,12 @@ class AsyncSQLiteWriter(multiprocessing.Process):
 
                     db.commit()
 
-                except:
+                except Exception as e:
                     do_run=False
                     try:
                         logging.error("Failed to run mysql command:\n%s" % command)
+                        logging.error(e)
+                        logging.error(traceback.print_exc())
                     except:
                         logging.error("Did not retrieve queue value")
 
@@ -752,32 +806,27 @@ class AsyncSQLiteWriter(multiprocessing.Process):
             if db is not None:
                 db.close()
 
-class Null(object):
-    def __repr__(self):
-        return "NULL"
-    def __str__(self):
-        return "NULL"
+
 
 class SQLiteResultWriter(ResultWriter):
     _async_writing_class = AsyncSQLiteWriter
     _null= Null()
     def __init__(self, db_credentials, rois, metadata=None, make_dam_like_table=False, take_frame_shots=False, *args, **kwargs):
-        super(SQLiteResultWriter, self).__init__(db_credentials, rois, metadata,make_dam_like_table, take_frame_shots, *args, **kwargs)
-
+        super(SQLiteResultWriter, self).__init__(db_credentials, rois, metadata, make_dam_like_table, take_frame_shots, *args, **kwargs)
 
     def _create_table(self, name, fields, engine=None):
 
         fields = fields.replace("NOT NULL", "")
-        command = "CREATE TABLE IF NOT EXISTS %s (%s)" % (name,fields)
+        command = "CREATE TABLE IF NOT EXISTS %s (%s)" % (name, fields)
         logging.info("Creating database table with: " + command)
         self._write_async_command(command)
 
     def _add(self, t, roi, data_rows):
+
         t = int(round(t))
         roi_id = roi.idx
 
         for dr in data_rows:
-            # here we use NULL because SQLite does not support '0' for auto index
             tp = (self._null, t) + tuple(dr.values())
 
             if roi_id not in self._insert_dict  or self._insert_dict[roi_id] == "":

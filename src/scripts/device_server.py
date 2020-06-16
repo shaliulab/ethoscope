@@ -1,21 +1,23 @@
 __author__ = 'luis'
 
-import logging
-import traceback
 import argparse
+import glob
+import json
+import logging
+import os
+import subprocess
+import traceback
+
+import bottle
+import socket
+from zeroconf import ServiceInfo, Zeroconf
+
+
 from ethoscope.web_utils.control_thread import ControlThread
 from ethoscope.web_utils.helpers import *
 from ethoscope.web_utils.record import ControlThreadVideoRecording
-import subprocess
-import json
-import os
-import glob
 
 #from bottle import Bottle, ServerAdapter, request, server_names
-import bottle
-
-import socket
-from zeroconf import ServiceInfo, Zeroconf
 
 try:
     from cheroot.wsgi import Server as WSGIServer
@@ -78,7 +80,7 @@ def server_static(filepath):
     return bottle.static_file(filepath, root="/")
 
 @api.route('/download/<filepath:path>')
-def server_static(filepath):
+def server_static_download(filepath):
     return bottle.static_file(filepath, root="/", download=filepath)
 
 @api.get('/id')
@@ -219,7 +221,7 @@ def list_data_files(category, id):
     if id != machine_id:
         raise WrongMachineID
 
-    path = os.path.join (ETHOSCOPE_UPLOAD, category)
+    path = os.path.join(ETHOSCOPE_UPLOAD, category)
 
     if os.path.exists(path):
         return {'filelist' : [{'filename': i, 'fullpath' : os.path.abspath(os.path.join(path,i))} for i in os.listdir(path)]}
@@ -247,13 +249,13 @@ def get_machine_info(id):
     except:
         machine_info['etc_node_ip'] = "not set"
 
-    machine_info['knows_node_ip'] = ( machine_info['node_ip'] == machine_info['etc_node_ip'] )
+    machine_info['knows_node_ip'] = (machine_info['node_ip'] == machine_info['etc_node_ip'])
     machine_info['hostname'] = os.uname()[1]
 
     machine_info['machine-name'] = get_machine_name()
 
     try:
-        machine_info['machine-number'] = int ( machine_info['machine-name'].split("_")[1] )
+        machine_info['machine-number'] = int (machine_info['machine-name'].split("_")[1])
     except:
         machine_info['machine-number'] = 0
 
@@ -346,7 +348,6 @@ def close(exit_status=0):
     os._exit(exit_status)
 
 def is_port_in_use(port):
-    import socket
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         return s.connect_ex(('localhost', port)) == 0
 
@@ -377,26 +378,33 @@ if __name__ == '__main__':
 
     ETHOSCOPE_DIR = "/ethoscope_data/results"
     ETHOSCOPE_UPLOAD = "/ethoscope_data/upload"
+    ETHOSCOPE_VIDEOS = "/ethoscope_data/videos"
 
     ap = argparse.ArgumentParser()
 
     ap.add_argument("--run", dest="run", default=False, help="Runs tracking directly", action="store_true")
+    ap.add_argument(
+        "--use-wall-clock", dest="use_wall_clock", default=False,
+        help="For offline analysis, whether to use the system's time (True) or the video time (False)", action="store_true"
+    )
     ap.add_argument("-s", "--stop-after-run", dest="stop_after_run", default=False, help="When -r, stops immediately after. otherwise, server waits", action="store_true")
     ap.add_argument("-v", "--record-video", dest="record_video", default=False, help="Records video instead of tracking", action="store_true")
     ap.add_argument("-j", "--json", dest="json", default=None, help="A JSON config file")
     ap.add_argument("-p", "--port", dest="port", type=int, default=9000, help="port")
     ap.add_argument("-n", "--node", dest="node", default="node", help="The hostname of the computer running the node")
     ap.add_argument("-e", "--results-dir", dest="results_dir", default=ETHOSCOPE_DIR, help="Where temporary result files are stored")
+    ap.add_argument("--video-results-dir", dest="video_results_dir", default=ETHOSCOPE_VIDEOS, help="Where mp4 video files are stored")
     ap.add_argument("-D", "--debug", dest="debug", default=False, help="Shows all logging messages", action="store_true")
 
     ap.add_argument("-i", "--input", help="Input mp4 file", type=str)
     ap.add_argument("-o", "--output", help="Resulting sqlite3 db file", type=str)
+    ap.add_argument("-c", "--camera", help="Name of camera class", default="FSLVirtualCamera", type=str)
     ap.add_argument("--machine_id", type=str, required=False)
     ap.add_argument("--name", type=str, default=None)
-    ap.add_argument("-r", "--roi_builder", type=str, default="FSLSleepMonitorWithTargetROIBuilder")
-    ap.add_argument("-t", "--target_coordinates_file", type=str, required=False, default="/etc/target_coordinates.conf")
+    ap.add_argument("-r", "--roi-builder", dest="roi_builder", type=str, default="FSLSleepMonitorWithTargetROIBuilder")
+    ap.add_argument("-t", "--target-coordinates-file", dest="target_coordinates_file", type=str, required=False, default="/etc/target_coordinates.conf")
     ap.add_argument("--rois_pickle_file", type=str, required=False, default="rois.pickle")
-    ap.add_argument("-d", "--downsample", type=int, default=1)
+    ap.add_argument("-d", "--drop-each", dest="drop_each", type=int, default=1)
     ap.add_argument("-a", "--address", type=str, default=None)
 
     ARGS = vars(ap.parse_args())
@@ -409,10 +417,11 @@ if __name__ == '__main__':
 
     DEBUG = ARGS["debug"]
     NODE = ARGS["node"]
-    ETHOSCOPE_DIR = "/ethoscope_data/results" or ARGS["results_dir"]
+    ETHOSCOPE_DIR = ARGS["results_dir"]
+    ETHOSCOPE_VIDEOS = ARGS["video_results_dir"]
     VERSION = get_git_version()
     version = VERSION
-    DOWNSAMPLE = ARGS["downsample"]
+    DROP_EACH = ARGS["drop_each"]
     ADDRESS = ARGS["address"]
 
     if ARGS["name"] is None:
@@ -421,18 +430,15 @@ if __name__ == '__main__':
         NAME = ARGS["name"]
 
     machine_name = NAME
- 
+
+
 
     if ARGS["machine_id"] is None:
-        # get machine id form filename assuming it is in the third
-        # value (0-based index 2) if we split it by underscore
-        #MACHINE_ID = ARGS["input"].split("/")[::-1][0].split("_")[3]
         MACHINE_ID = get_machine_id()
     else:
         MACHINE_ID = ARGS["machine_id"]
-
+    # this is overriden if --run. see below if if ARGS["run"]
     machine_id = MACHINE_ID
-
 
 
     if ARGS["json"]:
@@ -452,31 +458,37 @@ if __name__ == '__main__':
                                               data=recording_json_data)
 
     elif ARGS["run"]:
-    
-    
+        # from folder in ethoscope_data/videos
+        # in case ETHOSCOPE_VIDEOS has a trailing /, remove any / on the left
+        MACHINE_ID = ARGS["input"].replace(ETHOSCOPE_VIDEOS, "").lstrip("/").split("/")[0]
+        # from filename
+        machine_id = ARGS["input"].split("/")[::-1][0].split("_")[3]
+        assert MACHINE_ID == machine_id
+
         if ARGS["output"] is None:
             DATE = ARGS["input"].split("/")[::-1][1]
             OUTPUT = os.path.join(ETHOSCOPE_DIR, MACHINE_ID, NAME, DATE, DATE + "_" + MACHINE_ID + ".db")
         else:
             OUTPUT = ARGS["output"]
-    
+
+
         logging.info(OUTPUT)
-    
-    
+
+
         data = {
             "camera":
-                {"name": "MovieVirtualCamera", "arguments": {"path": ARGS["input"]}},
+                {"name": ARGS["camera"], "args": (ARGS["input"],), "kwargs": {"use_wall_clock": ARGS["use_wall_clock"],  "drop_each": ARGS["drop_each"]}},
             "result_writer":
-               {"name": "SQLiteResultWriter", "arguments": {"path": OUTPUT, "take_frame_shots": False}},
+               {"name": "SQLiteResultWriter", "kwargs": {"path": OUTPUT, "take_frame_shots": True}},
             "roi_builder":
-            {"name": ARGS["roi_builder"], "arguments": {"target_coordinates_file": ARGS["target_coordinates_file"], "rois_pickle_file": ARGS["rois_pickle_file"]}},
+            {"name": ARGS["roi_builder"], "kwargs": {"target_coordinates_file": ARGS["target_coordinates_file"], "rois_pickle_file": ARGS["rois_pickle_file"]}},
         }
-    
+
         json_data.update(data)
         tracking_json_data = json_data
 
-    control = ControlThread(MACHINE_ID, NAME, VERSION, ethoscope_dir=ETHOSCOPE_DIR, data=tracking_json_data, verbose=True, downsample=DOWNSAMPLE)
-    
+    control = ControlThread(MACHINE_ID, NAME, VERSION, ethoscope_dir=ETHOSCOPE_DIR, data=tracking_json_data, verbose=True)
+
     if DEBUG:
         logging.basicConfig(level=logging.DEBUG)
         logging.info("Logging using DEBUG SETTINGS")
@@ -527,16 +539,16 @@ if __name__ == '__main__':
         logging.info(f"PORT {PORT}")
         serviceInfo = ServiceInfo("_ethoscope._tcp.local.",
                         uid + "._ethoscope._tcp.local.",
-                        address = socket.inet_aton(address),
-                        port = PORT,
-                        properties = {
+                        address=socket.inet_aton(address),
+                        port=PORT,
+                        properties={
                             'version': '0.0.1',
                             'id_page': '/id',
                             'user_options_page': '/user_options',
                             'static_page': '/static',
                             'controls_page': '/controls',
                             'user_options_page': '/user_options'
-                        } )
+                        })
         zeroconf = Zeroconf()
         zeroconf.register_service(serviceInfo)
 
@@ -550,9 +562,9 @@ if __name__ == '__main__':
         except:
             #Trick bottle to think that cheroot is actulay cherrypy server, modifies the server_names allowed in bottle
             #so we use cheroot in background.
-            SERVER="cherrypy"
-            bottle.server_names["cherrypy"]=CherootServer(host='0.0.0.0', port=PORT)
-            logging.warning("Cherrypy version is bigger than 9, we have to change to cheroot server")
+            SERVER = "cherrypy"
+            bottle.server_names["cherrypy"] = CherootServer(host='0.0.0.0', port=PORT)
+            logging.warning("Cherrypy version is bigger than 9, change to cheroot server")
             pass
         #########
 

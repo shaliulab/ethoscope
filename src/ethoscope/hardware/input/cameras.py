@@ -15,6 +15,9 @@ import time
 import logging
 logging.basicConfig(level=logging.INFO)
 import os
+import re
+import datetime
+
 from ethoscope.utils.debug import EthoscopeException
 import multiprocessing
 import traceback
@@ -28,7 +31,7 @@ class BaseCamera(object):
     _resolution = None
     _frame_idx = 0
 
-    def __init__(self,drop_each=1, max_duration=None, *args, **kwargs):
+    def __init__(self, drop_each=1, max_duration=None, *args, **kwargs):
         """
         The template class to generate and use video streams.
 
@@ -44,7 +47,7 @@ class BaseCamera(object):
     def __exit__(self):
         logging.info("Closing camera")
         self._close()
-        
+
     def _close(self):
         pass
 
@@ -136,9 +139,9 @@ class MovieVirtualCamera(BaseCamera):
                     "arguments": [
                                     {"type": "filepath", "name": "path", "description": "The *LOCAL* path to the video file to use as virtual camera","default":""},
                                    ]}
-                                   
 
-    def __init__(self, path, use_wall_clock = False, *args, **kwargs ):
+
+    def __init__(self, path, use_wall_clock=False, *args, **kwargs ):
         """
         Class to acquire frames from a video file.
 
@@ -152,6 +155,7 @@ class MovieVirtualCamera(BaseCamera):
         """
 
         #print "path", path
+        logging.warning(path)
         self._frame_idx = 0
         self._path = path
         self._use_wall_clock = use_wall_clock
@@ -163,7 +167,7 @@ class MovieVirtualCamera(BaseCamera):
             raise EthoscopeException("'%s' does not exist. No such file" % path)
 
         self.canbepickled = False #cv2.videocapture object cannot be serialized, hence cannot be picked
-        self.capture = cv2.VideoCapture(path) 
+        self.capture = cv2.VideoCapture(path)
         w = self.capture.get(CAP_PROP_FRAME_WIDTH)
         h = self.capture.get(CAP_PROP_FRAME_HEIGHT)
         self._total_n_frames =self.capture.get(CAP_PROP_FRAME_COUNT)
@@ -217,12 +221,90 @@ class MovieVirtualCamera(BaseCamera):
         self.capture.release()
 
 
+class FSLVirtualCamera(MovieVirtualCamera):
+    """
+    A MovieVirtualCamera with two features:
+    * the _start_time is not 0 when using the wall_clock,
+    instead it is the start of the video. This way the date_time
+    field in the METADATA SQL table is not 0
+
+    * its __iter__ method returns the frame count as stored in the
+    _frame_idx attribute (without the need to call enumerate)
+    """
+
+    _ref_time = datetime.datetime.fromtimestamp(0, datetime.timezone.utc)
+
+    def __init__(self, *args, **kwargs):
+
+        super(FSLVirtualCamera, self).__init__(*args, **kwargs)
+        # dont set _start_time to 0
+        # instead use the same start_time as the video
+        # this does not break the internal time counting system
+        # when use_wall_clock false because the time is extracted with
+        # cv2.cv.CAP_PROP_POS_MSEC without the need to substract the start
+        self._start_time = self._parse_start_time()
+
+    def _next_time_image(self):
+        time, im = super()._next_time_image()
+        frame_idx = self._frame_idx
+        return frame_idx, (time, im)
+
+    def _parse_start_time(self):
+        logging.warning(self._path)
+
+        res = re.findall(r"(\d{4}((-\d\d){2})_((\d\d-){2})\d{2})", self._path)
+        logging.warning(res)
+        assert res[0][0] == res[1][0]
+        date_time_str = res[0][0]
+
+        logging.warning("DATE_TIME_STR")
+        logging.warning(date_time_str)
+        date_time_naive = datetime.datetime.strptime(date_time_str, '%Y-%m-%d_%H-%M-%S')
+        date_time_aware = date_time_naive.astimezone(datetime.timezone.utc)
+
+        logging.warning("DATE_TIME")
+        logging.warning(date_time_aware)
+        # return the difference between the start of the video
+        # and the reference time, set to 1970-01-01 00:00:00
+        # in seconds
+        # this emulates what we would get if we were producing the dbfile
+        # via live and not offline tracking
+        return (date_time_aware - self._ref_time).total_seconds()
+
+    def __iter__(self):
+        """
+        Iterate thought consecutive frames of this camera.
+
+        :return: the time (in ms) and a frame (numpy array).
+        :rtype: (int, :class:`~numpy.ndarray`)
+        """
+        at_least_one_frame = False
+        while True:
+            if self.is_last_frame() or not self.is_opened():
+                if not at_least_one_frame:
+                    raise EthoscopeException("Camera could not read the first frame")
+                break
+            frame_idx, (t,out) = self._next_time_image()
+
+            if out is None:
+                break
+            t_ms = int(1000*t)
+            at_least_one_frame = True
+
+            if (self._frame_idx % self._drop_each) == 0:
+                yield frame_idx, (t_ms,out)
+
+            if self._max_duration is not None and t > self._max_duration:
+                break
+
+
+
 class V4L2Camera(BaseCamera):
     _description = {"overview": "Class to acquire frames from the V4L2 default interface (e.g. a webcam).",
                     "arguments": [
                     {"type": "number", "min": 0, "max": 4, "step": 1, "name": "device", "description": "The device to be open", "default":0},
                     ]}
-    
+
     def __init__(self, device=0, target_fps=5, target_resolution=(960,720), *args, **kwargs):
         """
         class to acquire stream from a video for linux compatible device (v4l2).
@@ -236,7 +318,7 @@ class V4L2Camera(BaseCamera):
         :param args: additional arguments
         :param kwargs: additional keyword arguments
         """
-        
+
         self.canbepickled = False
         self.capture = cv2.VideoCapture(device)
         self._warm_up()
@@ -362,7 +444,7 @@ class PiFrameGrabber(multiprocessing.Process):
         CameraParameter = variables.ParameterSet._supported[gain]
 
         if issubclass(CameraParameter, variables.Plural):
-            
+
             val_change = (sign * 0.5, ) * CameraParameter._length
 
             val = [e1 + float(e2) for e1, e2 in zip(val_change, original_val)]
@@ -385,7 +467,7 @@ class PiFrameGrabber(multiprocessing.Process):
 
         try:
             # lazy import should only use those on devices
-            
+
             # Warning: the following causes a major issue with Python 3.8.1
             # https://www.bountysource.com/issues/86094172-python-3-8-1-typeerror-vc_dispmanx_element_add-argtypes-item-9-in-_argtypes_-passes-a-union-by-value-which-is-unsupported
             from picamera.array import PiRGBArray
@@ -395,7 +477,7 @@ class PiFrameGrabber(multiprocessing.Process):
             # wrap the call to picamera.PiCamera around a handler that
             # 1. creates a pidfile so the PID of the thread can be easily tracked
             # 2. removes a potential existing pidfile and kills the corresponding process
-            # This is intended to avoid the Out of resources error caused by the camera thread not stopping upon monitor stop 
+            # This is intended to avoid the Out of resources error caused by the camera thread not stopping upon monitor stop
                 logging.warning(capture)
 
                 capture.start_preview()
@@ -409,7 +491,7 @@ class PiFrameGrabber(multiprocessing.Process):
                 i = 0
 
                 for frame in capture.capture_continuous(raw_capture, format="bgr", use_video_port=True):
-                    
+
                     try:
                         gain, sign = self._exposure_queue.get(block=False)
                         capture = self.adjust_camera(capture, gain, sign)
@@ -463,7 +545,7 @@ class PiFrameGrabber(multiprocessing.Process):
 class OurPiCameraAsync(BaseCamera):
     _description = {"overview": "Default class to acquire frames from the raspberry pi camera asynchronously.",
                     "arguments": []}
-                                   
+
 
     _frame_grabber_class = PiFrameGrabber
     def __init__(self, target_fps=2, target_resolution=(1280, 960), *args, **kwargs):
@@ -487,7 +569,7 @@ class OurPiCameraAsync(BaseCamera):
         self._kwargs = kwargs
         self._queue = multiprocessing.Queue(maxsize=1)
         self._exposure_queue = multiprocessing.Queue(maxsize=2)
-        
+
         self._stop_queue = multiprocessing.JoinableQueue(maxsize=1)
         self._p = self._frame_grabber_class(target_fps,target_resolution,self._queue,self._stop_queue, self._exposure_queue, *args, **kwargs)
         self._p.daemon = True

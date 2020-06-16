@@ -77,8 +77,6 @@ class TrackingUnit(object):
 
         return out
 
-
-
     def track(self, t, img):
         """
         Uses the whole frame acquired, along with its time stamp to infer position of the animal.
@@ -91,7 +89,7 @@ class TrackingUnit(object):
         :return: The resulting data point
         :rtype:  :class:`~ethoscope.core.data_point.DataPoint`
         """
-        data_rows = self._tracker.track(t,img)
+        data_rows = self._tracker.track(t, img)
 
         interact, result = self._stimulator.apply()
         if len(data_rows) == 0:

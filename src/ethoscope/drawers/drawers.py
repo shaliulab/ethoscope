@@ -38,7 +38,7 @@ class BaseDrawer(object):
         self._last_drawn_frame = None
         self.arena = None
 
-    def _annotate_frame(self,img, positions, tracking_units):
+    def _annotate_frame(self,img, positions, tracking_units, roi):
         """
         Abstract method defining how frames should be annotated.
         The `img` array, which is passed by reference, is meant to be modified by this method.
@@ -57,7 +57,7 @@ class BaseDrawer(object):
     def last_drawn_frame(self):
         return self._last_drawn_frame
 
-    def draw(self,img, tracking_units, positions):
+    def draw(self,img, tracking_units, positions, roi=True):
         """
         Draw results on a frame.
 
@@ -69,10 +69,10 @@ class BaseDrawer(object):
         :type tracking_units: list(:class:`~ethoscope.core.tracking_unit.TrackingUnit`)
         :return:
         """
-        
+
         self._last_drawn_frame = img.copy()
 
-        img = self._annotate_frame(self._last_drawn_frame, tracking_units, positions)
+        img = self._annotate_frame(self._last_drawn_frame, tracking_units, positions, roi)
 
         if self._draw_frames:
             cv2.imshow(self._window_name, self._last_drawn_frame )
@@ -124,7 +124,7 @@ class DefaultDrawer(BaseDrawer):
         """
         super(DefaultDrawer,self).__init__(video_out=video_out, draw_frames=draw_frames)
 
-    def _annotate_frame(self,img, tracking_units, positions=None):
+    def _annotate_frame(self,img, tracking_units, positions=None, roi=True):
         if img is None:
             return
 
@@ -133,11 +133,12 @@ class DefaultDrawer(BaseDrawer):
 
             x,y = track_u.roi.offset
             y += track_u.roi.rectangle[3]/2
-
-            cv2.putText(img, str(track_u.roi.idx), (int(x),int(y)), cv2.FONT_HERSHEY_COMPLEX_SMALL, 1, (255,255,0))
             black_colour = (0, 0,0)
-            cv2.drawContours(img,[track_u.roi.polygon],-1, black_colour, 3, LINE_AA)
-            cv2.drawContours(img,[track_u.roi.polygon],-1, roi_colour, 1, LINE_AA)
+
+            if roi:
+                cv2.putText(img, str(track_u.roi.idx), (int(x),int(y)), cv2.FONT_HERSHEY_COMPLEX_SMALL, 1, (255,255,0))
+                cv2.drawContours(img,[track_u.roi.polygon],-1, black_colour, 3, LINE_AA)
+                cv2.drawContours(img,[track_u.roi.polygon],-1, roi_colour, 1, LINE_AA)
 
             if positions is not None:
                 try:
@@ -155,5 +156,5 @@ class DefaultDrawer(BaseDrawer):
 
                     cv2.ellipse(img,((pos["x"],pos["y"]), (pos["w"],pos["h"]), pos["phi"]),black_colour,3, LINE_AA)
                     cv2.ellipse(img,((pos["x"],pos["y"]), (pos["w"],pos["h"]), pos["phi"]),colour,1, LINE_AA)
-            
+
         return img

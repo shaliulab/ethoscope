@@ -130,4 +130,11 @@ class YPosVariable(BaseRelativeVariable):
         out += oy
         return YPosVariable(out)
 
+class FrameCountVariable(BaseIntVariable):
+    """
+    Type storing a frame count
+    """
 
+    header_name = "frame_count"
+    functional_type = "count"
+    sql_data_type = "INT"

@@ -5,6 +5,7 @@ import cv2
 import os
 
 from .tracking_unit import TrackingUnit
+from ethoscope.core.variables import FrameCountVariable
 
 __author__ = 'quentin'
 
@@ -50,25 +51,12 @@ class Monitor(object):
         except KeyError:
             self._verbose = False
 
-        try:
-            self._downsample = kwargs.pop("downsample")
-            logging.info(f'Downsample set to {self._downsample}')
-
-        except KeyError:
-            logging.warning('No downsample is defined. I will use 1 i.e use all frames')
-            self._downsample = 1
-
-
-        if self._verbose:
-            try:
-                from tqdm import tqdm
-                self._monitor_iterator = enumerate(tqdm(self._camera))
-                #self._monitor_iterator = enumerate(self._camera)
-            except ImportError:
-                self._monitor_iterator = enumerate(self._camera)
+        if self._camera.__class__.__name__ == "FSLVirtualCamera":
+            self._monitor_iterator = self._camera
 
         else:
             self._monitor_iterator = enumerate(self._camera)
+
 
         if rois is None:
             raise NotImplementedError("rois must exist (cannot be None)")
@@ -124,10 +112,8 @@ class Monitor(object):
 
         try:
             logging.info("Monitor starting a run")
-            for t, frame in self._camera:
-                print(t)
-                logging.warning("unit trackers")
-                logging.warning(self._unit_trackers)
+            for x in self._monitor_iterator:
+                i, (t, frame) = x
                 img = drawer.draw(frame, tracking_units=self._unit_trackers, positions=None)
                 roi_builder_output_path = os.path.join('/root', "roi_builder_output.png")
                 logging.info(f"Saving roi builder result to {roi_builder_output_path}")
@@ -138,11 +124,9 @@ class Monitor(object):
 
             self._camera.set_tracker()
 
-            for i,(t, frame) in self._monitor_iterator:
+            for x in self._monitor_iterator:
 
-                if i % self._downsample != 0:
-                    continue
-
+                i, (t, frame) = x
 
                 if M is not None:
                     logging.debug('Rotating input frame')
@@ -160,7 +144,7 @@ class Monitor(object):
                     qc = quality_controller.qc(frame)
                     quality_controller.write(t, qc)
 
-                for j,track_u in enumerate(self._unit_trackers):
+                for j, track_u in enumerate(self._unit_trackers):
                     data_rows = track_u.track(t, frame)
                     if len(data_rows) == 0:
                         self._last_positions[track_u.roi.idx] = []
@@ -172,10 +156,13 @@ class Monitor(object):
                     self._last_positions[track_u.roi.idx] = abs_pos
 
                     if result_writer is not None:
+                        frame_count = FrameCountVariable(i)
+                        data_rows[0].append(frame_count)
                         result_writer.write(t, track_u.roi, data_rows)
 
+
                 if result_writer is not None:
-                    result_writer.flush(t, frame)
+                    result_writer.flush(t, frame, frame_idx=i)
 
                 if drawer is not None:
                     drawer.draw(frame, tracking_units=self._unit_trackers, positions=self._last_positions)
@@ -188,7 +175,3 @@ class Monitor(object):
         finally:
             self._is_running = False
             logging.info("Monitor closing")
-
-
-
-

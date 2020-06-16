@@ -2,24 +2,16 @@ from os import path
 # from threading import Thread
 import traceback
 import logging
-logging.basicConfig(level=logging.INFO)
 import time
 from ethoscope.web_utils.control_thread import ControlThread, ExperimentalInformation
-from ethoscope.hardware.input.camera_settings import configure_camera, report_camera
 from ethoscope.utils.description import DescribedObject
-from ethoscope.utils.debug import EthoscopeException
-
+from ethoscope.web_utils.robust_record import RobustGeneralVideoRecorder
 import os
 import tempfile
 import shutil
 import multiprocessing
 import glob
 import datetime
-import time
-import subprocess
-import cv2
-import pickle
-import os.path
 
 #For streaming
 from http.server import BaseHTTPRequestHandler, HTTPServer
@@ -49,14 +41,7 @@ class CamHandler(BaseHTTPRequestHandler):
             stream=io.BytesIO()
             try:
               start=time.time()
-              for i, foo in enumerate(self.server.camera.capture_continuous(stream,'jpeg',use_video_port=True)):
-                if i == 5:
-                    self.server.camera = configure_camera(self.server.camera, mode = "roi_builder")
-                    time.sleep(5)
-                if i == 10:
-                    self.server.camera = configure_camera(self.server.camera, mode = "tracker")
-                    time.sleep(5)
-
+              for foo in self.server.camera.capture_continuous(stream,'jpeg',use_video_port=True):
                 self.wfile.write(b"--jpgboundary")
                 self.send_header('Content-type','image/jpeg')
                 self.send_header('Content-length',len(stream.getvalue()))
@@ -65,7 +50,6 @@ class CamHandler(BaseHTTPRequestHandler):
                 stream.seek(0)
                 stream.truncate()
                 time.sleep(.1)
-
             except KeyboardInterrupt:
                 pass
             return
@@ -111,99 +95,23 @@ class PiCameraProcess(multiprocessing.Process):
     #         for f in all_video_files:
     #             index.write(f + "\n")
 
-    def find_target_coordinates(self, camera):
-
-        logging.info("Checking targets in resulting video are visible and video is suitable for offline analysis")
-        
-        # to analyzs the same frames offline
-        from ethoscope.hardware.input.cameras import MovieVirtualCamera
-        from ethoscope.roi_builders.target_roi_builder import FSLSleepMonitorWithTargetROIBuilder
-        from ethoscope.drawers.drawers import DefaultDrawer
-        from ethoscope.core.tracking_unit import TrackingUnit
-        from ethoscope.trackers.adaptive_bg_tracker import AdaptiveBGModel as tracker_class
-
-        i = 0
-        try:
-            # Log camera status and take shot
-            target_detection_path = "/tmp/target_detection_{}.png"
-            camera.framerate = 2
-            time.sleep(1)
-            camera = configure_camera(camera, mode = "target_detection")
-            n = 0
-            roi_builder = FSLSleepMonitorWithTargetROIBuilder()
-            drawer = DefaultDrawer()
-
-            target_coord_file = self._video_prefix + "targets.pickle"
-            rois_file = self._video_prefix + "rois.pickle"
-            failure = True
-            
-
-            while failure and n < 5:
-                try:
-                    camera = configure_camera(camera, mode = "target_detection")
-                    report_camera(camera)
-                    camera.capture(target_detection_path.format(n))
-                    time.sleep(1)
-                    img = cv2.imread(target_detection_path.format(n))
-                    rois = roi_builder.build(img)
-
-                    logging.info("Annotating frame for human supervision")
-                    unit_trackers = [TrackingUnit(tracker_class, r, None) for r in rois]
-                    annotated = drawer.draw(img, tracking_units=unit_trackers, positions=None)
-                    tmp_dir = os.path.dirname(self._img_path)
-                    annotated_path = os.path.join(tmp_dir, "last_img_annotated.jpg")
-                    logging.info(f"Saving annotated frame to {annotated_path}")
-                    cv2.imwrite(annotated_path, annotated)
-
-                    logging.info("Saving pickle files")
-                    with open(target_coord_file, "wb") as fh:
-                        pickle.dump(roi_builder._sorted_src_pts, fh)
-                    with open(rois_file, "wb") as fh:
-                        pickle.dump(rois, fh)
-                    failure = False
-
-
-                except Exception as e:
-                    logging.warning(e)
-                    logging.warning(traceback.print_exc())
-                    failure = True # not needed, but for readability
-                    n += 1
-
-            if failure:
-                logging.info("Failure")
-                raise EthoscopeException("I tried taking 5 shots and none is good! Check them at /tmp/target_detection_{i}.png")
-
-            else:
-                logging.info("Success")
-                return True
-
-
-        except Exception as e:
-            logging.error("Error on starting video recording process:" + traceback.format_exc())
-
     def run(self):
         import picamera
         i = 0
 
         try:
-            with picamera.PiCamera(resolution=self._resolution, framerate=self._fps) as camera:
-
-                if not self._stream:
-                    try:
-                        validation = self.find_target_coordinates(camera)
-
-                    except Exception as e:
-                        logging.error("Sorry, the targets will not be visible in this video. Try again!")
-                        raise e
-
-                # put the camera in tracker mode
-                # this mode is defined by the camera_settings module
+            with picamera.PiCamera() as camera:
+                camera.resolution = self._resolution
                 camera.framerate = self._fps
-                time.sleep(2)
-                camera = configure_camera(camera, mode="tracker")         
-                time.sleep(2)
-
-                # doing a video recording
+                
+                #disable auto white balance to address the following issue: https://github.com/raspberrypi/firmware/issues/1167
+                #however setting this to off would have to be coupled with custom gains
+                #some suggestion on how to set the gains can be found here: https://picamera.readthedocs.io/en/release-1.12/recipes1.html
+                #and here: https://github.com/waveform80/picamera/issues/182
+                #camera.awb_mode = 'off'
+                #camera.awb_gains = (1.8, 1.5)
+                camera.awb_mode = 'auto'
+                
                 if not self._stream:
                     output = self._make_video_name(i)
                     camera.start_recording(output, bitrate=self._bitrate)
@@ -211,25 +119,20 @@ class PiCameraProcess(multiprocessing.Process):
                 # self._write_video_index()
                 start_time = time.time()
                 
-                # doing a stream
                 if self._stream:
                     try:
-                        self.server = CamStreamHTTPServer(camera, ('', 8008), CamHandler)
+                        self.server = CamStreamHTTPServer (camera, ('',8008), CamHandler)
                         self.server.serve_forever()
 
                     finally:
                         self.server.shutdown()
                         camera.close()
 
-                # continue the video recording
                 else:
                     i += 1
                     while True:
                         camera.wait_recording(2)
-                        camera = configure_camera(camera, mode = "tracker")
-                        report_camera(camera)
                         camera.capture(self._img_path, use_video_port=True, quality=50)
-    
                         if time.time() - start_time >= self._VIDEO_CHUNCK_DURATION:
                             camera.split_recording(self._make_video_name(i))
                             # self._write_video_index()
@@ -256,7 +159,7 @@ class GeneralVideoRecorder(DescribedObject):
                                 {"type": "number", "name":"bitrate", "description": "The target bitrate","default":200000, "min":0, "max":10000000,"step":1000}
                                ]}
 
-    def __init__(self, video_prefix, video_dir, img_path,width=1280, height=960,fps=12,bitrate=200000,stream=False):
+    def __init__(self, video_prefix, video_dir, img_path,width=1280, height=960,fps=25,bitrate=200000,stream=False):
 
         self._stop_queue = multiprocessing.JoinableQueue(maxsize=1)
         self._stream = stream
@@ -285,14 +188,14 @@ class HDVideoRecorder(GeneralVideoRecorder):
                                   "so we effectively zoom in the middle of arenas","arguments": []}
     def __init__(self, video_prefix, video_dir, img_path):
         super(HDVideoRecorder, self).__init__(video_prefix, video_dir, img_path,
-                                        width=1920, height=1080,fps=12,bitrate=1000000)
+                                        width=1920, height=1080,fps=25,bitrate=1000000)
 
 
 class StandardVideoRecorder(GeneralVideoRecorder):
     _description  = { "overview": "A preset 1280 x 960, 25fps, bitrate = 2e5 video recorder.", "arguments": []}
     def __init__(self, video_prefix, video_dir, img_path):
         super(StandardVideoRecorder, self).__init__(video_prefix, video_dir, img_path,
-                                        width=1280, height=960,fps=12,bitrate=500000)
+                                        width=1280, height=960,fps=25,bitrate=500000)
 
 class Streamer(GeneralVideoRecorder):
     #hiding the description field will not pass this class information to the node UI
@@ -307,7 +210,7 @@ class ControlThreadVideoRecording(ControlThread):
     _option_dict = {
 
         "recorder":{
-                "possible_classes":[StandardVideoRecorder, HDVideoRecorder, GeneralVideoRecorder, Streamer],
+                "possible_classes":[StandardVideoRecorder, HDVideoRecorder, GeneralVideoRecorder, RobustGeneralVideoRecorder, Streamer],
             },
         "experimental_info":{
                         "possible_classes":[ExperimentalInformation],
@@ -427,9 +330,8 @@ class ControlThreadVideoRecording(ControlThread):
                 self._info["status"] = "streaming"
             else:
                 self._info["status"] = "recording"
-
-            self._recorder.run()
                 
+            self._recorder.run()
             logging.warning("recording RUN finished")
 
 

@@ -12,13 +12,13 @@ class QualityControl:
             "QC", "t INT, mean FLOAT, min FLOAT, max FLOAT"
         )
 
-        
+
     @staticmethod
     def image_stat(frame):
 
         logging.debug("----")
         logging.debug(time.time())
-        mean =  np.mean(frame)
+        mean = np.mean(frame)
         minimum = np.min(frame)
         maximum = np.max(frame)
         logging.debug(time.time())
