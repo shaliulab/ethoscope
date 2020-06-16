@@ -249,6 +249,9 @@ class ControlThread(Thread):
 
     def _parse_one_user_option(self,field, data):
 
+        logging.warning(field)
+        logging.warning(data)
+
         try:
             subdata = data[field]
         except KeyError:
