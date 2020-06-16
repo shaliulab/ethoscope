@@ -249,6 +249,9 @@ class ControlThread(Thread):
 
     def _parse_one_user_option(self,field, data):
 
+        logging.warning(field)
+        logging.warning(data)
+
         try:
             subdata = data[field]
         except KeyError:
@@ -292,7 +295,13 @@ class ControlThread(Thread):
 
         for key in list(self._option_dict.keys()):
 
-            Class, args, kwargs = self._parse_one_user_option(key, data)
+            x = self._parse_one_user_option(key, data)
+            if len(x) == 3:
+                Class, args, kwargs = x
+            else:
+                Class, args = x
+                kwargs = {}
+
             # when no field is present in the JSON config, we get the default class
 
             if Class is None:
