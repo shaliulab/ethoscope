@@ -223,13 +223,55 @@ def hasPiCamera():
     return True if a piCamera is supported and detected
     """
     if isMachinePI():
-        cmd = os.popen('/opt/vc/bin/vcgencmd get_camera').read().strip()
-        out = dict(x.split('=') for x in cmd.split(' '))
-        
-        return out["detected"] == out["supported"] == "1"
-    
+       with os.popen('/opt/vc/bin/vcgencmd get_camera') as cmd:
+           out_cmd = cmd.read().strip()
+       out = dict(x.split('=') for x in out_cmd.split(' '))
+       
+       return out["detected"] == out["supported"] == "1"
+
     else:
-        return false
+        return False
+        
+def getPiCameraVersion():
+    """
+    If a PiCamera is connected, returns the model
+
+    #PINoIR v1
+    #{'IFD0.Model': 'RP_ov5647', 'IFD0.Make': 'RaspberryPi'}
+    #PINoIR v2
+    #{'IFD0.Model': 'RP_imx219', 'IFD0.Make': 'RaspberryPi'}
+    
+    """
+    
+    picamera_info_file = '/etc/picamera-version'
+    
+    if hasPiCamera():
+
+        try:
+            with open(picamera_info_file, 'r') as infile:
+                camera_info = infile.read()
+        
+        except:
+            camera_info = "Run tracking once to detect the camera module"
+            
+        return camera_info
+    else:
+        
+        return False
+
+def isSuperscope():
+    """
+    The following lsusb device
+    Bus 001 Device 003: ID 05a3:9230 ARC International Camera
+    is the one we currently use for the SuperScope
+    https://www.amazon.co.uk/gp/product/B07R7JXV35/ref=ppx_yo_dt_b_asin_title_o06_s00?ie=UTF8&psc=1
+    
+    Eventually we will include the new rPI camera too
+    https://uk.farnell.com/raspberry-pi/rpi-hq-camera/rpi-high-quality-camera-12-3-mp/dp/3381605
+    
+    """
+    
+    pass
     
     
 def isExperimental():
@@ -267,19 +309,6 @@ def get_etc_hostnames():
         hosts [ entries[1] ] = entries[0]
 
     return hosts
-
-def get_loadavg():
-    """
-    Returns the load average for the last 1 5 and 15 minutes
-    """
-
-    try:
-        with os.popen("cat /proc/loadavg") as df:
-            loadavg = [float(e) for e in df.read().strip("\n").split(" ")[:3]]
-        
-        return loadavg
-    except:
-        return [-1, -1, -1]
     
 def get_core_temperature():
     """
@@ -322,3 +351,17 @@ def get_partition_infos():
     except:
         return
     
+
+def get_loadavg():
+    """
+    Returns the load average for the last 1 5 and 15 minutes
+    """
+
+    try:
+        with os.popen("cat /proc/loadavg") as df:
+            loadavg = [float(e) for e in df.read().strip("\n").split(" ")[:3]]
+        
+        return loadavg
+    except:
+        return [-1, -1, -1]
+ 
