@@ -295,6 +295,9 @@ class ControlThread(Thread):
 
         for key in list(self._option_dict.keys()):
 
+            logger.warning(key)
+            logger.warning(data)
+
             Class, args, kwargs = self._parse_one_user_option(key, data)
             # when no field is present in the JSON config, we get the default class
 
