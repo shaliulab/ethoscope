@@ -1,6 +1,13 @@
 __author__ = 'quentin'
 
-import cv2
+import time
+import logging
+logging.basicConfig(level=logging.INFO)
+import os
+import re
+import datetime
+import threading
+
 try:
     from cv2.cv import CV_CAP_PROP_FRAME_WIDTH as CAP_PROP_FRAME_WIDTH
     from cv2.cv import CV_CAP_PROP_FRAME_HEIGHT as CAP_PROP_FRAME_HEIGHT
@@ -11,13 +18,7 @@ try:
 except ImportError:
     from cv2 import CAP_PROP_FRAME_WIDTH, CAP_PROP_FRAME_HEIGHT, CAP_PROP_FRAME_COUNT, CAP_PROP_POS_MSEC, CAP_PROP_FPS
 
-import time
-import logging
-logging.basicConfig(level=logging.INFO)
-import os
-import re
-import datetime
-
+import cv2
 from ethoscope.utils.debug import EthoscopeException
 import multiprocessing
 import traceback
@@ -427,6 +428,10 @@ class PiFrameGrabber(threading.Thread):
         self._stop_queue = stop_queue
         self._target_fps = target_fps
         self._target_resolution = target_resolution
+        logging.warning('PiFrameGrabber queue %s', queue)
+        logging.warning('PiFrameGrabber stop_queue %s', stop_queue)
+        logging.warning('PiFrameGrabber target_fps %s', target_fps)
+        logging.warning('PiFrameGrabber target_resolution %s', target_resolution)
         
         super(PiFrameGrabber, self).__init__()
 
@@ -530,8 +535,7 @@ class DualPiFrameGrabber(PiFrameGrabber):
         self._exposure_queue = exposure_queue
         self._tracker_event = multiprocessing.Event()
         self._roi_builder_event = multiprocessing.Event()
-
-        super(PiFrameGrabber, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     @staticmethod
     def adjust_camera(camera, gain ,sign):
@@ -787,7 +791,7 @@ class FSLPiCameraAsync(OurPiCameraAsync):
         self._exposure_queue = multiprocessing.Queue(maxsize=2)
 
         self._stop_queue = multiprocessing.JoinableQueue(maxsize=1)
-        self._p = self._frame_grabber_class(target_fps,target_resolution,self._queue,self._stop_queue, self._exposure_queue, *args, **kwargs)
+        self._p = self._frame_grabber_class(self._exposure_queue, target_fps, target_resolution, self._queue, self._stop_queue, *args, **kwargs)
         self._p.daemon = True
         self._p.start()
 
