@@ -12,7 +12,7 @@ import pickle
 import secrets
 
 import trace
-from ethoscope.hardware.input.cameras import OurPiCameraAsync, MovieVirtualCamera, DummyPiCameraAsync, V4L2Camera, FSLVirtualCamera
+from ethoscope.hardware.input.cameras import OurPiCameraAsync, MovieVirtualCamera, DummyPiCameraAsync, V4L2Camera, FSLVirtualCamera, FSLPiCameraAsync
 from ethoscope.roi_builders.target_roi_builder import OlfactionAssayROIBuilder, FSLSleepMonitorWithTargetROIBuilder, SleepMonitorWithTargetROIBuilder, TargetGridROIBuilder, ElectricShockAssayROIBuilder
 from ethoscope.roi_builders.fsl_roi_builder import HighContrastTargetROIBuilder
 from ethoscope.roi_builders.roi_builders import  DefaultROIBuilder
@@ -96,7 +96,7 @@ class ControlThread(Thread):
                         "possible_classes":[DefaultDrawer, NullDrawer],
                     },
         "camera":{
-                        "possible_classes":[OurPiCameraAsync, MovieVirtualCamera, DummyPiCameraAsync, V4L2Camera, FSLVirtualCamera],
+                        "possible_classes":[OurPiCameraAsync, MovieVirtualCamera, DummyPiCameraAsync, V4L2Camera, FSLVirtualCamera, FSLPiCameraAsync],
                     },
         "result_writer":{
                         "possible_classes":[ResultWriter, SQLiteResultWriter],

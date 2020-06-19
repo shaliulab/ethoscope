@@ -10,10 +10,12 @@ import time
 
 from ethoscope.utils.description import DescribedObject
 from ethoscope.core.roi import ROI
-from ethoscope.hardware.input.cameras import OurPiCameraAsync
+from ethoscope.hardware.input.cameras import OurPiCameraAsync, FSLPiCameraAsync
 
 
 class BaseROIBuilder(DescribedObject):
+    _rois_pickle_file = ''
+    _target_coord_file = ''
 
     def __init__(self):
         """
@@ -50,7 +52,7 @@ class BaseROIBuilder(DescribedObject):
                     break
                 if mode is not None:
                     mean_intensity = np.mean(frame)
-                    if isinstance(input, OurPiCameraAsync):
+                    if isinstance(input, FSLPiCameraAsync):
                         within = mean_intensity > means[mode][0] and mean_intensity < means[mode][1]
                         if within or j>20:
                             i += 1
