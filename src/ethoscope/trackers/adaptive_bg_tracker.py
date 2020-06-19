@@ -37,11 +37,11 @@ class ObjectModel(object):
         self._history_length = history_length
         self._ring_buff = np.zeros((self._history_length, len(self._features_header)), dtype=np.float32, order="F")
         self._std_buff = np.zeros((self._history_length, len(self._features_header)), dtype=np.float32, order="F")
-        self._ring_buff_idx=0
+        self._ring_buff_idx = 0
         self._is_ready = False
         self._roi_img_buff = None
         self._mask_img_buff = None
-        self._img_buff_shape = np.array([0,0])
+        self._img_buff_shape = np.array([0, 0])
 
         self._last_updated_time = 0
         # If the model is not updated for this duration, it is reset. Patches #39
@@ -55,9 +55,9 @@ class ObjectModel(object):
         return self._features_header
 
 
-    def update(self, img, contour,time):
+    def update(self, img, contour, time):
         self._last_updated_time = time
-        self._ring_buff[self._ring_buff_idx] = self.compute_features(img,contour)
+        self._ring_buff[self._ring_buff_idx] = self.compute_features(img, contour)
 
         self._ring_buff_idx += 1
 
@@ -68,7 +68,7 @@ class ObjectModel(object):
 
         return self._ring_buff[self._ring_buff_idx]
 
-    def distance(self, features,time):
+    def distance(self, features, time):
         if time - self._last_updated_time > self._max_unupdated_duration:
             logging.warning("FG model not updated for too long. Resetting.")
             self.__init__(self._history_length)
@@ -79,7 +79,7 @@ class ObjectModel(object):
         else:
             last_row = self._history_length
 
-        means = np.mean(self._ring_buff[:last_row ], 0)
+        means = np.mean(self._ring_buff[:last_row], 0)
 
         np.subtract(self._ring_buff[:last_row], means, self._std_buff[:last_row])
         np.abs(self._std_buff[:last_row], self._std_buff[:last_row])
@@ -92,9 +92,9 @@ class ObjectModel(object):
 
         b = np.exp(- (features - means) ** 2  / (2 * stds ** 2))
 
-        likelihoods =  a * b
+        likelihoods = a * b
 
-        if np.any(likelihoods==0):
+        if np.any(likelihoods == 0):
             return 0
         #print features, means
         logls = np.sum(np.log10(likelihoods)) / len(likelihoods)
@@ -102,30 +102,30 @@ class ObjectModel(object):
 
 
     def compute_features(self, img, contour):
-        x,y,w,h = cv2.boundingRect(contour)
+        x, y, w, h = cv2.boundingRect(contour)
 
-        if self._roi_img_buff is None or np.any(self._roi_img_buff.shape < img.shape[0:2]) :
+        if self._roi_img_buff is None or np.any(self._roi_img_buff.shape < img.shape[0:2]):
             # dynamically reallocate buffer if needed
-            self._img_buff_shape[1] =  max(self._img_buff_shape[1],w)
-            self._img_buff_shape[0] =  max(self._img_buff_shape[0], h)
+            self._img_buff_shape[1] = max(self._img_buff_shape[1], w)
+            self._img_buff_shape[0] = max(self._img_buff_shape[0], h)
 
             self._roi_img_buff = np.zeros(self._img_buff_shape, np.uint8)
             self._mask_img_buff = np.zeros_like(self._roi_img_buff)
 
         sub_mask = self._mask_img_buff[0 : h, 0 : w]
 
-        sub_grey = self._roi_img_buff[ 0 : h, 0: w]
+        sub_grey = self._roi_img_buff[0 : h, 0: w]
 
-        cv2.cvtColor(img[y : y + h, x : x + w, :],cv2.COLOR_BGR2GRAY,sub_grey)
+        cv2.cvtColor(img[y : y + h, x : x + w, :], cv2.COLOR_BGR2GRAY, sub_grey)
         sub_mask.fill(0)
 
-        cv2.drawContours(sub_mask,[contour],-1, 255,-1,offset=(-x,-y))
+        cv2.drawContours(sub_mask, [contour], -1, 255, -1, offset=(-x, -y))
         mean_col = cv2.mean(sub_grey, sub_mask)[0]
 
 
-        (_,_) ,(width,height), angle  = cv2.minAreaRect(contour)
-        width, height= max(width,height), min(width,height)
-        ar = ((height+1) / (width+1))
+        (_, _), (width, height), angle = cv2.minAreaRect(contour)
+        width, height = max(width, height), min(width, height)
+        ar = ((height + 1) / (width + 1))
         #todo speed should use time
         #
         # if len(self.positions) > 2:
@@ -140,13 +140,14 @@ class ObjectModel(object):
         # if np.isnan(instantaneous_speed):
         #     instantaneous_speed = 0
 
-        features = np.array([log10(cv2.contourArea(contour) + 1.0),
-                            height + 1,
-                            #sqrt(ar),
-                            #instantaneous_speed +1.0,
-                            mean_col +1
-                            # 1.0
-                             ])
+        features = np.array([
+            log10(cv2.contourArea(contour) + 1.0),
+            height + 1,
+            #sqrt(ar),
+            #instantaneous_speed +1.0,
+            mean_col +1
+            # 1.0
+        ])
 
         return features
 
@@ -155,7 +156,7 @@ class BackgroundModel(object):
     """
     A class to model background. It uses a dynamic running average and support arbitrary and heterogeneous frame rates
     """
-    def __init__(self, max_half_life=500. * 1000, min_half_life=5.* 1000, increment = 1.2):
+    def __init__(self, max_half_life=500. * 1000, min_half_life=5.* 1000, increment=1.2):
         # the maximal half life of a pixel from background, in seconds
         self._max_half_life = float(max_half_life)
         # the minimal one
@@ -180,10 +181,10 @@ class BackgroundModel(object):
         return self._bg_mean
 
     def increase_learning_rate(self):
-        self._current_half_life  /=  self._increment
+        self._current_half_life /= self._increment
 
     def decrease_learning_rate(self):
-        self._current_half_life  *=  self._increment
+        self._current_half_life *= self._increment
 
 
     def update(self, img_t, t, fg_mask=None):
@@ -202,19 +203,19 @@ class BackgroundModel(object):
             # self._bg_sd.fill(128)
 
         if self._buff_alpha_matrix is None:
-            self._buff_alpha_matrix = np.ones_like(img_t,dtype = np.float32)
+            self._buff_alpha_matrix = np.ones_like(img_t, dtype=np.float32)
 
         # the learning rate, alpha, is an exponential function of half life
         # it correspond to how much the present frame should account for the background
 
-        lam =  np.log(2)/self._current_half_life
+        lam = np.log(2) / self._current_half_life
         # how much the current frame should be accounted for
         alpha = 1 - np.exp(-lam * dt)
 
         # set-p a matrix of learning rate. it is 0 where foreground map is true
         self._buff_alpha_matrix.fill(alpha)
         if fg_mask is not None:
-            cv2.dilate(fg_mask,None,fg_mask)
+            cv2.dilate(fg_mask, None, fg_mask)
             cv2.subtract(self._buff_alpha_matrix, self._buff_alpha_matrix, self._buff_alpha_matrix, mask=fg_mask)
 
 
@@ -245,7 +246,7 @@ class AdaptiveBGModel(BaseTracker):
         :param data:
         :return:
         """
-        self._previous_shape=None
+        self._previous_shape = None
         self._object_expected_size = 0.05 # proportion of the roi main axis
         self._max_area = (5 * self._object_expected_size) ** 2
 
@@ -275,13 +276,13 @@ class AdaptiveBGModel(BaseTracker):
             blur_rad += 1
 
         if self._buff_grey is None:
-            self._buff_grey = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
+            self._buff_grey = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
             if mask is None:
                 mask = np.ones_like(self._buff_grey) * 255
 
-        cv2.cvtColor(img,cv2.COLOR_BGR2GRAY, self._buff_grey)
+        cv2.cvtColor(img, cv2.COLOR_BGR2GRAY, self._buff_grey)
         # cv2.imshow("dbg",self._buff_grey)
-        cv2.GaussianBlur(self._buff_grey,(blur_rad,blur_rad),1.2, self._buff_grey)
+        cv2.GaussianBlur(self._buff_grey, (blur_rad, blur_rad), 1.2, self._buff_grey)
         if darker_fg:
             cv2.subtract(255, self._buff_grey, self._buff_grey)
 
@@ -290,7 +291,7 @@ class AdaptiveBGModel(BaseTracker):
 
         scale = 128. / mean[0]
 
-        cv2.multiply(self._buff_grey, scale, dst = self._buff_grey)
+        cv2.multiply(self._buff_grey, scale, dst=self._buff_grey)
 
 
         if mask is not None:
@@ -305,27 +306,27 @@ class AdaptiveBGModel(BaseTracker):
 
 
         if self._buff_grey is None:
-            self._buff_grey = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
+            self._buff_grey = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
             self._buff_grey_blurred = np.empty_like(self._buff_grey)
             # self._buff_grey_blurred = np.empty_like(self._buff_grey)
             if mask is None:
                 mask = np.ones_like(self._buff_grey) * 255
 
-            mask_conv = cv2.blur(mask,(blur_rad, blur_rad))
+            mask_conv = cv2.blur(mask, (blur_rad, blur_rad))
 
-            self._buff_convolved_mask  = (1/255.0 *  mask_conv.astype(np.float32))
+            self._buff_convolved_mask = (1 / 255.0 * mask_conv.astype(np.float32))
 
 
-        cv2.cvtColor(img,cv2.COLOR_BGR2GRAY, self._buff_grey)
+        cv2.cvtColor(img, cv2.COLOR_BGR2GRAY, self._buff_grey)
 
-        hist = cv2.calcHist([self._buff_grey], [0], None, [256], [0,255]).ravel()
+        hist = cv2.calcHist([self._buff_grey], [0], None, [256], [0, 255]).ravel()
         hist = np.convolve(hist, [1] * 3)
-        mode =  np.argmax(hist)
+        mode = np.argmax(hist)
 
         self._smooth_mode.append(mode)
         self._smooth_mode_tstamp.append(t)
 
-        if len(self._smooth_mode_tstamp) >2 and self._smooth_mode_tstamp[-1] - self._smooth_mode_tstamp[0] > self._smooth_mode_window_dt:
+        if len(self._smooth_mode_tstamp) > 2 and self._smooth_mode_tstamp[-1] - self._smooth_mode_tstamp[0] > self._smooth_mode_window_dt:
             self._smooth_mode.popleft()
             self._smooth_mode_tstamp.popleft()
 
@@ -335,12 +336,12 @@ class AdaptiveBGModel(BaseTracker):
 
         # cv2.GaussianBlur(self._buff_grey,(5,5), 1.5,self._buff_grey)
 
-        cv2.multiply(self._buff_grey, scale, dst = self._buff_grey)
+        cv2.multiply(self._buff_grey, scale, dst=self._buff_grey)
 
 
         cv2.bitwise_and(self._buff_grey, mask, self._buff_grey)
 
-        cv2.blur(self._buff_grey,(blur_rad, blur_rad), self._buff_grey_blurred)
+        cv2.blur(self._buff_grey, (blur_rad, blur_rad), self._buff_grey_blurred)
         #fixme could be optimised
         self._buff_grey_blurred = (self._buff_grey_blurred / self._buff_convolved_mask).astype(np.uint8)
 
@@ -352,7 +353,7 @@ class AdaptiveBGModel(BaseTracker):
             return self._buff_grey
 
 
-    def _find_position(self, img, mask,t):
+    def _find_position(self, img, mask, t):
 
         grey = self._pre_process_input_minimal(img, mask, t)
         # grey = self._pre_process_input(img, mask, t)
@@ -363,11 +364,11 @@ class AdaptiveBGModel(BaseTracker):
             raise NoPositionError
 
 
-    def _track(self, img,  grey, mask,t):
+    def _track(self, img, grey, mask, t):
 
         if self._bg_model.bg_img is None:
             self._buff_fg = np.empty_like(grey)
-            self._buff_object= np.empty_like(grey)
+            self._buff_object = np.empty_like(grey)
             self._buff_fg_backup = np.empty_like(grey)
   #          self._buff_fg_diff = np.empty_like(grey)
             self._old_pos = 0.0 +0.0j
@@ -377,7 +378,7 @@ class AdaptiveBGModel(BaseTracker):
         bg = self._bg_model.bg_img.astype(np.uint8)
         cv2.subtract(grey, bg, self._buff_fg)
 
-        cv2.threshold(self._buff_fg,20,255,cv2.THRESH_TOZERO, dst=self._buff_fg)
+        cv2.threshold(self._buff_fg, 20, 255, cv2.THRESH_TOZERO, dst=self._buff_fg)
 
         # cv2.bitwise_and(self._buff_fg_backup,self._buff_fg,dst=self._buff_fg_diff)
         # sum_fg = cv2.countNonZero(self._buff_fg)
@@ -385,7 +386,7 @@ class AdaptiveBGModel(BaseTracker):
         self._buff_fg_backup = np.copy(self._buff_fg)
 
         n_fg_pix = np.count_nonzero(self._buff_fg)
-        prop_fg_pix  = n_fg_pix / (1.0 * grey.shape[0] * grey.shape[1])
+        prop_fg_pix = n_fg_pix / (1.0 * grey.shape[0] * grey.shape[1])
         is_ambiguous = False
 
         if  prop_fg_pix > self._max_area:
@@ -397,16 +398,13 @@ class AdaptiveBGModel(BaseTracker):
             raise NoPositionError
 
         if CV_VERSION == 3:
-            _, contours,hierarchy = cv2.findContours(self._buff_fg, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            _, contours, hierarchy = cv2.findContours(self._buff_fg, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         else:
-            contours,hierarchy = cv2.findContours(self._buff_fg, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            contours, hierarchy = cv2.findContours(self._buff_fg, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
+        contours = [cv2.approxPolyDP(c, 1.2, True) for c in contours]
 
-
-
-        contours = [cv2.approxPolyDP(c,1.2,True) for c in contours]
-
-        if len(contours) == 0:
+        if contours:
             self._bg_model.increase_learning_rate()
             raise NoPositionError
 
@@ -425,7 +423,7 @@ class AdaptiveBGModel(BaseTracker):
             elif len(hulls) > 1:
                 is_ambiguous = True
             cluster_features = [self.fg_model.compute_features(img, h) for h in hulls]
-            all_distances = [self.fg_model.distance(cf,t) for cf in cluster_features]
+            all_distances = [self.fg_model.distance(cf, t) for cf in cluster_features]
             good_clust = np.argmin(all_distances)
 
             hull = hulls[good_clust]
@@ -437,37 +435,37 @@ class AdaptiveBGModel(BaseTracker):
                 raise NoPositionError
 
             features = self.fg_model.compute_features(img, hull)
-            distance = self.fg_model.distance(features,t)
+            distance = self.fg_model.distance(features, t)
 
         if distance > self._max_m_log_lik:
             self._bg_model.increase_learning_rate()
             raise NoPositionError
 
 
-        (x,y) ,(w,h), angle  = cv2.minAreaRect(hull)
+        (x, y), (w, h), angle = cv2.minAreaRect(hull)
 
         if w < h:
             angle -= 90
-            w,h = h,w
+            w, h = h, w
         angle = angle % 180
 
         h_im = min(grey.shape)
         w_im = max(grey.shape)
-        max_h = 2*h_im
-        if w>max_h or h>max_h:
+        max_h = 2 * h_im
+        if w > max_h or h > max_h:
             raise NoPositionError
 
-        cv2.ellipse(self._buff_fg ,((x,y), (int(w*1.5),int(h*1.5)),angle),255,-1)
+        cv2.ellipse(self._buff_fg, ((x, y), (int(w * 1.5), int(h * 1.5)), angle), 255, -1)
 
         #todo center mass just on the ellipse area
-        cv2.bitwise_and(self._buff_fg_backup, self._buff_fg,self._buff_fg_backup)
+        cv2.bitwise_and(self._buff_fg_backup, self._buff_fg, self._buff_fg_backup)
 
-        y,x = ndimage.measurements.center_of_mass(self._buff_fg_backup)
+        y, x = ndimage.measurements.center_of_mass(self._buff_fg_backup)
 
-        pos = x +1.0j*y
+        pos = x +1.0j * y
         pos /= w_im
 
-        xy_dist = round(log10(1./float(w_im) + abs(pos - self._old_pos))*1000)
+        xy_dist = round(log10(1. / float(w_im) + abs(pos - self._old_pos)) * 1000)
 
         # cv2.bitwise_and(self._buff_fg_diff,self._buff_fg,dst=self._buff_fg_diff)
         # sum_diff = cv2.countNonZero(self._buff_fg_diff)
@@ -478,7 +476,7 @@ class AdaptiveBGModel(BaseTracker):
 
 
         if mask is not None:
-            cv2.bitwise_and(self._buff_fg, mask,  self._buff_fg)
+            cv2.bitwise_and(self._buff_fg, mask, self._buff_fg)
 
         if is_ambiguous:
             self._bg_model.increase_learning_rate()
@@ -487,7 +485,7 @@ class AdaptiveBGModel(BaseTracker):
             self._bg_model.decrease_learning_rate()
             self._bg_model.update(grey, t, self._buff_fg)
 
-        self.fg_model.update(img, hull,t)
+        self.fg_model.update(img, hull, t)
 
         x_var = XPosVariable(int(round(x)))
         y_var = YPosVariable(int(round(y)))
@@ -498,14 +496,15 @@ class AdaptiveBGModel(BaseTracker):
         phi_var = PhiVariable(int(round(angle)))
         # mlogl =   mLogLik(int(distance*1000))
 
-        out = DataPoint([x_var, y_var, w_var, h_var,
-                         phi_var,
-                         #mlogl,
-                         distance,
-                         #xor_dist
-                        #Label(0)
-                         ])
+        out = DataPoint([
+            x_var, y_var, w_var, h_var,
+            phi_var,
+            #mlogl,
+            distance,
+            #xor_dist
+            #Label(0)
+        ])
 
 
-        self._previous_shape=np.copy(hull)
+        self._previous_shape = np.copy(hull)
         return [out]

@@ -14,7 +14,7 @@ class NoPositionError(Exception):
 
 class BaseTracker(DescribedObject):
     # data_point = None
-    def __init__(self, roi,data=None):
+    def __init__(self, roi, data=None):
         """
         Template class for video trackers.
         A video tracker locate animal in a ROI.
@@ -27,7 +27,7 @@ class BaseTracker(DescribedObject):
         :return:
         """
         self._positions = deque()
-        self._times =deque()
+        self._times = deque()
         self._data = data
         self._roi = roi
         self._last_non_inferred_time = 0
@@ -54,11 +54,11 @@ class BaseTracker(DescribedObject):
         self._last_time_point = t
         try:
 
-            points = self._find_position(sub_img,mask,t)
+            points = self._find_position(sub_img, mask, t)
             if not isinstance(points, list):
                 raise Exception("tracking algorithms are expected to return a LIST of DataPoints")
 
-            if len(points) ==0:
+            if len(points) == 0:
                 return []
 
             # point = self.normalise_position(point)
@@ -74,7 +74,7 @@ class BaseTracker(DescribedObject):
 
                 points = self._infer_position(t)
 
-                if len(points) ==0:
+                if len(points) == 0:
                     return []
                 for p in points:
                     p.append(IsInferredVariable(True))
@@ -91,7 +91,7 @@ class BaseTracker(DescribedObject):
     def _infer_position(self, t, max_time=30 * 1000):
         if len(self._times) == 0:
             return []
-        if t - self._last_non_inferred_time  > max_time:
+        if t - self._last_non_inferred_time > max_time:
             return []
 
         return self._positions[-1]

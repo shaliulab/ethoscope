@@ -25,6 +25,10 @@ class BaseIntVariable(int):
         return  super(BaseIntVariable, cls).__new__(cls, value)
 
 
+class BaseFloatVariable(BaseIntVariable):
+    sql_data_type = "DECIMAL"
+
+
 class BaseBoolVariable(BaseIntVariable):
     """
     Abstract type encoding boolean values. Internally stored as int as bool type cannot be derived.
@@ -138,3 +142,10 @@ class FrameCountVariable(BaseIntVariable):
     header_name = "frame_count"
     functional_type = "count"
     sql_data_type = "INT"
+
+
+class CoreMovement(XYDistance):
+    header_name = "core_movement"
+
+class PeripheryMovement(XYDistance):
+    header_name = "periphery_movement"
