@@ -20,6 +20,7 @@ from ethoscope.core.monitor import Monitor
 from ethoscope.core.qc import QualityControl
 from ethoscope.drawers.drawers import NullDrawer, DefaultDrawer
 from ethoscope.trackers.adaptive_bg_tracker import AdaptiveBGModel
+from ethoscope.trackers.rich_adaptive_bg_tracker import RichAdaptiveBGModel
 from ethoscope.hardware.interfaces.interfaces import HardwareConnection, EthoscopeSensor
 from ethoscope.stimulators.stimulators import DefaultStimulator
 from ethoscope.stimulators.sleep_depriver_stimulators import SleepDepStimulator, OptomotorSleepDepriver, ExperimentalSleepDepStimulator, MiddleCrossingStimulator, OptomotorSleepDepriverSystematic
@@ -74,7 +75,7 @@ class ControlThread(Thread):
                 "possible_classes":[SleepMonitorWithTargetROIBuilder, FSLSleepMonitorWithTargetROIBuilder, HighContrastTargetROIBuilder, DefaultROIBuilder, TargetGridROIBuilder, OlfactionAssayROIBuilder, ElectricShockAssayROIBuilder],
             },
         "tracker":{
-                "possible_classes":[AdaptiveBGModel],
+                "possible_classes":[AdaptiveBGModel, RichAdaptiveBGModel],
             },
         "interactor":{
                         "possible_classes":[DefaultStimulator,
