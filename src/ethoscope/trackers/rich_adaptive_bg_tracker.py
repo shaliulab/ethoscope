@@ -31,6 +31,11 @@ class RichAdaptiveBGModel(AdaptiveBGModel):
     """
 
     _body_parts = ("core", "periphery")
+    _description = {
+        "overview": "An extended tracker for fruit flies. One animal per ROI.",
+        "arguments": []
+    }
+
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -85,14 +90,21 @@ class RichAdaptiveBGModel(AdaptiveBGModel):
         return total_count
 
 
-    def _process_raw_feature(self, raw_feature):
+    def _process_raw_feature(self, raw_feature, w_im):
         """
         Make the feature distance-like and normalize with the area of the fly,
         so it can be compared to the centroid displacement variable
         Normalize with the area of the fly to compensate for minor changes
         due to the fly exposing less of its body and viceversa.
+        Finally take the log10 and multiply by 1000 to put in the same scale as CD
+        as computed in the AdaptiveBGModel GG implementation.
         """
-        return np.sqrt(raw_feature) / np.sqrt(self._fly_pixel_count)
+        distance = np.sqrt(raw_feature) / np.sqrt(self._fly_pixel_count)
+        log10_xy_dist_x_1000 = np.log10(distance + 1 / w_im) * 1000
+        logging.warning(log10_xy_dist_x_1000)
+        return log10_xy_dist_x_1000
+        # return np.sqrt(raw_feature) / np.sqrt(self._fly_pixel_count)
+
 
 
     def _track(self, *args, **kwargs):
@@ -105,6 +117,12 @@ class RichAdaptiveBGModel(AdaptiveBGModel):
 
         # first do the same as in the AdaptiveBGModel
         datapoints = super()._track(*args, **kwargs)
+
+        assert isinstance(args[1], np.ndarray)
+        shape = args[1].shape
+        # h_im = min(shape)
+        w_im = max(shape)
+        null_dist = round(np.log10(1. / float(w_im)) * 1000)
 
         # if an old foreground is available, compute the features
         # otherwise just return the null movements,
@@ -121,7 +139,7 @@ class RichAdaptiveBGModel(AdaptiveBGModel):
                 # count how many pixels belong to the part on only one but noth both masks
                 raw_feature = np.sum(np.bitwise_xor(old_masks[part], new_masks[part]))
                 # take a sqroot to make it distance-like and normalize with the sqroot of the area of the fly
-                features[part] = self._process_raw_feature(raw_feature)
+                features[part] = self._process_raw_feature(raw_feature, w_im)
 
             # instantiate the distances with a wrapper
             # that streamlines saving to output
@@ -129,12 +147,6 @@ class RichAdaptiveBGModel(AdaptiveBGModel):
             periphery_movement = CoreMovement(features["periphery"])
 
         else:
-            assert isinstance(args[1], np.ndarray)
-            shape = args[1].shape
-            # h_im = min(shape)
-            w_im = max(shape)
-            null_dist = round(np.log10(1. / float(w_im)) * 1000)
-
             core_movement = CoreMovement(null_dist)
             periphery_movement = PeripheryMovement(null_dist)
 
