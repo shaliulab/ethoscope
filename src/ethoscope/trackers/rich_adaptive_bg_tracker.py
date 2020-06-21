@@ -144,7 +144,7 @@ class RichAdaptiveBGModel(AdaptiveBGModel):
             # instantiate the distances with a wrapper
             # that streamlines saving to output
             core_movement = CoreMovement(features["core"])
-            periphery_movement = CoreMovement(features["periphery"])
+            periphery_movement = PeripheryMovement(features["periphery"])
 
         else:
             core_movement = CoreMovement(null_dist)
