@@ -42,9 +42,14 @@ class BaseROIBuilder(DescribedObject):
         else:
             i = 0
             j = 0
-            for _, frame in input:
+            for x in input:
 
-                output_path = os.path.join('/root', f"frame_{str(i).zfill(3)}_{mode}.png")
+                logging.warning(len(x))
+                logging.warning(x)
+                _, frame = x
+                logging.warning(frame)
+
+                output_path = "/root/frame_%s.png" % (str(i).zfill(4))
                 cv2.imwrite(output_path, frame)
                 logging.warning(f"I: {i}")
                 logging.warning(f"mean_intensity: {np.mean(frame)}")

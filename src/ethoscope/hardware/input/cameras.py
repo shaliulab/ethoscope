@@ -65,14 +65,14 @@ class BaseCamera(object):
                 if not at_least_one_frame:
                     raise EthoscopeException("Camera could not read the first frame")
                 break
-            t,out = self._next_time_image()
+            t, out = self._next_time_image()
             if out is None:
                 break
             t_ms = int(1000*t)
             at_least_one_frame = True
 
             if (self._frame_idx % self._drop_each) == 0:
-                yield t_ms,out
+                yield self._frame_idx, (t_ms, out)
 
             if self._max_duration is not None and t > self._max_duration:
                 break
@@ -201,7 +201,6 @@ class MovieVirtualCamera(BaseCamera):
     def restart(self):
         self.__init__(self._path, use_wall_clock=self._use_wall_clock, drop_each=self._drop_each, max_duration = self._max_duration)
 
-
     def _next_image(self):
         _, frame = self.capture.read()
         return frame
@@ -293,7 +292,7 @@ class FSLVirtualCamera(MovieVirtualCamera):
             at_least_one_frame = True
 
             if (self._frame_idx % self._drop_each) == 0:
-                yield frame_idx, (t_ms,out)
+                yield frame_idx, (t_ms, out)
 
             if self._max_duration is not None and t > self._max_duration:
                 break
@@ -432,7 +431,7 @@ class PiFrameGrabber(threading.Thread):
         logging.warning('PiFrameGrabber stop_queue %s', stop_queue)
         logging.warning('PiFrameGrabber target_fps %s', target_fps)
         logging.warning('PiFrameGrabber target_resolution %s', target_resolution)
-        
+
         super(PiFrameGrabber, self).__init__()
 
 
@@ -444,11 +443,11 @@ class PiFrameGrabber(threading.Thread):
 
         try:
             # lazy import should only use those on devices
-            
+
             # Warning: the following causes a major issue with Python 3.8.1
             # https://www.bountysource.com/issues/86094172-python-3-8-1-typeerror-vc_dispmanx_element_add-argtypes-item-9-in-_argtypes_-passes-a-union-by-value-which-is-unsupported
             # this should now be fixed in Python 3.8.2 (6/5/2020)
-            
+
             import picamera
             import picamera.array
 
@@ -457,17 +456,17 @@ class PiFrameGrabber(threading.Thread):
                 capture.resolution = self._target_resolution
                 camera_info = capture.exif_tags
                 logging.info("Detected camera %s: " % camera_info)
-                
+
                 #PINoIR v1
                 #{'IFD0.Model': 'RP_ov5647', 'IFD0.Make': 'RaspberryPi'}
                 #PINoIR v2
                 #{'IFD0.Model': 'RP_imx219', 'IFD0.Make': 'RaspberryPi'}
-                
+
                 #disable auto white balance to address the following issue: https://github.com/raspberrypi/firmware/issues/1167
                 #however setting this to off would have to be coupled with custom gains
                 #some suggestion on how to set the gains can be found here: https://picamera.readthedocs.io/en/release-1.12/recipes1.html
                 #and here: https://github.com/waveform80/picamera/issues/182
-                
+
                 if camera_info['IFD0.Model'] == 'RP_imx219':
                     capture.awb_mode = 'off'
                     capture.awb_gains = (1.8, 1.5) #TODO: allow user-specified gains
@@ -476,17 +475,17 @@ class PiFrameGrabber(threading.Thread):
                     # we are disabling auto white balance for IMX219
                     capture.awb_mode = 'auto'
                     logging.info("piNoIR v1 detected - using automatic white balance")
-                    
+
                 #we save this information on the filesystem so that it can be retrieved by the system - this is not ideal but accessing IFD0 from another instance creates weird issues
                 with open('/etc/picamera-version', 'w') as outfile:
                     print(camera_info, file=outfile)
-                
+
                 capture.framerate = self._target_fps
                 stream = picamera.array.PiRGBArray(capture, size=self._target_resolution)
                 time.sleep(0.2) # sleep 200ms to allow the camera to warm up
 
                 for frame in capture.capture_continuous(stream, format="bgr", use_video_port=True):
-                    
+
                     #This syntax changed from picamera > 1.7    - see https://picamera.readthedocs.io/en/release-1.10/deprecated.html
                     stream.seek(0)
                     stream.truncate()
@@ -504,7 +503,7 @@ class PiFrameGrabber(threading.Thread):
 
         except:
             logging.warning("Some problem acquiring frames from the camera")
-                    
+
         finally:
             self._queue.task_done() # this tell the parent the thread can be closed
             logging.warning("Camera Frame grabber stopped acquisition cleanly")
@@ -652,7 +651,7 @@ class DualPiFrameGrabber(PiFrameGrabber):
 class OurPiCameraAsync(BaseCamera):
     _description = {"overview": "Default class to acquire frames from the raspberry pi camera asynchronously.",
                     "arguments": []}
-                                   
+
 
     _frame_grabber_class = PiFrameGrabber
     def __init__(self, target_fps=20, target_resolution=(1280, 960), *args, **kwargs):
@@ -682,10 +681,10 @@ class OurPiCameraAsync(BaseCamera):
 
         self._p.daemon = True
         self._p.start()
-        
+
         try:
             im = self._queue.get(timeout=10)
-            
+
         except Exception as e:
             logging.error("Could not get any frame from the camera after the initialisation!")
             # we force kill the frame grabber if it does not reply within 5s
@@ -693,7 +692,7 @@ class OurPiCameraAsync(BaseCamera):
             logging.warning("Framegrabber thread joined")
 
             raise e
-            
+
         self._frame = cv2.cvtColor(im,cv2.COLOR_GRAY2BGR)
         if len(im.shape) < 2:
             raise EthoscopeException("The camera image is corrupted (less that 2 dimensions)")
@@ -703,7 +702,7 @@ class OurPiCameraAsync(BaseCamera):
                 logging.warning('Target resolution "%s" could NOT be achieved. Effective resolution is "%s"' % (target_resolution, self._resolution ))
             else:
                 logging.info('Maximal effective resolution is "%s"' % str(self._resolution))
-        
+
         super(OurPiCameraAsync, self).__init__(*args, **kwargs)
         self._start_time = time.time()
         logging.info("Camera initialised")
@@ -742,10 +741,10 @@ class OurPiCameraAsync(BaseCamera):
     def _close(self):
 
         logging.info("Requesting grabbing process to stop!")
-        
+
         #Insert a stop signal in the stopping queue
         self._stop_queue.put(None)
-        
+
         #empty the frames' queue
         while not self._queue.empty():
              self._queue.get()

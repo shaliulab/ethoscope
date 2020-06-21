@@ -51,13 +51,6 @@ class Monitor(object):
         except KeyError:
             self._verbose = False
 
-        if self._camera.__class__.__name__ == "FSLVirtualCamera":
-            self._monitor_iterator = self._camera
-
-        else:
-            self._monitor_iterator = enumerate(self._camera)
-
-
         if rois is None:
             raise NotImplementedError("rois must exist (cannot be None)")
 
@@ -112,7 +105,7 @@ class Monitor(object):
 
         try:
             logging.info("Monitor starting a run")
-            for x in self._monitor_iterator:
+            for x in self._camera:
                 i, (t, frame) = x
                 img = drawer.draw(frame, tracking_units=self._unit_trackers, positions=None)
                 roi_builder_output_path = os.path.join('/root', "roi_builder_output.png")
@@ -124,7 +117,7 @@ class Monitor(object):
 
             self._camera.set_tracker()
 
-            for x in self._monitor_iterator:
+            for x in self._camera:
 
                 i, (t, frame) = x
 

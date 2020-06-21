@@ -380,8 +380,7 @@ class AdaptiveBGModel(BaseTracker):
 
         cv2.threshold(self._buff_fg, 20, 255, cv2.THRESH_TOZERO, dst=self._buff_fg)
 
-        # cv2.bitwise_and(self._buff_fg_backup,self._buff_fg,dst=self._buff_fg_diff)
-        # sum_fg = cv2.countNonZero(self._buff_fg)
+        cv2.imwrite("/root/ROI_%s_buff_fg_%s.png" % (self._roi.idx, str(t).zfill(9)), self._buff_fg)
 
         self._buff_fg_backup = np.copy(self._buff_fg)
 

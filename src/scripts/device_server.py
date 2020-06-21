@@ -32,6 +32,13 @@ recording_json_data = {}
 update_machine_json_data = {}
 ETHOSCOPE_DIR = None
 
+def list_options(category):
+    """
+    Return a list of str with the names of the classes that can be passed
+    for a given category.
+    """
+    return [cls.__name__ for cls in ControlThread._option_dict[category]['possible_classes']]
+
 
 class WrongMachineID(Exception):
     pass
@@ -398,12 +405,13 @@ if __name__ == '__main__':
 
     ap.add_argument("-i", "--input", help="Input mp4 file", type=str)
     ap.add_argument("-o", "--output", help="Resulting sqlite3 db file", type=str)
-    ap.add_argument("-c", "--camera", help="Name of camera class", default="FSLVirtualCamera", type=str)
+    ap.add_argument("-c", "--camera", help="Name of camera class", default="FSLVirtualCamera", type=str, choices=list_options("camera"))
     ap.add_argument("--machine_id", type=str, required=False)
     ap.add_argument("--name", type=str, default=None)
-    ap.add_argument("-r", "--roi-builder", dest="roi_builder", type=str, default="FSLSleepMonitorWithTargetROIBuilder")
+    ap.add_argument("-r", "--roi-builder", dest="roi_builder", type=str, default="FSLSleepMonitorWithTargetROIBuilder", choices=list_options("roi_builder"))
+    ap.add_argument("--tracker", type=str, choices=list_options("tracker"))
     ap.add_argument("-t", "--target-coordinates-file", dest="target_coordinates_file", type=str, required=False, default="/etc/target_coordinates.conf")
-    ap.add_argument("--rois_pickle_file", type=str, required=False, default="rois.pickle")
+    ap.add_argument("--rois-pickle-file", dest="rois_pickle_file", type=str, required=False, default="rois.pickle")
     ap.add_argument("-d", "--drop-each", dest="drop_each", type=int, default=1)
     ap.add_argument("-a", "--address", type=str, default=None)
 
@@ -430,8 +438,6 @@ if __name__ == '__main__':
         NAME = ARGS["name"]
 
     machine_name = NAME
-
-
 
     if ARGS["machine_id"] is None:
         MACHINE_ID = get_machine_id()
@@ -477,11 +483,13 @@ if __name__ == '__main__':
 
         data = {
             "camera":
-                {"name": ARGS["camera"], "args": (ARGS["input"],), "kwargs": {"use_wall_clock": ARGS["use_wall_clock"],  "drop_each": ARGS["drop_each"]}},
+                {"name": ARGS["camera"], "args": (ARGS["input"],), "kwargs": {"use_wall_clock": ARGS["use_wall_clock"], "drop_each": ARGS["drop_each"]}},
             "result_writer":
-               {"name": "SQLiteResultWriter", "kwargs": {"path": OUTPUT, "take_frame_shots": True}},
+                {"name": "SQLiteResultWriter", "kwargs": {"path": OUTPUT, "take_frame_shots": True}},
             "roi_builder":
-            {"name": ARGS["roi_builder"], "kwargs": {"target_coordinates_file": ARGS["target_coordinates_file"], "rois_pickle_file": ARGS["rois_pickle_file"]}},
+                {"name": ARGS["roi_builder"], "kwargs": {"target_coordinates_file": ARGS["target_coordinates_file"], "rois_pickle_file": ARGS["rois_pickle_file"]}},
+            "tracker":
+                {"name": ARGS["tracker"], "kwargs": {}}
         }
 
         json_data.update(data)
