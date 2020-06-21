@@ -56,6 +56,20 @@ class RichAdaptiveBGModel(AdaptiveBGModel):
         coordinates = {"core": core, "periphery": periphery}
         return coordinates
 
+    def _get_parts_mask(self, foreground):
+        """
+        Return a mask of the ROI for each fly part
+        The mask has the same shape as the ROI
+        and is True on pixels that belong to the part.
+        The masks are packed in a dictionary.
+        """
+
+        non_zero_index = np.where(foreground > 20)
+        self._fly_pixel_count = len(non_zero_index)
+        median = np.median(non_zero_index)
+
+        coordinates = {"core": foreground < median, "periphery": foreground > median}
+        return coordinates
 
     @staticmethod
     def _get_non_overlapping(coords_1, coords_2):
@@ -99,13 +113,13 @@ class RichAdaptiveBGModel(AdaptiveBGModel):
             new_foreground = self._buff_fg_backup
 
             # get the old and new coordinates of both parts
-            old_coordinates = self._get_coordinates_of_parts(old_foreground)
-            new_coordinates = self._get_coordinates_of_parts(new_foreground)
+            old_masks = self._get_parts_mask(old_foreground)
+            new_masks = self._get_parts_mask(new_foreground)
             features = {part: None for part in self._body_parts}
 
             for part in ["core", "periphery"]:
-                # count how many pixels belonging to one part are only on one of the foregrounds
-                raw_feature = self._get_non_overlapping(old_coordinates[part], new_coordinates[part])
+                # count how many pixels belong to the part on only one but noth both masks
+                raw_feature = np.sum(np.bitwise_xor(old_masks[part], new_masks[part]))
                 # take a sqroot to make it distance-like and normalize with the sqroot of the area of the fly
                 features[part] = self._process_raw_feature(raw_feature)
 
