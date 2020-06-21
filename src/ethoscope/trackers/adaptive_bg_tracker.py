@@ -403,7 +403,7 @@ class AdaptiveBGModel(BaseTracker):
 
         contours = [cv2.approxPolyDP(c, 1.2, True) for c in contours]
 
-        if contours:
+        if not contours:
             self._bg_model.increase_learning_rate()
             raise NoPositionError
 
