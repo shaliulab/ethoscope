@@ -116,18 +116,18 @@ class RichAdaptiveBGModel(AdaptiveBGModel):
         log10_xy_dist_x_1000 = np.log10(roi_width_norm + null_dist) * 1000
         return log10_xy_dist_x_1000
 
-    def extract_features(self, old_foreground, *args, **kwargs):
+    def extract_features(self, *args, **kwargs):
 
         datapoints = super().extract_features(*args, **kwargs)
 
         # if an old foreground is available, compute the features
         # otherwise just return the null movements,
         # defined as 1 / number of pixels on x dimension
-        if old_foreground is not None:
+        if self.old_foreground is not None:
             new_foreground = self._buff_fg_backup
 
             # get the old and new coordinates of both parts
-            old_masks = self._get_parts_mask(old_foreground)
+            old_masks = self._get_parts_mask(self.old_foreground)
             new_masks = self._get_parts_mask(new_foreground)
 
             for part in ["body"]:
@@ -136,8 +136,8 @@ class RichAdaptiveBGModel(AdaptiveBGModel):
 
                 # take a sqroot to make it distance-like and normalize with the sqroot of the area of the fly
                 self._last_movements[part] = self._process_raw_feature(xor_count)
-                print("Part %s: Movement: %s pixels" % (part, xor_count))
-                print("Part %s: Movement: %s normalized pixels" % (part, self._last_movements[part]))
+                # print("Part %s: Movement: %s pixels" % (part, xor_count))
+                # print("Part %s: Movement: %s normalized pixels" % (part, self._last_movements[part]))
 
             # instantiate the distances with a wrapper
             # that streamlines saving to output
@@ -148,6 +148,8 @@ class RichAdaptiveBGModel(AdaptiveBGModel):
 
         # add the extra features to datapoints and return it
         datapoints[0].append(core_movement)
+        # print("Distance: %s" % 10**(datapoints[0]["xy_dist_log10x1000"] / 1000))
+        # print("Movement: %s" % 10**(datapoints[0]["core_movement"] / 1000))
         return datapoints
 
 
@@ -157,14 +159,14 @@ class RichAdaptiveBGModel(AdaptiveBGModel):
         to the datapoints returned by the abstract class's _track method.
         """
 
-        old_foreground = np.copy(self._buff_fg)
+        self.old_foreground = np.copy(self._buff_fg)
         assert isinstance(args[1], np.ndarray)
         shape = args[1].shape
         # h_im = min(shape)
         w_im = max(shape)
         self._null_dist = round(np.log10(1. / float(w_im)) * 1000)
 
-        datapoints = super()._track(*args, old_foreground, **kwargs)
+        datapoints = super()._track(*args, **kwargs)
 
         return datapoints
 

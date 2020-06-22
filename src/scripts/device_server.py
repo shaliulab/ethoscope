@@ -406,14 +406,14 @@ if __name__ == '__main__':
     ap.add_argument("-i", "--input", help="Input mp4 file", type=str)
     ap.add_argument("-o", "--output", help="Resulting sqlite3 db file", type=str)
     ap.add_argument("-c", "--camera", help="Name of camera class", default="FSLVirtualCamera", type=str, choices=list_options("camera"))
-    ap.add_argument("--machine_id", type=str, required=False)
+    ap.add_argument("--machine-id", dest="machine_id", type=str, required=False)
     ap.add_argument("--name", type=str, default=None)
     ap.add_argument("-r", "--roi-builder", dest="roi_builder", type=str, default="FSLSleepMonitorWithTargetROIBuilder", choices=list_options("roi_builder"))
     ap.add_argument("--tracker", type=str, choices=list_options("tracker"))
     ap.add_argument("-t", "--target-coordinates-file", dest="target_coordinates_file", type=str, required=False, default="/etc/target_coordinates.conf")
     ap.add_argument("--rois-pickle-file", dest="rois_pickle_file", type=str, required=False, default="rois.pickle")
     ap.add_argument("-d", "--drop-each", dest="drop_each", type=int, default=1)
-    ap.add_argument("-a", "--address", type=str, default=None)
+    ap.add_argument("-a", "--address", type=str, default="192.169.123.10")
 
     ARGS = vars(ap.parse_args())
 
@@ -522,8 +522,10 @@ if __name__ == '__main__':
         # moreover, we will burn the ETHOSCOPE_000 img with a non existing /etc/machine-id file
         # to make sure each burned image will get a unique machine-id at the first boot
 
-        hostname = socket.gethostname()
-        uid = "%s-%s" % ( hostname, get_machine_id() )
+        #hostname = socket.gethostname()
+        #uid = "%s-%s" % ( hostname, get_machine_id() )
+        hostname = ARGS["name"]
+        uid = "%s-%s" % ( hostname, ARGS["machine_id"] )
 
         address = False
         logging.warning("Waiting for a network connection")

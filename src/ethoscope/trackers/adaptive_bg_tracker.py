@@ -368,10 +368,18 @@ class AdaptiveBGModel(BaseTracker):
     def _find_position(self, img, mask, t):
 
         grey = self._pre_process_input_minimal(img, mask, t)
+        # cv2.imshow("grey", grey)
+        # cv2.waitKey(0)
         # grey = self._pre_process_input(img, mask, t)
         try:
-            return self._track(img, grey, mask, t)
+            points = self._track(img, grey, mask, t)
+            # print(points)
+            # cv2.imshow("img", img)
+
+
+            return points
         except NoPositionError:
+            # logging.warning("Fly not found")
             self._bg_model.update(grey, t)
             raise NoPositionError
 
@@ -385,12 +393,24 @@ class AdaptiveBGModel(BaseTracker):
   #          self._buff_fg_diff = np.empty_like(grey)
             self._old_pos = 0.0+0.0j
    #         self._old_sum_fg = 0
+            # logging.warning("Background image is None")
             raise NoPositionError
 
         bg = self._bg_model.bg_img.astype(np.uint8)
         cv2.subtract(grey, bg, self._buff_fg)
 
+        summary = np.hstack([
+            grey,
+            cv2.threshold(self._buff_fg, 5, 255, cv2.THRESH_BINARY)[1]
+        ])
+        cv2.imwrite("/home/antortjim/summary_%s.png" % str(t).zfill(9), summary)
+
+        # import ipdb; ipdb.set_trace()
+
+
         cv2.threshold(self._buff_fg, 20, 255, cv2.THRESH_TOZERO, dst=self._buff_fg)
+        # cv2.imshow("threshold", self._buff_fg)
+
 
         hull, is_ambiguous = self.get_hull(img, t)
         self._update(img, grey, mask, t, hull, is_ambiguous)
@@ -403,12 +423,12 @@ class AdaptiveBGModel(BaseTracker):
 
         if  prop_fg_pix > self._max_area:
             self._bg_model.increase_learning_rate()
-            logging.warning("Too many foreground pixels detected in ROI %s", self._roi.idx)
+            # logging.warning("Too many foreground pixels detected in ROI %s", self._roi.idx)
             raise NoPositionError
 
         if  prop_fg_pix == 0:
             self._bg_model.increase_learning_rate()
-            logging.warning("No foreground pixels detected in ROI %s", self._roi.idx)
+            # logging.warning("No foreground pixels detected in ROI %s", self._roi.idx)
             raise NoPositionError
 
     def get_hull(self, img=None, t=None):

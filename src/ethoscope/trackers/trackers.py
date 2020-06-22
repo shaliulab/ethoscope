@@ -86,6 +86,8 @@ class BaseTracker(DescribedObject):
         if len(self._times) > 2 and (self._times[-1] - self._times[0]) > self._max_history_length:
             self._positions.popleft()
             self._times.popleft()
+
+        # import ipdb; ipdb.set_trace()
         return points
 
     def _infer_position(self, t, max_time=30 * 1000):

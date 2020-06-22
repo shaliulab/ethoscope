@@ -44,10 +44,7 @@ class BaseROIBuilder(DescribedObject):
             j = 0
             for x in input:
 
-                logging.warning(len(x))
-                logging.warning(x)
-                _, frame = x
-                logging.warning(frame)
+                _, (t_ms, frame) = x
 
                 output_path = "/root/frame_%s.png" % (str(i).zfill(4))
                 cv2.imwrite(output_path, frame)
