@@ -234,7 +234,7 @@ class FSLVirtualCamera(MovieVirtualCamera):
 
     _ref_time = datetime.datetime.fromtimestamp(0, datetime.timezone.utc)
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, bw=False, **kwargs):
 
         super(FSLVirtualCamera, self).__init__(*args, **kwargs)
         # dont set _start_time to 0
@@ -243,10 +243,14 @@ class FSLVirtualCamera(MovieVirtualCamera):
         # when use_wall_clock false because the time is extracted with
         # cv2.cv.CAP_PROP_POS_MSEC without the need to substract the start
         self._start_time = self._parse_start_time()
+        self._bw = bw
 
     def _next_time_image(self):
         time, im = super()._next_time_image()
         frame_idx = self._frame_idx
+        if self._bw:
+            im = cv2.cvtColor(im, cv2.COLOR_BGR2GRAY)
+
         return frame_idx, (time, im)
 
     def _parse_start_time(self):
@@ -254,7 +258,7 @@ class FSLVirtualCamera(MovieVirtualCamera):
 
         res = re.findall(r"(\d{4}((-\d\d){2})_((\d\d-){2})\d{2})", self._path)
         logging.warning(res)
-        assert res[0][0] == res[1][0]
+        #assert res[0][0] == res[1][0]
         date_time_str = res[0][0]
 
         logging.warning("DATE_TIME_STR")
@@ -284,7 +288,7 @@ class FSLVirtualCamera(MovieVirtualCamera):
                 if not at_least_one_frame:
                     raise EthoscopeException("Camera could not read the first frame")
                 break
-            frame_idx, (t,out) = self._next_time_image()
+            frame_idx, (t, out) = self._next_time_image()
 
             if out is None:
                 break

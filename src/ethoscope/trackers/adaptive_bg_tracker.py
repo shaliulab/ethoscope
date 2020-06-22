@@ -1,6 +1,7 @@
 
 __author__ = 'quentin'
 
+import logging
 from collections import deque
 from math import log10, sqrt, pi
 import cv2
@@ -16,9 +17,7 @@ from scipy import ndimage
 from ethoscope.core.variables import XPosVariable, YPosVariable, XYDistance, WidthVariable, HeightVariable, PhiVariable, Label
 from ethoscope.core.data_point import DataPoint
 from ethoscope.trackers.trackers import BaseTracker, NoPositionError
-
-import logging
-
+from ethoscope.utils.debug import EthoscopeException
 
 class ObjectModel(object):
     """
@@ -69,6 +68,12 @@ class ObjectModel(object):
         return self._ring_buff[self._ring_buff_idx]
 
     def distance(self, features, time):
+        """
+        Return a measure of how likely is a contour the correct object being tracked
+        given a set of passed features. If the last time the model was updated is too long,
+        it is invalidated and reset.
+        """
+
         if time - self._last_updated_time > self._max_unupdated_duration:
             logging.warning("FG model not updated for too long. Resetting.")
             self.__init__(self._history_length)
@@ -88,7 +93,7 @@ class ObjectModel(object):
         if (stds == 0).any():
             return 0
 
-        a = 1 / (stds* self._sqrt_2_pi)
+        a = 1 / (stds * self._sqrt_2_pi)
 
         b = np.exp(- (features - means) ** 2  / (2 * stds ** 2))
 
@@ -102,6 +107,13 @@ class ObjectModel(object):
 
 
     def compute_features(self, img, contour):
+        """
+        Return features used to disambiguate contours
+        * log10(area)
+        * height of the contour (size of smallest side of bounding box)
+        * average pixel intensity (average color)
+        """
+
         x, y, w, h = cv2.boundingRect(contour)
 
         if self._roi_img_buff is None or np.any(self._roi_img_buff.shape < img.shape[0:2]):
@@ -121,7 +133,6 @@ class ObjectModel(object):
 
         cv2.drawContours(sub_mask, [contour], -1, 255, -1, offset=(-x, -y))
         mean_col = cv2.mean(sub_grey, sub_mask)[0]
-
 
         (_, _), (width, height), angle = cv2.minAreaRect(contour)
         width, height = max(width, height), min(width, height)
@@ -266,6 +277,7 @@ class AdaptiveBGModel(BaseTracker):
         self._buff_fg_backup = None
         self._buff_fg_diff = None
         self._old_sum_fg = 0
+        self.live_tracking = True
 
         super(AdaptiveBGModel, self).__init__(roi, data)
 
@@ -371,7 +383,7 @@ class AdaptiveBGModel(BaseTracker):
             self._buff_object = np.empty_like(grey)
             self._buff_fg_backup = np.empty_like(grey)
   #          self._buff_fg_diff = np.empty_like(grey)
-            self._old_pos = 0.0 +0.0j
+            self._old_pos = 0.0+0.0j
    #         self._old_sum_fg = 0
             raise NoPositionError
 
@@ -380,34 +392,53 @@ class AdaptiveBGModel(BaseTracker):
 
         cv2.threshold(self._buff_fg, 20, 255, cv2.THRESH_TOZERO, dst=self._buff_fg)
 
-        cv2.imwrite("/root/ROI_%s_buff_fg_%s.png" % (self._roi.idx, str(t).zfill(9)), self._buff_fg)
+        hull, is_ambiguous = self.get_hull(img, t)
+        self._update(img, grey, mask, t, hull, is_ambiguous)
+        return self.extract_features(hull)
 
-        self._buff_fg_backup = np.copy(self._buff_fg)
+    def _check_prop_fg_pix(self):
 
         n_fg_pix = np.count_nonzero(self._buff_fg)
-        prop_fg_pix = n_fg_pix / (1.0 * grey.shape[0] * grey.shape[1])
-        is_ambiguous = False
+        prop_fg_pix = n_fg_pix / float(np.prod(self._buff_fg.shape))
 
         if  prop_fg_pix > self._max_area:
             self._bg_model.increase_learning_rate()
+            logging.warning("Too many foreground pixels detected in ROI %s", self._roi.idx)
             raise NoPositionError
 
         if  prop_fg_pix == 0:
             self._bg_model.increase_learning_rate()
+            logging.warning("No foreground pixels detected in ROI %s", self._roi.idx)
             raise NoPositionError
 
+    def get_hull(self, img=None, t=None):
+
+        if self.live_tracking and (img is None or t is None):
+            raise EthoscopeException("Invalid input to get_hull")
+
+        self._buff_fg_backup = np.copy(self._buff_fg)
+
+        if self.live_tracking:
+            self._check_prop_fg_pix()
+
         if CV_VERSION == 3:
-            _, contours, hierarchy = cv2.findContours(self._buff_fg, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            _, contours, _ = cv2.findContours(self._buff_fg, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         else:
-            contours, hierarchy = cv2.findContours(self._buff_fg, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            contours, _ = cv2.findContours(self._buff_fg, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
         contours = [cv2.approxPolyDP(c, 1.2, True) for c in contours]
 
+        is_ambiguous = False
         if not contours:
             self._bg_model.increase_learning_rate()
             raise NoPositionError
 
         elif len(contours) > 1:
+
+            if not self.live_tracking:
+                hull = sorted(contours, key=cv2.contourArea, reverse=True)[0]
+                return hull, False
+
             if not self.fg_model.is_ready:
                 raise NoPositionError
             # hulls = [cv2.convexHull( c) for c in contours]
@@ -429,6 +460,10 @@ class AdaptiveBGModel(BaseTracker):
             distance = all_distances[good_clust]
         else:
             hull = contours[0]
+
+            if not self.live_tracking:
+                return hull, False
+
             if hull.shape[0] < 3:
                 self._bg_model.increase_learning_rate()
                 raise NoPositionError
@@ -436,10 +471,27 @@ class AdaptiveBGModel(BaseTracker):
             features = self.fg_model.compute_features(img, hull)
             distance = self.fg_model.distance(features, t)
 
-        if distance > self._max_m_log_lik:
+        if distance > self._max_m_log_lik and self.live_tracking:
             self._bg_model.increase_learning_rate()
             raise NoPositionError
 
+        return hull, is_ambiguous
+
+    def _update(self, img, grey, mask, t, hull, is_ambiguous=False):
+
+        if mask is not None:
+            cv2.bitwise_and(self._buff_fg, mask, self._buff_fg)
+
+        if is_ambiguous:
+            self._bg_model.increase_learning_rate()
+            self._bg_model.update(grey, t)
+        else:
+            self._bg_model.decrease_learning_rate()
+            self._bg_model.update(grey, t, self._buff_fg)
+
+        self.fg_model.update(img, hull, t)
+
+    def extract_features(self, hull):
 
         (x, y), (w, h), angle = cv2.minAreaRect(hull)
 
@@ -448,8 +500,8 @@ class AdaptiveBGModel(BaseTracker):
             w, h = h, w
         angle = angle % 180
 
-        h_im = min(grey.shape)
-        w_im = max(grey.shape)
+        h_im = min(self._buff_fg.shape)
+        w_im = max(self._buff_fg.shape)
         max_h = 2 * h_im
         if w > max_h or h > max_h:
             raise NoPositionError
@@ -472,19 +524,6 @@ class AdaptiveBGModel(BaseTracker):
         # xor_dist *=1000.
         # self._old_sum_fg = sum_fg
         self._old_pos = pos
-
-
-        if mask is not None:
-            cv2.bitwise_and(self._buff_fg, mask, self._buff_fg)
-
-        if is_ambiguous:
-            self._bg_model.increase_learning_rate()
-            self._bg_model.update(grey, t)
-        else:
-            self._bg_model.decrease_learning_rate()
-            self._bg_model.update(grey, t, self._buff_fg)
-
-        self.fg_model.update(img, hull, t)
 
         x_var = XPosVariable(int(round(x)))
         y_var = YPosVariable(int(round(y)))
