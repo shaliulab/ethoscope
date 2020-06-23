@@ -430,7 +430,7 @@ class ControlThread(Thread):
         cam = CameraClass(*camera_args, **camera_kwargs)
 
         if isinstance(cam, OurPiCameraAsync):
-            for i,(t, frame) in enumerate(cam):
+            for i,(t, frame) in cam:
                 cv2.imwrite(os.path.join(os.environ["HOME"], 'last_img.png'), frame)
                 break
 
