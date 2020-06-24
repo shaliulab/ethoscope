@@ -104,7 +104,7 @@ def refine_contour(cnt, grey, rotate=True, move=True):
         max_pixel = 0
         # print("Running moving algorithm for ONE contour")
         for pixel in np.arange(-10, 10, 1):
-            inner_cnt_moved = move_contour(cnt=cnt_rot, pixel=pixel)
+            inner_cnt_moved = move_contour(cnt=cnt_rot, pixel=pixel, axis=1)
             # import ipdb; ipdb.set_trace()
             val = contour_mean_intensity(grey, inner_cnt_moved)
             # print(pixel)
@@ -114,22 +114,22 @@ def refine_contour(cnt, grey, rotate=True, move=True):
                 max_val = val
                 max_pixel = pixel
 
-        optim_vertical = move_contour(cnt=cnt_rot, pixel=max_pixel)
-        original_val = max_val
-        max_pixel = 0
-        # print("Running moving algorithm for ONE contour")
-        for pixel in np.arange(-100, 100, 10):
-            inner_cnt_moved = move_contour(cnt=optim_vertical, pixel=pixel,axis=0)
-            # import ipdb; ipdb.set_trace()
-            val = contour_mean_intensity(grey, inner_cnt_moved)
-            # print(pixel)
-            # print(val)
+        cnt_rot = move_contour(cnt=cnt_rot, pixel=max_pixel)
+        # original_val = max_val
+        # max_pixel = 0
+        # # print("Running moving algorithm for ONE contour")
+        # for pixel in np.arange(-100, 100, 10):
+        #     inner_cnt_moved = move_contour(cnt=cnt_rot, pixel=pixel,axis=0)
+        #     # import ipdb; ipdb.set_trace()
+        #     val = contour_mean_intensity(grey, inner_cnt_moved)
+        #     # print(pixel)
+        #     # print(val)
 
-            if val > max_val:
-                max_val = val
-                max_pixel = pixel
+        #     if val > max_val:
+        #         max_val = val
+        #         max_pixel = pixel
 
-        final_contour = move_contour(cnt=optim_vertical, pixel=int(max_pixel*0.8),axis=0)
+        final_contour = move_contour(cnt=cnt_rot, pixel=int(max_pixel*0.8),axis=0)
 
 
 
