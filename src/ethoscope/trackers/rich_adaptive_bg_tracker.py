@@ -35,7 +35,9 @@ class RichAdaptiveBGModel(AdaptiveBGModel):
     _body_parts = ("body")
     _description = {
         "overview": "An extended tracker for fruit flies. One animal per ROI.",
-        "arguments": []
+        "arguments": [
+            {"type": "str", "value": "FALSE", "name": "debug", "description": "If True, I will save to /tmp all the computed foregrounds with format foreground_ROI_DD_t_MS.png"}
+        ]
     }
 
     # minimum foreground intensity that is considered to compute
@@ -44,18 +46,19 @@ class RichAdaptiveBGModel(AdaptiveBGModel):
     # they need to be included in the ellipse mask
     # 0 means all pixels are taken into account
     # (and then masked so only a fraction actually does)
-    _minimum_change = 0
+    _minimum_change = 10
 
 
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, debug="TRUE", **kwargs):
         super().__init__(*args, **kwargs)
         self._fly_pixel_count = None
         self._last_movements = {part: None for part in self._body_parts}
         self._null_dist = None
         self.old_foreground = None
         self.old_datapoints = None
-        self.old_ellipse = None
+        self._old_ellipse = None
+        self._debug = debug == "TRUE"
 
     # def _get_coordinates_of_parts(self, foreground):
     #     """
@@ -76,7 +79,20 @@ class RichAdaptiveBGModel(AdaptiveBGModel):
     #     coordinates = {"core": core, "periphery": periphery}
     #     return coordinates
 
-    def _get_parts_mask(self, foreground, ellipse):
+    @property
+    def old_ellipse(self):
+        if self._old_ellipse.tolist() is None:
+            ellipse = np.zeros(self._roi.rectangle[2:4][::-1], dtype=np.uint8)
+        else:
+            ellipse = self._old_ellipse
+
+        return ellipse
+
+    @old_ellipse.setter
+    def old_ellipse(self, ellipse):
+        self._old_ellipse = ellipse
+
+    def _get_body(self, foreground, ellipse):
         """
         Return a mask of the ROI for each fly part
         The mask has the same shape as the ROI
@@ -84,12 +100,14 @@ class RichAdaptiveBGModel(AdaptiveBGModel):
         The masks are packed in a dictionary.
         """
 
-        thresh = cv2.threshold(foreground, self._minimum_change, 255, cv2.THRESH_BINARY)[1]
-        non_zero = cv2.bitwise_and(thresh, ellipse)
+        # thresh = cv2.threshold(foreground, self._minimum_change, 255, cv2.THRESH_BINARY)[1]
+        non_zero = cv2.bitwise_and(foreground, ellipse)
+
+        if self._debug and self._roi.idx == 18:
+            cv2.imwrite("/tmp/foreground_ROI_%s_t%s.png" % (str(self._roi.idx).zfill(2), self._last_time_point), non_zero)
         self._fly_pixel_count = np.sum(non_zero)
         # median = np.median(foreground[non_zero])
         return {"body": non_zero}
-
 
         # masks = {"core": non_zero < median, "periphery": non_zero > median}
         # return masks
@@ -144,15 +162,35 @@ class RichAdaptiveBGModel(AdaptiveBGModel):
             # TODO Use the information about the position of the fly
             # in the datapoints to mask noisy foreground
             # i.e. pixels segmented as foreground but which dont belong to the fly
-            old_masks = self._get_parts_mask(self.old_foreground, self.old_ellipse)
-            new_masks = self._get_parts_mask(new_foreground, self.ellipse)
+            old_body = self._get_body(self.old_foreground, self.old_ellipse)
+            new_body = self._get_body(new_foreground, self.ellipse)
 
             for part in ["body"]:
                 # count how many pixels belong to the part on only one but noth both masks
-                xor_count = np.sum(np.bitwise_xor(old_masks[part], new_masks[part]))
+                # xored = np.bitwise_xor(old_body[part], new_body[part])
+                diff = np.abs(old_body[part].astype(np.int64) - new_body[part].astype(np.int64)).astype(np.uint8)
+                diff_segmented = cv2.threshold(diff, self._minimum_change, 255, cv2.THRESH_BINARY)[1]
+                diff_bool = diff_segmented == 255
+                diff_count = np.sum(diff_bool)
+
+                if self._debug and self._roi.idx == 18:
+                    logging.warning(diff.dtype)
+                    logging.warning(diff.shape)
+                    logging.warning(diff_segmented.dtype)
+                    logging.warning(diff_segmented.shape)
+                    cv2.putText(diff_segmented, str(diff_count).zfill(3), (int(diff_segmented.shape[1] * 0.7), 20),  cv2.FONT_HERSHEY_COMPLEX_SMALL, 1, 255)
+                    cv2.imwrite(
+                        "/tmp/last_grey_diff_ROI_%s_t%s.png" % (str(self._roi.idx).zfill(2), self._last_time_point),
+                        np.vstack([
+                            np.hstack([old_body[part], new_body[part]]),
+                            np.hstack([diff, np.zeros_like(diff)]),
+                            np.hstack([self._last_grey, diff_segmented])
+                        ])
+                    )
+                logging.warning(diff_count)
 
                 # take a sqroot to make it distance-like and normalize with the sqroot of the area of the fly
-                self._last_movements[part] = self._process_raw_feature(xor_count)
+                self._last_movements[part] = self._process_raw_feature(diff_count)
                 # print("Part %s: Movement: %s pixels" % (part, xor_count))
                 # print("Part %s: Movement: %s normalized pixels" % (part, self._last_movements[part]))
 
@@ -176,8 +214,8 @@ class RichAdaptiveBGModel(AdaptiveBGModel):
         """
 
         self.old_ellipse = np.copy(self.ellipse)
-        self.old_foreground = np.copy(self._buff_fg)
-        assert isinstance(args[1], np.ndarray)
+        self.old_foreground = np.copy(self._buff_fg_backup)
+        assert isinstance(args[0], np.ndarray)
         shape = args[1].shape
         # h_im = min(shape)
         w_im = max(shape)
@@ -187,3 +225,7 @@ class RichAdaptiveBGModel(AdaptiveBGModel):
         self.old_datapoints = datapoints
 
         return datapoints
+
+    def _find_position(self, *args, **kwargs):
+        self._last_grey = np.copy(cv2.cvtColor(args[0], cv2.COLOR_BGR2GRAY))
+        return super()._find_position(*args, **kwargs)

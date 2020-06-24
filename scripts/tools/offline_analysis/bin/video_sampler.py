@@ -66,7 +66,13 @@ def main(ARGS):
     with open(METADATA, "r") as filehandle:
         metadata = filehandle.read()
 
-    for i, row in enumerate(metadata.strip("\n").split("\n")):
+    metadata = metadata.strip("\n").split("\n")
+    # ignore the header
+    metadata = metadata[1:]
+
+    for i, row in enumerate(metadata):
+        print(FPS)
+        print(row)
 
         time_window = TimeWindow(
             i+1, *row.split(","),

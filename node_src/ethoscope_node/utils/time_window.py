@@ -20,9 +20,9 @@ class TimeWindow(TrackingUnit):
     _extension = "avi"
 
     def __init__(
-            self, index, window_start, window_end, region_id, path,
-            zt, max_velocity, activity,
-            framerate=2, result_dir=".", input_video="video.mp4",
+            self, index, window_start, window_end, region_id, run_id, path,
+            zt, max_velocity, max_movement,
+            framerate, result_dir=".", input_video="video.mp4",
             all=True, annotate=False, informative=False
         ):
 
@@ -46,7 +46,7 @@ class TimeWindow(TrackingUnit):
         self._xyshape_pad = (0, 0)
         self._video_writer = None
         self._max_velocity = max_velocity
-        self._activity = activity
+        self._max_movement = max_movement
         self._annotate = annotate
         self._informative = informative
         self._zt = zt
