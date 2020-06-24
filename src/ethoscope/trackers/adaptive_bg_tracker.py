@@ -278,6 +278,7 @@ class AdaptiveBGModel(BaseTracker):
         self._buff_fg_diff = None
         self._old_sum_fg = 0
         self.live_tracking = True
+        self.ellipse = None
 
         super(AdaptiveBGModel, self).__init__(roi, data)
 
@@ -511,6 +512,16 @@ class AdaptiveBGModel(BaseTracker):
 
         self.fg_model.update(img, hull, t)
 
+    @staticmethod
+    def object_mask(x, y, w, h, angle, roi):
+        """
+        Return a mask of a fly modelled as an ellipse drawn based on the datapoints.
+        """
+        mask = np.zeros_like(roi)
+        cv2.ellipse(mask, ((x, y), (int(w * 1.5), int(h * 1.5)), angle), 255, -1)
+        return mask
+
+
     def extract_features(self, hull):
 
         (x, y), (w, h), angle = cv2.minAreaRect(hull)
@@ -526,16 +537,16 @@ class AdaptiveBGModel(BaseTracker):
         if w > max_h or h > max_h:
             raise NoPositionError
 
-        cv2.ellipse(self._buff_fg, ((x, y), (int(w * 1.5), int(h * 1.5)), angle), 255, -1)
+        self.ellipse = self.object_mask(**{"x": x, "y": y, "w": w, "h": h, "angle": angle}, roi=self._buff_fg)
+        # cv2.ellipse(self._buff_fg, ((x, y), (int(w * 1.5), int(h * 1.5)), angle), 255, -1)
 
-        #todo center mass just on the ellipse area
+        # TODO center mass just on the ellipse area
         cv2.bitwise_and(self._buff_fg_backup, self._buff_fg, self._buff_fg_backup)
+        cv2.bitwise_and(self._buff_fg_backup, self.ellipse, self._buff_fg_backup)
 
         y, x = ndimage.measurements.center_of_mass(self._buff_fg_backup)
-
         pos = x +1.0j * y
         pos /= w_im
-
         xy_dist = round(log10(1. / float(w_im) + abs(pos - self._old_pos)) * 1000)
 
         # cv2.bitwise_and(self._buff_fg_diff,self._buff_fg,dst=self._buff_fg_diff)

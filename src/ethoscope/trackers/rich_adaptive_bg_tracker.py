@@ -2,8 +2,10 @@ __author__ = 'antonio'
 
 import logging
 
+import cv2
 import numpy as np
-from ethoscope.core.variables import CoreMovement, PeripheryMovement
+
+from ethoscope.core.variables import CoreMovement, PeripheryMovement, BodyMovement
 from ethoscope.trackers.adaptive_bg_tracker import AdaptiveBGModel
 
 logger = logging.getLogger(__name__)
@@ -36,13 +38,24 @@ class RichAdaptiveBGModel(AdaptiveBGModel):
         "arguments": []
     }
 
+    # minimum foreground intensity that is considered to compute
+    # the body parts of the fly
+    # note that besides being greater than this value,
+    # they need to be included in the ellipse mask
+    # 0 means all pixels are taken into account
+    # (and then masked so only a fraction actually does)
+    _minimum_change = 0
+
+
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._fly_pixel_count = None
         self._last_movements = {part: None for part in self._body_parts}
         self._null_dist = None
-
+        self.old_foreground = None
+        self.old_datapoints = None
+        self.old_ellipse = None
 
     # def _get_coordinates_of_parts(self, foreground):
     #     """
@@ -63,7 +76,7 @@ class RichAdaptiveBGModel(AdaptiveBGModel):
     #     coordinates = {"core": core, "periphery": periphery}
     #     return coordinates
 
-    def _get_parts_mask(self, foreground):
+    def _get_parts_mask(self, foreground, ellipse):
         """
         Return a mask of the ROI for each fly part
         The mask has the same shape as the ROI
@@ -71,7 +84,8 @@ class RichAdaptiveBGModel(AdaptiveBGModel):
         The masks are packed in a dictionary.
         """
 
-        non_zero = foreground > 0
+        thresh = cv2.threshold(foreground, self._minimum_change, 255, cv2.THRESH_BINARY)[1]
+        non_zero = cv2.bitwise_and(thresh, ellipse)
         self._fly_pixel_count = np.sum(non_zero)
         # median = np.median(foreground[non_zero])
         return {"body": non_zero}
@@ -95,7 +109,6 @@ class RichAdaptiveBGModel(AdaptiveBGModel):
 
     @staticmethod
     def _document(mask1, mask2):
-        import cv2
         cv2.imwrite("/home/vibflysleep/mask1.png", mask1*255)
         cv2.imwrite("/home/vibflysleep/mask2.png", mask2*255)
 
@@ -127,8 +140,12 @@ class RichAdaptiveBGModel(AdaptiveBGModel):
             new_foreground = self._buff_fg_backup
 
             # get the old and new coordinates of both parts
-            old_masks = self._get_parts_mask(self.old_foreground)
-            new_masks = self._get_parts_mask(new_foreground)
+
+            # TODO Use the information about the position of the fly
+            # in the datapoints to mask noisy foreground
+            # i.e. pixels segmented as foreground but which dont belong to the fly
+            old_masks = self._get_parts_mask(self.old_foreground, self.old_ellipse)
+            new_masks = self._get_parts_mask(new_foreground, self.ellipse)
 
             for part in ["body"]:
                 # count how many pixels belong to the part on only one but noth both masks
@@ -141,24 +158,24 @@ class RichAdaptiveBGModel(AdaptiveBGModel):
 
             # instantiate the distances with a wrapper
             # that streamlines saving to output
-            core_movement = CoreMovement(self._last_movements["body"])
+            body_movement = BodyMovement(self._last_movements["body"])
 
         else:
-            core_movement = CoreMovement(self._null_dist)
+            body_movement = BodyMovement(self._null_dist)
 
         # add the extra features to datapoints and return it
-        datapoints[0].append(core_movement)
-        # print("Distance: %s" % 10**(datapoints[0]["xy_dist_log10x1000"] / 1000))
-        # print("Movement: %s" % 10**(datapoints[0]["core_movement"] / 1000))
+        datapoints[0].append(body_movement)
         return datapoints
 
 
     def _track(self, *args, **kwargs):
         """
-        Append two extra features called core_movement and periphery_movement
-        to the datapoints returned by the abstract class's _track method.
+        Override the abstract's class _track method so it keeps a copy
+        of the previous foreground of the fly. This way, the last and previous foregrounds
+        can be compared and the extract_features method gets material to work on.
         """
 
+        self.old_ellipse = np.copy(self.ellipse)
         self.old_foreground = np.copy(self._buff_fg)
         assert isinstance(args[1], np.ndarray)
         shape = args[1].shape
@@ -167,7 +184,6 @@ class RichAdaptiveBGModel(AdaptiveBGModel):
         self._null_dist = round(np.log10(1. / float(w_im)) * 1000)
 
         datapoints = super()._track(*args, **kwargs)
+        self.old_datapoints = datapoints
 
         return datapoints
-
-
