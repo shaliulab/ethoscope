@@ -18,23 +18,28 @@ class TimeWindow(TrackingUnit):
 
     _CODEC = "XVID"
     _extension = "avi"
+    _required_metadata =  [
+        "start", "end", "region_id",
+        "run_id", "path", "zt", "max_velocity"
+    ]
 
     def __init__(
-            self, index, window_start, window_end, region_id, run_id, path,
-            zt, max_velocity, max_movement,
+            self, index, start, end, region_id, run_id, path,
+            zt, max_velocity,
             framerate, result_dir=".", input_video="video.mp4",
-            all=True, annotate=False, informative=False
+            all_frames=True, annotate=False, informative=False
         ):
 
         self._index = index
-        self._start = float(window_start) #s
-        self._end = float(window_end) # s
+
+        # passed with the data in the .csv
+        self._start = float(start) #s
+        self._end = float(end) # s
         self._region_id = int(region_id)
         self._path = path
         self._result_dir = result_dir
         self._input_video = input_video
-        self._all = all
-
+        self._max_velocity = max_velocity
 
         self.get_roi()
         self._framerate = framerate
@@ -45,10 +50,10 @@ class TimeWindow(TrackingUnit):
         self._last_positions = {}
         self._xyshape_pad = (0, 0)
         self._video_writer = None
-        self._max_velocity = max_velocity
-        self._max_movement = max_movement
+        #self._max_movement = max_movement
         self._annotate = annotate
         self._informative = informative
+        self._all_frames = all_frames
         self._zt = zt
 
         # TODO Use video generation functionality from the drawer classes!!!
@@ -306,7 +311,7 @@ class TimeWindow(TrackingUnit):
                         # this happens if the dbfile is generated
                         # passing a drop-each argument != 1
                         # i.e. the dbfile is subsampled
-                        if self._all:
+                        if self._all_frames:
                             self.add(img)
                         continue
 

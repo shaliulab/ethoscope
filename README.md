@@ -29,3 +29,22 @@ License
 ---------------
 
 Ethoscope source code is licensed under the **GPL3** (see [license file](LICENSE)).
+
+Run offline
+------------
+
+From the `./src/ethoscope/scripts` folder run:
+
+```
+python device_server.py --rois-pickle-file PATH_TO_ROIS.pickle --input PATH_TO_VIDEO.mp4 --use-wall-clock --drop-each 1 --tracker RichAdaptiveBGModel --camera FSLVirtualCamera --name FLYSLEEPLAB_CV1 --address 192.169.123.10
+```
+*rois pickle file: A pickle file storing a list of instances of the ROI class. This is the output of the ROI builder algorithm executed upon start of the recording. If not provided, the software attempts to finding the ROIs from the video. Convenient because it allows for running the ROI builder algorithm at recording time, so issues can be fixed live.
+
+* use wall clock: will use the time of the video as reference for the analysis. This means t will be mapped to the time of the frame, and not the real time of the offline analysis. So for a video at 10 FPS, the third frame has time 0.3, no matter how long it takes to analyze the first two frames.
+
+* drop each: If not 1, it will drop every drop-each frame. Example: 2 will drop half the frames, 3 one third, etc. Useful for downsampling.
+
+* tracker: Name of the tracking class
+* name: Name of the offline ethoscope as displayed in the ethoscope node GUI
+* address: This argument is mandatory for now if you want to see the offline ethoscope appear on the GUI. This is because the code in charge of fetching the ip address of the ethoscopes does not work when running offline. With this argument the user can avert this issue.
+ 

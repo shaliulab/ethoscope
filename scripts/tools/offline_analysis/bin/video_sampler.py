@@ -14,6 +14,8 @@ import os.path
 from shutil import copyfile
 import traceback
 
+import pandas as pd
+
 from ethoscope.hardware.input.cameras import FSLVirtualCamera, MovieVirtualCamera
 from ethoscope_node.utils.time_window import TimeWindow
 CAMERAS = {cl.__name__ : cl for cl in [FSLVirtualCamera, MovieVirtualCamera]}
@@ -63,21 +65,17 @@ def main(ARGS):
 
     windows = []
 
-    with open(METADATA, "r") as filehandle:
-        metadata = filehandle.read()
+    metadata = pd.read_csv(METADATA)
+    metadata = metadata[TimeWindow._required_metadata]
 
-    metadata = metadata.strip("\n").split("\n")
-    # ignore the header
-    metadata = metadata[1:]
-
-    for i, row in enumerate(metadata):
+    for i, row in metadata.iterrows():
         print(FPS)
         print(row)
 
         time_window = TimeWindow(
-            i+1, *row.split(","),
+            i+1, **row,
             framerate=FPS, result_dir=OUTPUT, input_video=INPUT,
-            all=ALL, annotate=ARGS["annotate"], informative=ARGS["informative"]
+            all_frames=ALL, annotate=ARGS["annotate"], informative=ARGS["informative"]
         )
         windows.append(time_window)
 

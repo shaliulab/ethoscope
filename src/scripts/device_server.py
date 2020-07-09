@@ -413,7 +413,7 @@ if __name__ == '__main__':
     ap.add_argument("-t", "--target-coordinates-file", dest="target_coordinates_file", type=str, required=False, default="/etc/target_coordinates.conf")
     ap.add_argument("--rois-pickle-file", dest="rois_pickle_file", type=str, required=False, default="rois.pickle")
     ap.add_argument("-d", "--drop-each", dest="drop_each", type=int, default=1)
-    ap.add_argument("-a", "--address", type=str, default="192.169.123.10")
+    ap.add_argument("-a", "--address", type=str, default="auto")
 
     ARGS = vars(ap.parse_args())
 
@@ -522,9 +522,10 @@ if __name__ == '__main__':
         # moreover, we will burn the ETHOSCOPE_000 img with a non existing /etc/machine-id file
         # to make sure each burned image will get a unique machine-id at the first boot
 
-        #hostname = socket.gethostname()
         #uid = "%s-%s" % ( hostname, get_machine_id() )
         hostname = ARGS["name"]
+        if hostname is None:
+            hostname = socket.gethostname()
         uid = "%s-%s" % ( hostname, ARGS["machine_id"] )
 
         address = False
@@ -533,7 +534,7 @@ if __name__ == '__main__':
         while address is False:
             try:
                 #address = socket.gethostbyname(hostname+".local")
-                if ADDRESS is None:
+                if ADDRESS is None or ADDRESS == "auto":
                     address = socket.gethostbyname(hostname)
                 else:
                     address = ADDRESS
