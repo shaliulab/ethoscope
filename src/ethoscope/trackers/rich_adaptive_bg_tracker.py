@@ -103,8 +103,6 @@ class RichAdaptiveBGModel(AdaptiveBGModel):
         # thresh = cv2.threshold(foreground, self._minimum_change, 255, cv2.THRESH_BINARY)[1]
         non_zero = cv2.bitwise_and(foreground, ellipse)
 
-        if self._debug and self._roi.idx == 18:
-            cv2.imwrite("/tmp/foreground_ROI_%s_t%s.png" % (str(self._roi.idx).zfill(2), self._last_time_point), non_zero)
         self._fly_pixel_count = np.sum(non_zero)
         # median = np.median(foreground[non_zero])
         return {"body": non_zero}
@@ -173,7 +171,7 @@ class RichAdaptiveBGModel(AdaptiveBGModel):
                 diff_bool = diff_segmented == 255
                 diff_count = np.sum(diff_bool)
 
-                if self._debug and self._roi.idx == 18:
+                if self._debug and self._roi.idx == 1:
                     logging.warning(diff.dtype)
                     logging.warning(diff.shape)
                     logging.warning(diff_segmented.dtype)
@@ -190,7 +188,8 @@ class RichAdaptiveBGModel(AdaptiveBGModel):
                 logging.warning(diff_count)
 
                 # take a sqroot to make it distance-like and normalize with the sqroot of the area of the fly
-                self._last_movements[part] = self._process_raw_feature(diff_count)
+                # self._last_movements[part] = self._process_raw_feature(diff_count)
+                self._last_movements[part] = diff_count
                 # print("Part %s: Movement: %s pixels" % (part, xor_count))
                 # print("Part %s: Movement: %s normalized pixels" % (part, self._last_movements[part]))
 

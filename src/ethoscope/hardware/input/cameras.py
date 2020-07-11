@@ -24,7 +24,6 @@ import multiprocessing
 import traceback
 import queue
 
-from ethoscope.utils.claim_camera import claim_camera, remove_pidfile
 from ethoscope.hardware.input.camera_settings import configure_camera
 
 class BaseCamera(object):
@@ -580,7 +579,7 @@ class DualPiFrameGrabber(PiFrameGrabber):
             from picamera.array import PiRGBArray
             from picamera import PiCamera
 
-            with claim_camera(framerate=self._target_fps, resolution=self._target_resolution) as capture:
+            with PiCamera(framerate=self._target_fps, resolution=self._target_resolution) as capture:
             # wrap the call to picamera.PiCamera around a handler that
             # 1. creates a pidfile so the PID of the thread can be easily tracked
             # 2. removes a potential existing pidfile and kills the corresponding process
