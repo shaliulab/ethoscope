@@ -74,7 +74,7 @@ class ControlThread(Thread):
     _evanescent = False
     _option_dict = {
         "roi_builder":{
-                "possible_classes":[SleepMonitorWithTargetROIBuilder, FSLSleepMonitorWithTargetROIBuilder, HighContrastTargetROIBuilder, DefaultROIBuilder, TargetGridROIBuilder, OlfactionAssayROIBuilder, ElectricShockAssayROIBuilder],
+                "possible_classes":[FSLSleepMonitorWithTargetROIBuilder, SleepMonitorWithTargetROIBuilder, HighContrastTargetROIBuilder, DefaultROIBuilder, TargetGridROIBuilder, OlfactionAssayROIBuilder, ElectricShockAssayROIBuilder],
             },
         "tracker":{
                 "possible_classes":[AdaptiveBGModel, RichAdaptiveBGModel],
@@ -99,7 +99,7 @@ class ControlThread(Thread):
                         "possible_classes":[DefaultDrawer, NullDrawer],
                     },
         "camera":{
-                        "possible_classes":[OurPiCameraAsync, MovieVirtualCamera, DummyPiCameraAsync, V4L2Camera, FSLVirtualCamera, FSLPiCameraAsync],
+                        "possible_classes":[FSLPiCameraAsync, OurPiCameraAsync, MovieVirtualCamera, DummyPiCameraAsync, V4L2Camera, FSLVirtualCamera],
                     },
         "result_writer":{
                         "possible_classes":[ResultWriter, SQLiteResultWriter],
