@@ -283,12 +283,15 @@ class MiddleCrossingStimulator(BaseStimulator):
                                      "default": ""}
                                    ]}
 
-    _HardwareInterfaceClass = SleepDepriverInterface
-    _refractory_period = 60#s
-    _roi_to_channel = {
-            1:1,  3:2,  5:3,  7:4,  9:5,
-            12:6, 14:7, 16:8, 18:9, 20:10
-        }
+    _HardwareInterfaceClass = OptoMotor
+    _refractory_period = 5#s
+#    _roi_to_channel = {
+#            1:0,  3:2,  5:3,  7:4,  9:5,
+#            12:6, 14:7, 16:8, 18:9, 20:10
+#        }
+    _roi_to_channel = {1:0, 3:2, 5:4, 7:6, 9:8,
+                        12:22, 14:20, 16:18, 18:16, 20:14}
+
     def __init__(self,
                  hardware_connection,
                  p=1.0,

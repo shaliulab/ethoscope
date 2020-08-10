@@ -7,6 +7,8 @@ import collections
 import urllib.request, urllib.error, urllib.parse
 import json
 
+import logging
+
 
 class HardwareConnection(Thread):
     def __init__(self, interface_class, *args, **kwargs):
@@ -38,6 +40,7 @@ class HardwareConnection(Thread):
             time.sleep(.1)
             while len(self._instructions) > 0 and self._connection_open:
                 instruc = self._instructions.popleft()
+                logging.warning(instruc)
                 ret = self._interface.send(**instruc)
 
     def send_instruction(self, instruction=None):
