@@ -26,6 +26,59 @@ import queue
 
 from ethoscope.hardware.input.camera_settings import configure_camera
 
+
+def kill_all_instances():
+
+    import subprocess
+    import os
+    import signal
+
+    ps = subprocess.Popen(['ps', '-ef'], stdout=subprocess.PIPE)
+    output = subprocess.check_output(('grep', 'device_server\.py'), stdin=ps.stdout)
+    ps.wait()
+    output_split = output.decode("utf-8").split('\n')
+    output_split = [e for e in output_split if e != '']
+    pids = []
+    for e in output_split:
+        f = [e for e in e.split(' ') if e != '']
+        pid = int(f[1])
+        pids.append(pid)
+
+    pids_to_remove = pids[1:]
+    #pids_to_remove = [pids[0]]
+    for pid in pids_to_remove:
+        logging.info('Sending SIGTERM to {}'.format(pid))
+        os.kill(pid, signal.SIGTERM) #or signal.SIGKILL
+    else:
+        logging.info('No two extra processes found')
+
+    return len(pids_to_remove)
+
+
+def init_camera(*args, **kwargs):
+    """
+    Strong initialization of the picamera
+    Deal with the Out of resources error caused when the camera
+    is still taken by an old process
+    Solve the error by finding that process, killing it and trying again
+    """
+    import picamera
+    from picamera.exc import PiCameraMMALError
+
+    try:
+        capture = picamera.PiCamera(*args, **kwargs)
+    except PiCameraMMALError as error:
+        logging.warning("Out of resources error detected!")
+        logging.warning("I will kill all camera instances I find and try again")
+        kill_all_instances()
+        capture = picamera.PiCamera(*args, **kwargs)
+
+    return capture
+        
+        
+
+
+
 class BaseCamera(object):
     capture = None
     _resolution = None
@@ -155,7 +208,7 @@ class MovieVirtualCamera(BaseCamera):
         """
 
         #print "path", path
-        logging.warning(path)
+        logging.info(path)
         self._frame_idx = 0
         self._path = path
         self._use_wall_clock = use_wall_clock
@@ -253,20 +306,20 @@ class FSLVirtualCamera(MovieVirtualCamera):
         return frame_idx, (time, im)
 
     def _parse_start_time(self):
-        logging.warning(self._path)
+        logging.info(self._path)
 
         res = re.findall(r"(\d{4}((-\d\d){2})_((\d\d-){2})\d{2})", self._path)
-        logging.warning(res)
+        logging.info(res)
         #assert res[0][0] == res[1][0]
         date_time_str = res[0][0]
 
-        logging.warning("DATE_TIME_STR")
-        logging.warning(date_time_str)
+        logging.info("DATE_TIME_STR")
+        logging.info(date_time_str)
         date_time_naive = datetime.datetime.strptime(date_time_str, '%Y-%m-%d_%H-%M-%S')
         date_time_aware = date_time_naive.astimezone(datetime.timezone.utc)
 
-        logging.warning("DATE_TIME")
-        logging.warning(date_time_aware)
+        logging.info("DATE_TIME")
+        logging.info(date_time_aware)
         # return the difference between the start of the video
         # and the reference time, set to 1970-01-01 00:00:00
         # in seconds
@@ -430,10 +483,10 @@ class PiFrameGrabber(threading.Thread):
         self._stop_queue = stop_queue
         self._target_fps = target_fps
         self._target_resolution = target_resolution
-        logging.warning('PiFrameGrabber queue %s', queue)
-        logging.warning('PiFrameGrabber stop_queue %s', stop_queue)
-        logging.warning('PiFrameGrabber target_fps %s', target_fps)
-        logging.warning('PiFrameGrabber target_resolution %s', target_resolution)
+        logging.info('PiFrameGrabber queue %s', queue)
+        logging.info('PiFrameGrabber stop_queue %s', stop_queue)
+        logging.info('PiFrameGrabber target_fps %s', target_fps)
+        logging.info('PiFrameGrabber target_resolution %s', target_resolution)
 
         super(PiFrameGrabber, self).__init__()
 
@@ -454,9 +507,10 @@ class PiFrameGrabber(threading.Thread):
             import picamera
             import picamera.array
 
-            with picamera.PiCamera() as capture:
+            with init_camera(resolution=self._target_resolution, framerate=self._target_fps) as capture:
+            #with picamera.PiCamera() as capture:
 
-                capture.resolution = self._target_resolution
+                #capture.resolution = self._target_resolution
                 camera_info = capture.exif_tags
                 logging.info("Detected camera %s: " % camera_info)
 
@@ -483,7 +537,6 @@ class PiFrameGrabber(threading.Thread):
                 with open('/etc/picamera-version', 'w') as outfile:
                     print(camera_info, file=outfile)
 
-                capture.framerate = self._target_fps
                 stream = picamera.array.PiRGBArray(capture, size=self._target_resolution)
                 time.sleep(0.2) # sleep 200ms to allow the camera to warm up
 
@@ -579,9 +632,13 @@ class DualPiFrameGrabber(PiFrameGrabber):
             from picamera.array import PiRGBArray
             from picamera import PiCamera
 
-            with PiCamera(framerate=self._target_fps, resolution=self._target_resolution) as capture:
-
-                logging.warning(capture)
+            #with PiCamera(framerate=self._target_fps, resolution=self._target_resolution) as capture:
+            with init_camera(framerate=self._target_fps, resolution=self._target_resolution) as capture:
+            # wrap the call to picamera.PiCamera around a handler that
+            # 1. creates a pidfile so the PID of the thread can be easily tracked
+            # 2. removes a potential existing pidfile and kills the corresponding process
+            # This is intended to avoid the Out of resources error caused by the camera thread not stopping upon monitor stop
+                logging.info(capture)
                 camera_info = capture.exif_tags
                 with open('/etc/picamera-version', 'w') as outfile:
                     print(camera_info, file=outfile)
@@ -614,22 +671,22 @@ class DualPiFrameGrabber(PiFrameGrabber):
                         roi_builder_event = True
 
                     if not self._stop_queue.empty():
-                        logging.warning(f"PID {os.getpid()}: The stop queue is not empty. Stop acquiring frames")
+                        logging.info(f"PID {os.getpid()}: The stop queue is not empty. Stop acquiring frames")
 
                         self._stop_queue.get()
                         self._stop_queue.task_done()
                         logging.warning("Stop Task Done")
                         break
 
-                    logging.warning(f'camera framerate: {capture.framerate}')
-                    logging.warning(f'camera resolution: {capture.resolution}')
-                    logging.warning(f'camera exposure_mode: {capture.exposure_mode}')
-                    logging.warning(f'camera shutter_speed: {capture.shutter_speed}')
-                    logging.warning(f'camera exposure_speed: {capture.exposure_speed}')
-                    logging.warning(f'camera awb_gains: {capture.awb_gains}')
-                    logging.warning(f'camera analog_gain: {float(capture.analog_gain)}')
-                    logging.warning(f'camera digital_gain: {float(capture.digital_gain)}')
-                    logging.warning(f'camera iso: {float(capture.iso)}')
+                    logging.info(f'camera framerate: {capture.framerate}')
+                    logging.info(f'camera resolution: {capture.resolution}')
+                    logging.info(f'camera exposure_mode: {capture.exposure_mode}')
+                    logging.info(f'camera shutter_speed: {capture.shutter_speed}')
+                    logging.info(f'camera exposure_speed: {capture.exposure_speed}')
+                    logging.info(f'camera awb_gains: {capture.awb_gains}')
+                    logging.info(f'camera analog_gain: {float(capture.analog_gain)}')
+                    logging.info(f'camera digital_gain: {float(capture.digital_gain)}')
+                    logging.info(f'camera iso: {float(capture.iso)}')
 
                     raw_capture.truncate(0)
                     # out = np.copy(frame.array)
@@ -638,6 +695,9 @@ class DualPiFrameGrabber(PiFrameGrabber):
                     # This way, we would manage to get faster FPS
                     self._queue.put(out)
                     i+= 1
+
+        except Exception as error:
+            logging.warning(error)
         finally:
             logging.warning(f"PID {os.getpid()}: Closing frame grabber process")
             self._stop_queue.close()
@@ -792,8 +852,24 @@ class FSLPiCameraAsync(OurPiCameraAsync):
         self._p.start()
 
         try:
-            im = self._queue.get(timeout=30)
-        except Exception as e:
+            try:
+                im = self._queue.get(timeout=30)
+
+            # to deal with broken camera thread. Just recreate it
+            except (OSError, queue.Empty) as error:
+                logging.warning("30 seconds timeout detected")
+                logging.warning("Regenerating camera thread")
+                self._queue = multiprocessing.Queue(maxsize=1)
+                self._exposure_queue = multiprocessing.Queue(maxsize=2)
+                self._stop_queue = multiprocessing.JoinableQueue(maxsize=1)
+ 
+                self._p = self._frame_grabber_class(self._exposure_queue, target_fps, target_resolution, self._queue, self._stop_queue, *args, **kwargs)
+                self._p.daemon = True
+                self._p.start()
+                im = self._queue.get(timeout=30)
+
+               
+        except Exception as error:
             logging.error("Could not get any frame from the camera")
             self._stop_queue.cancel_join_thread()
             self._queue.cancel_join_thread()
@@ -805,7 +881,8 @@ class FSLPiCameraAsync(OurPiCameraAsync):
             # we kill the frame grabber if it does not reply within 10s
             self._p.join(10)
             logging.warning("Process joined")
-            raise e
+            raise error
+
         self._frame = cv2.cvtColor(im,cv2.COLOR_GRAY2BGR)
         if len(im.shape) < 2:
             raise EthoscopeException("The camera image is corrupted (less that 2 dimensions)")
