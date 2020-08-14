@@ -292,6 +292,8 @@ class MiddleCrossingStimulator(BaseStimulator):
     _roi_to_channel = {1:0, 3:2, 5:4, 7:6, 9:8,
                         12:22, 14:20, 16:18, 18:16, 20:14}
 
+    _pulse_duration = 1000 #ms
+
     def __init__(self,
                  hardware_connection,
                  p=1.0,
@@ -313,6 +315,7 @@ class MiddleCrossingStimulator(BaseStimulator):
     def _decide(self):
         roi_id = self._tracker._roi.idx
         now = self._tracker.last_time_point
+        base_dict = {"duration": self._pulse_duration}
         if now - self._last_stimulus_time < self._refractory_period * 1000:
             return HasInteractedVariable(False), {}
 
@@ -339,9 +342,9 @@ class MiddleCrossingStimulator(BaseStimulator):
 
             if random.uniform(0,1) < self._p:
                 self._last_stimulus_time = now
-                return HasInteractedVariable(True), {"channel": channel}
+                return HasInteractedVariable(True), {"channel": channel, **base_dict}
 
-        return HasInteractedVariable(False), {"channel": channel}
+        return HasInteractedVariable(False), {"channel": channel, **base_dict}
 
 
 

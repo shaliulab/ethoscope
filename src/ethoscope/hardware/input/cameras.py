@@ -580,10 +580,7 @@ class DualPiFrameGrabber(PiFrameGrabber):
             from picamera import PiCamera
 
             with PiCamera(framerate=self._target_fps, resolution=self._target_resolution) as capture:
-            # wrap the call to picamera.PiCamera around a handler that
-            # 1. creates a pidfile so the PID of the thread can be easily tracked
-            # 2. removes a potential existing pidfile and kills the corresponding process
-            # This is intended to avoid the Out of resources error caused by the camera thread not stopping upon monitor stop
+
                 logging.warning(capture)
                 camera_info = capture.exif_tags
                 with open('/etc/picamera-version', 'w') as outfile:
@@ -639,12 +636,9 @@ class DualPiFrameGrabber(PiFrameGrabber):
                     out = cv2.cvtColor(frame.array,cv2.COLOR_BGR2GRAY)
                     #fixme here we could actually pass a JPG compressed file object (http://docs.scipy.org/doc/scipy-0.16.0/reference/generated/scipy.misc.imsave.html)
                     # This way, we would manage to get faster FPS
-                    #cv2.imwrite(f"/root/frame_{str(i).zfill(2)}.png", out)
                     self._queue.put(out)
                     i+= 1
         finally:
-            # remove the pidfile created in claim_camera()
-            remove_pidfile()
             logging.warning(f"PID {os.getpid()}: Closing frame grabber process")
             self._stop_queue.close()
             self._queue.close()
