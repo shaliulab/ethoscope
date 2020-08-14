@@ -810,10 +810,17 @@ class OurPiCameraAsync(BaseCamera):
         logging.info("Frame grabbing thread is joined")
 
     def _next_image(self):
+        trial = 1
         try:
             g = self._queue.get(timeout=30)
             cv2.cvtColor(g,cv2.COLOR_GRAY2BGR,self._frame)
             return self._frame
+        except OSError as error:
+            trial += 1
+            g = self._queue.get(timeout=30)
+            cv2.cvtColor(g, cv2.COLOR_GRAY2BGR, self._frame)
+            return self._frame
+
         except Exception as e:
             raise EthoscopeException("Could not get frame from camera\n%s", traceback.format_exc())
 
