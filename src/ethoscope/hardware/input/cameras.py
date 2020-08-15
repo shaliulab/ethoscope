@@ -656,7 +656,7 @@ class DualPiFrameGrabber(PiFrameGrabber):
                 roi_builder_event = False
                 tracker_event = False
 
-                raw_capture = PiRGBArray(capture, size=self._target_resolution)s
+                raw_capture = PiRGBArray(capture, size=self._target_resolution)
                 trials = 0
 
                 for frame in capture.capture_continuous(raw_capture, format="bgr", use_video_port=True):
@@ -936,7 +936,7 @@ class FSLPiCameraAsync(OurPiCameraAsync):
             time.sleep(1)
             return i
         else:
-            return i += 1
+            return i + 1
 
 
     def set_roi_builder(self):
