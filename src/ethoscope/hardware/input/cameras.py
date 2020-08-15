@@ -186,6 +186,11 @@ class BaseCamera(object):
         """
         raise NotImplementedError
 
+    def change_gain(**kwargs):
+        i = kwargs.pop("i")
+        return i + 1
+
+
 
 class MovieVirtualCamera(BaseCamera):
     _description = {"overview":  "Class to acquire frames from a video file.",
@@ -631,6 +636,7 @@ class DualPiFrameGrabber(PiFrameGrabber):
             # https://www.bountysource.com/issues/86094172-python-3-8-1-typeerror-vc_dispmanx_element_add-argtypes-item-9-in-_argtypes_-passes-a-union-by-value-which-is-unsupported
             from picamera.array import PiRGBArray
             from picamera import PiCamera
+            from picamera import PiCameraValueError
 
             #with PiCamera(framerate=self._target_fps, resolution=self._target_resolution) as capture:
             with init_camera(framerate=self._target_fps, resolution=self._target_resolution) as capture:
@@ -650,8 +656,8 @@ class DualPiFrameGrabber(PiFrameGrabber):
                 roi_builder_event = False
                 tracker_event = False
 
-                raw_capture = PiRGBArray(capture, size=self._target_resolution)
-                i = 0
+                raw_capture = PiRGBArray(capture, size=self._target_resolution)s
+                trials = 0
 
                 for frame in capture.capture_continuous(raw_capture, format="bgr", use_video_port=True):
 
@@ -688,13 +694,25 @@ class DualPiFrameGrabber(PiFrameGrabber):
                     logging.info(f'camera digital_gain: {float(capture.digital_gain)}')
                     logging.info(f'camera iso: {float(capture.iso)}')
 
-                    raw_capture.truncate(0)
+                    try:
+                        raw_capture.truncate()
+                        raw_capture.seek(0)
+                    except PiCameraValueError as error:
+                        trials += 1
+                        if trials == max_trials:
+                            raise error
+
+                        logging.warning('Failed %s times in a row. Trying again...', trials)
+                        continue
+
+                    trials = 0
+
+                    # raw_capture.truncate(0)
                     # out = np.copy(frame.array)
                     out = cv2.cvtColor(frame.array,cv2.COLOR_BGR2GRAY)
                     #fixme here we could actually pass a JPG compressed file object (http://docs.scipy.org/doc/scipy-0.16.0/reference/generated/scipy.misc.imsave.html)
                     # This way, we would manage to get faster FPS
                     self._queue.put(out)
-                    i+= 1
 
         except Exception as error:
             logging.warning(error)
@@ -907,8 +925,19 @@ class FSLPiCameraAsync(OurPiCameraAsync):
     def set_tracker(self):
         self._p._tracker_event.set()
 
-    def change_gain(self, gain, sign):
-        self._exposure_queue.put((gain, sign))
+    def change_gain(self, mean_intensity, means, mode, i=0):
+        
+        within = mean_intensity > means[mode][0] and mean_intensity < means[mode][1]
+            
+        if not within:
+            gain = 'analog_gain' if mode == 'target_detection' else 'awb_gains'
+            sign = 1 if mean_intensity < means[mode][0] else -1
+            self._exposure_queue.put((gain, sign))
+            time.sleep(1)
+            return i
+        else:
+            return i += 1
+
 
     def set_roi_builder(self):
         self._p._roi_builder_event.set()
