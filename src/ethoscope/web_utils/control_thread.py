@@ -1,5 +1,6 @@
 import tempfile
 import os
+import os.path
 import traceback
 import shutil
 import logging
@@ -321,6 +322,8 @@ class ControlThread(Thread):
 
         frame = self._drawer.last_drawn_frame
         if frame is not None:
+            tempdir = os.dirname(self._info["last_drawn_img"])
+            os.makedirs(tempdir, exist_ok=True)
             cv2.imwrite(self._info["last_drawn_img"], frame, [int(cv2.IMWRITE_JPEG_QUALITY), 50])
 
 
