@@ -664,6 +664,7 @@ class DualPiFrameGrabber(PiFrameGrabber):
                     try:
                         gain, sign = self._exposure_queue.get(block=False)
                         capture = self.adjust_camera(capture, gain, sign)
+                        logging.info('Success adjusting analog gain')
 
                     except queue.Empty:
                         pass
@@ -671,10 +672,14 @@ class DualPiFrameGrabber(PiFrameGrabber):
                     if self._tracker_event.is_set() and not tracker_event:
                         capture = configure_camera(capture, mode="tracker")
                         tracker_event = True
+                        logging.info('Success switching to tracker mode')
+
 
                     if self._roi_builder_event.is_set() and not roi_builder_event:
                         capture = configure_camera(capture, mode="roi_builder")
                         roi_builder_event = True
+                        logging.info('Success switching to roi_builder mode')
+
 
                     if not self._stop_queue.empty():
                         logging.info(f"PID {os.getpid()}: The stop queue is not empty. Stop acquiring frames")
@@ -698,6 +703,7 @@ class DualPiFrameGrabber(PiFrameGrabber):
                         # raw_capture.truncate()
                         # raw_capture.seek(0)
                         raw_capture.truncate(0)
+                        logging.info('Success taking capture')
 
                     except PiCameraValueError as error:
                         trials += 1
@@ -717,6 +723,8 @@ class DualPiFrameGrabber(PiFrameGrabber):
 
         except Exception as error:
             logging.warning(error)
+            logging.warning(traceback.print_exc())
+
         finally:
             logging.warning(f"PID {os.getpid()}: Closing frame grabber process")
             self._stop_queue.close()
