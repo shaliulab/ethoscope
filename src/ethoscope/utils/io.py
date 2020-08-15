@@ -501,6 +501,9 @@ class ResultWriter(object):
             self._create_all_tables()
         else:
             event = "crash_recovery"
+            import datetime
+            logging.warning('Crash recovery date time')
+            logging.warning(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
             command = "INSERT INTO START_EVENTS VALUES %s" % str((self._null, int(time.time()), event))
             self._write_async_command(command)
 
