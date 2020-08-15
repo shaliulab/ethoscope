@@ -695,8 +695,10 @@ class DualPiFrameGrabber(PiFrameGrabber):
                     logging.info(f'camera iso: {float(capture.iso)}')
 
                     try:
-                        raw_capture.truncate()
-                        raw_capture.seek(0)
+                        # raw_capture.truncate()
+                        # raw_capture.seek(0)
+                        raw_capture.truncate(0)
+
                     except PiCameraValueError as error:
                         trials += 1
                         if trials == max_trials:
@@ -707,7 +709,6 @@ class DualPiFrameGrabber(PiFrameGrabber):
 
                     trials = 0
 
-                    # raw_capture.truncate(0)
                     # out = np.copy(frame.array)
                     out = cv2.cvtColor(frame.array,cv2.COLOR_BGR2GRAY)
                     #fixme here we could actually pass a JPG compressed file object (http://docs.scipy.org/doc/scipy-0.16.0/reference/generated/scipy.misc.imsave.html)

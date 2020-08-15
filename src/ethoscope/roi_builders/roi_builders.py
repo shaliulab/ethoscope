@@ -47,7 +47,7 @@ class BaseROIBuilder(DescribedObject):
 
                 output_path = "/root/frame_%s.png" % (str(i).zfill(4))
                 cv2.imwrite(output_path, frame)
-                logging.warning(f"I: {i}")
+                logging.warning(f"ROI builder frame number: {i}")
                 logging.warning(f"mean_intensity: {np.mean(frame)}")
                 if i  == modes_n[mode]-1:
                     break
