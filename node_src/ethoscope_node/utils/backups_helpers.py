@@ -37,9 +37,9 @@ def receive_devices(server = "localhost", regex=None):
     '''
     url = "http://%s/devices" % server
     devices = []
-    
+
     try:
-        req = urllib.request.Request(url, headers={'Content-Type': 'application/json'})            
+        req = urllib.request.Request(url, headers={'Content-Type': 'application/json'})
         f = urllib.request.urlopen(req, timeout=10)
         devices = json.load(f)
         return devices
@@ -48,7 +48,7 @@ def receive_devices(server = "localhost", regex=None):
         logging.error("The node ethoscope server %s is not running or cannot be reached. A list of available ethoscopes could not be found." % server)
         return
         #logging.error(traceback.format_exc())
-        
+
 
 class BackupClass(object):
     _db_credentials = {
@@ -56,16 +56,16 @@ class BackupClass(object):
             "user":"ethoscope",
             "password":"ethoscope"
         }
-    
+
     # #the db name is specific to the ethoscope being interrogated
     # #the user remotely accessing it is node/node
-    
+
     # _db_credentials = {
             # "name":"ETHOSCOPE_000_db",
             # "user":"node",
             # "password":"node"
         # }
-        
+
     def __init__(self, device_info, results_dir):
 
         self._device_info = device_info
@@ -100,10 +100,15 @@ class BackupClass(object):
             logging.error(traceback.format_exc())
 
 
+def dummy_job(*args):
+    logging.warning("Hello World")
+
+
 class GenericBackupWrapper(object):
     def __init__(self, backup_job, results_dir, safe, server, regex=None):
         self._TICK = 1.0  # s
         self._BACKUP_DT = 5 * 60  # 5min
+        # self._BACKUP_DT = 5
         self._results_dir = results_dir
         self._safe = safe
         self._backup_job = backup_job
@@ -112,8 +117,8 @@ class GenericBackupWrapper(object):
 
         # for safety, starts device scanner too in case the node will go down at later stage
         self._device_scanner = EthoscopeScanner(results_dir = results_dir, regex = regex)
-            
-            
+
+
 
 
     def run(self):
@@ -132,12 +137,18 @@ class GenericBackupWrapper(object):
             t1 = t0 + self._BACKUP_DT
 
             while True:
+
                 if t1 - t0 < self._BACKUP_DT:
                     t1 = time.time()
                     time.sleep(self._TICK)
                     continue
 
+                with open("/etc/backup_off.conf", "r") as fh:
+                    backup_off  = [e.strip("\n") for e in fh.readlines()]
+
                 logging.info("Starting backup")
+                logging.info("Following ethoscopes will NOT be backed up")
+                logging.info(backup_off)
 
                 if not devices:
                     devices = self._device_scanner.get_all_devices_info()
@@ -149,19 +160,22 @@ class GenericBackupWrapper(object):
 
                 args = []
                 for d in list(devices.values()):
-                    if d["status"] not in ["not_in_use", "offline"]:
+                    if d["status"] not in ["not_in_use", "offline"] and d["name"] not in backup_off:
                         args.append((d, self._results_dir))
 
                 logging.info("Found %s devices online" % len(args))
 
+                logging.warning(args)
                 if self._safe:
                     for arg in args:
                         self._backup_job(arg)
+                        #dummy_job(arg)
 
                     #map(self._backup_job, args)
                 else:
                     pool = multiprocessing.Pool(int(cpu_available * 0.75))
                     _ = pool.map(self._backup_job, args)
+                    #_ = pool.map(dummy_job, args)
                     logging.info("Pool mapped")
                     pool.close()
                     logging.info("Joining now")
@@ -169,6 +183,10 @@ class GenericBackupWrapper(object):
                 t1 = time.time()
                 logging.info("Backup finished at t=%i" % t1)
                 t0 = t1
+                # actually dont loop forever and instead do it once
+                # we have moved the loop-like behavior with a crontab service
+                # that runs the backup_tool.py script every 5 minutes
+                # break
 
         finally:
             if not devices:
