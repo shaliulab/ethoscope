@@ -44,7 +44,7 @@ duration = args['duration']*1000
 wait = args['wait']
 
 for c in channels:
-    instruction = b"P %i %i %i\r" %(c, duration, intensity)
+    instruction = b"P %i %i %i\r\n" %(c, duration, intensity)
     handle.write(instruction)
     time.sleep(wait)
 
