@@ -8,6 +8,7 @@ import os
 import subprocess
 import traceback
 
+logging.basicConfig(level=logging.INFO)
 import bottle
 import socket
 from zeroconf import ServiceInfo, Zeroconf
@@ -382,6 +383,15 @@ class CherootServer(bottle.ServerAdapter):
 #############
 
 if __name__ == '__main__':
+
+    ## Before anything, make sure we have the right time!!
+    logging.warning('Updating clock')
+    os.system('timedatectl set-ntp 0')
+    os.system('systemctl stop ntpd')
+    os.system('ntpdate node')
+    os.system('systemctl start ntpd')
+    os.system('timedatectl set-ntp 1')
+ 
 
     ETHOSCOPE_DIR = "/ethoscope_data/results"
     ETHOSCOPE_UPLOAD = "/ethoscope_data/upload"

@@ -186,6 +186,11 @@ class BaseCamera(object):
         """
         raise NotImplementedError
 
+    def change_gain(**kwargs):
+        i = kwargs.pop("i")
+        return i + 1
+
+
 
 class MovieVirtualCamera(BaseCamera):
     _description = {"overview":  "Class to acquire frames from a video file.",
@@ -625,79 +630,111 @@ class DualPiFrameGrabber(PiFrameGrabber):
         """
 
         try:
-            # lazy import should only use those on devices
 
-            # Warning: the following causes a major issue with Python 3.8.1
-            # https://www.bountysource.com/issues/86094172-python-3-8-1-typeerror-vc_dispmanx_element_add-argtypes-item-9-in-_argtypes_-passes-a-union-by-value-which-is-unsupported
-            from picamera.array import PiRGBArray
-            from picamera import PiCamera
-
-            #with PiCamera(framerate=self._target_fps, resolution=self._target_resolution) as capture:
-            with init_camera(framerate=self._target_fps, resolution=self._target_resolution) as capture:
-            # wrap the call to picamera.PiCamera around a handler that
-            # 1. creates a pidfile so the PID of the thread can be easily tracked
-            # 2. removes a potential existing pidfile and kills the corresponding process
-            # This is intended to avoid the Out of resources error caused by the camera thread not stopping upon monitor stop
-                logging.info(capture)
-                camera_info = capture.exif_tags
-                with open('/etc/picamera-version', 'w') as outfile:
-                    print(camera_info, file=outfile)
-
-                capture.start_preview()
-                time.sleep(1)
-                capture = configure_camera(capture, mode = "target_detection")
-                time.sleep(5)
-                roi_builder_event = False
-                tracker_event = False
-
-                raw_capture = PiRGBArray(capture, size=self._target_resolution)
-                i = 0
-
-                for frame in capture.capture_continuous(raw_capture, format="bgr", use_video_port=True):
+            def capture_continuous(trials=0, recursion=0):
+                # lazy import should only use those on devices
+    
+                # Warning: the following causes a major issue with Python 3.8.1
+                # https://www.bountysource.com/issues/86094172-python-3-8-1-typeerror-vc_dispmanx_element_add-argtypes-item-9-in-_argtypes_-passes-a-union-by-value-which-is-unsupported
+                from picamera.array import PiRGBArray
+                from picamera import PiCamera
+                from picamera.exc import PiCameraRuntimeError
+                from picamera.exc import PiCameraValueError
+    
+                #with PiCamera(framerate=self._target_fps, resolution=self._target_resolution) as capture:
+                with init_camera(framerate=self._target_fps, resolution=self._target_resolution) as capture:
+                # wrap the call to picamera.PiCamera around a handler that
+                # 1. creates a pidfile so the PID of the thread can be easily tracked
+                # 2. removes a potential existing pidfile and kills the corresponding process
+                # This is intended to avoid the Out of resources error caused by the camera thread not stopping upon monitor stop
+                    logging.info(capture)
+                    camera_info = capture.exif_tags
+                    with open('/etc/picamera-version', 'w') as outfile:
+                        print(camera_info, file=outfile)
+    
+                    capture.start_preview()
+                    time.sleep(1)
+                    capture = configure_camera(capture, mode = "target_detection")
+                    time.sleep(5)
+                    roi_builder_event = False
+                    tracker_event = False
+    
+                    raw_capture = PiRGBArray(capture, size=self._target_resolution)
+                    max_trials = 5
 
                     try:
-                        gain, sign = self._exposure_queue.get(block=False)
-                        capture = self.adjust_camera(capture, gain, sign)
 
-                    except queue.Empty:
-                        pass
+                        for frame in capture.capture_continuous(raw_capture, format="bgr", use_video_port=True):
+    
+                            try:
+                                gain, sign = self._exposure_queue.get(block=False)
+                                capture = self.adjust_camera(capture, gain, sign)
+                                logging.info('Success adjusting analog gain')
+    
+                            except queue.Empty:
+                                pass
+    
+                            if self._roi_builder_event.is_set() and not roi_builder_event and recursion == 0:
+                                capture = configure_camera(capture, mode="roi_builder")
+                                roi_builder_event = True
+                                logging.info('Success switching to roi_builder mode')
+ 
+                            if self._tracker_event.is_set() and not tracker_event:
+                                capture = configure_camera(capture, mode="tracker")
+                                tracker_event = True
+                                logging.info('Success switching to tracker mode')
+    
+                            if not self._stop_queue.empty():
+                                logging.info(f"PID {os.getpid()}: The stop queue is not empty. Stop acquiring frames")
+    
+                                self._stop_queue.get()
+                                self._stop_queue.task_done()
+                                logging.warning("Stop Task Done")
+                                break
+    
+                            logging.info(f'camera framerate: {capture.framerate}')
+                            logging.info(f'camera resolution: {capture.resolution}')
+                            logging.info(f'camera exposure_mode: {capture.exposure_mode}')
+                            logging.info(f'camera shutter_speed: {capture.shutter_speed}')
+                            logging.info(f'camera exposure_speed: {capture.exposure_speed}')
+                            logging.info(f'camera awb_gains: {capture.awb_gains}')
+                            logging.info(f'camera analog_gain: {float(capture.analog_gain)}')
+                            logging.info(f'camera digital_gain: {float(capture.digital_gain)}')
+                            logging.info(f'camera iso: {float(capture.iso)}')
+ 
+                            # raw_capture.truncate()
+                            # raw_capture.seek(0)
+                            raw_capture.truncate(0)
+                            logging.info('Success taking capture')
+   
+    
+                            # out = np.copy(frame.array)
+                            out = cv2.cvtColor(frame.array,cv2.COLOR_BGR2GRAY)
+                            #fixme here we could actually pass a JPG compressed file object (http://docs.scipy.org/doc/scipy-0.16.0/reference/generated/scipy.misc.imsave.html)
+                            # This way, we would manage to get faster FPS
+                            self._queue.put(out)
+                            trials = 0
 
-                    if self._tracker_event.is_set() and not tracker_event:
-                        capture = configure_camera(capture, mode="tracker")
-                        tracker_event = True
+                    except (PiCameraValueError, PiCameraRuntimeError) as error:
+                        logging.warning(error)
+                        logging.warning(traceback.print_exc())
+                        trials += 1
+                        recursion += 1
+                        if trials == max_trials:
+                            raise error
 
-                    if self._roi_builder_event.is_set() and not roi_builder_event:
-                        capture = configure_camera(capture, mode="roi_builder")
-                        roi_builder_event = True
+                        logging.warning('Failed %d times in a row. Trying again...', trials)
+                        capture.close()
+                        time.sleep(2)
+                        capture_continuous(trials, recursion)
+                        return
 
-                    if not self._stop_queue.empty():
-                        logging.info(f"PID {os.getpid()}: The stop queue is not empty. Stop acquiring frames")
-
-                        self._stop_queue.get()
-                        self._stop_queue.task_done()
-                        logging.warning("Stop Task Done")
-                        break
-
-                    logging.info(f'camera framerate: {capture.framerate}')
-                    logging.info(f'camera resolution: {capture.resolution}')
-                    logging.info(f'camera exposure_mode: {capture.exposure_mode}')
-                    logging.info(f'camera shutter_speed: {capture.shutter_speed}')
-                    logging.info(f'camera exposure_speed: {capture.exposure_speed}')
-                    logging.info(f'camera awb_gains: {capture.awb_gains}')
-                    logging.info(f'camera analog_gain: {float(capture.analog_gain)}')
-                    logging.info(f'camera digital_gain: {float(capture.digital_gain)}')
-                    logging.info(f'camera iso: {float(capture.iso)}')
-
-                    raw_capture.truncate(0)
-                    # out = np.copy(frame.array)
-                    out = cv2.cvtColor(frame.array,cv2.COLOR_BGR2GRAY)
-                    #fixme here we could actually pass a JPG compressed file object (http://docs.scipy.org/doc/scipy-0.16.0/reference/generated/scipy.misc.imsave.html)
-                    # This way, we would manage to get faster FPS
-                    self._queue.put(out)
-                    i+= 1
-
+            capture_continuous(0, 0)
+ 
         except Exception as error:
             logging.warning(error)
+            logging.warning(traceback.print_exc())
+
         finally:
             logging.warning(f"PID {os.getpid()}: Closing frame grabber process")
             self._stop_queue.close()
@@ -810,10 +847,17 @@ class OurPiCameraAsync(BaseCamera):
         logging.info("Frame grabbing thread is joined")
 
     def _next_image(self):
+        trial = 1
         try:
             g = self._queue.get(timeout=30)
             cv2.cvtColor(g,cv2.COLOR_GRAY2BGR,self._frame)
             return self._frame
+        except OSError as error:
+            trial += 1
+            g = self._queue.get(timeout=30)
+            cv2.cvtColor(g, cv2.COLOR_GRAY2BGR, self._frame)
+            return self._frame
+
         except Exception as e:
             raise EthoscopeException("Could not get frame from camera\n%s", traceback.format_exc())
 
@@ -900,8 +944,19 @@ class FSLPiCameraAsync(OurPiCameraAsync):
     def set_tracker(self):
         self._p._tracker_event.set()
 
-    def change_gain(self, gain, sign):
-        self._exposure_queue.put((gain, sign))
+    def change_gain(self, mean_intensity, means, mode, i=0):
+        
+        within = mean_intensity > means[mode][0] and mean_intensity < means[mode][1]
+            
+        if not within:
+            gain = 'analog_gain' if mode == 'target_detection' else 'awb_gains'
+            sign = 1 if mean_intensity < means[mode][0] else -1
+            self._exposure_queue.put((gain, sign))
+            time.sleep(1)
+            return i
+        else:
+            return i + 1
+
 
     def set_roi_builder(self):
         self._p._roi_builder_event.set()
