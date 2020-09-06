@@ -73,6 +73,7 @@ class BareRepoUpdater(object):
     Hidden branches can be unlocked bu developers.
     """
     def __init__(self,git_working_dir):
+        logging.warning(git_working_dir)
         self._git_working_dir = git_working_dir
         self._working_repo = Repo(git_working_dir)
         self._origin = self._working_repo.remotes.origin
