@@ -13,6 +13,8 @@ import json
 import re
 
 cpu_available = multiprocessing.cpu_count()
+#n_parallel_threads = cpu_available
+n_parallel_threads = 4
 
 def filter_by_regex(devices, regex):
     pattern = re.compile(regex)
@@ -149,6 +151,7 @@ class GenericBackupWrapper(object):
                 logging.info("Starting backup")
                 logging.info("Following ethoscopes will NOT be backed up")
                 logging.info(backup_off)
+                logging.info("%s ethoscopes will be backed up simultaneously", n_parallel_threads)
 
                 if not devices:
                     devices = self._device_scanner.get_all_devices_info()
@@ -173,7 +176,7 @@ class GenericBackupWrapper(object):
 
                     #map(self._backup_job, args)
                 else:
-                    pool = multiprocessing.Pool(int(cpu_available * 0.75))
+                    pool = multiprocessing.Pool(int(n_parallel_threads))
                     _ = pool.map(self._backup_job, args)
                     #_ = pool.map(dummy_job, args)
                     logging.info("Pool mapped")
@@ -186,7 +189,7 @@ class GenericBackupWrapper(object):
                 # actually dont loop forever and instead do it once
                 # we have moved the loop-like behavior with a crontab service
                 # that runs the backup_tool.py script every 5 minutes
-                # break
+                break
 
         finally:
             if not devices:
