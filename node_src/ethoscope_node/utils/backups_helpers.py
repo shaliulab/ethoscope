@@ -14,7 +14,7 @@ import re
 
 cpu_available = multiprocessing.cpu_count()
 #n_parallel_threads = cpu_available
-n_parallel_threads = 4
+n_parallel_threads = 8
 
 def filter_by_regex(devices, regex):
     pattern = re.compile(regex)
@@ -68,11 +68,12 @@ class BackupClass(object):
             # "password":"node"
         # }
 
-    def __init__(self, device_info, results_dir):
+    def __init__(self, device_info, results_dir, use_last_file=False):
 
         self._device_info = device_info
         self._database_ip = os.path.basename(self._device_info["ip"])
         self._results_dir = results_dir
+        self._use_last_file = use_last_file
 
 
     def run(self):
@@ -82,7 +83,9 @@ class BackupClass(object):
 
             if self._device_info["backup_path"] is None:
                 raise ValueError("backup path is None for device %s" % self._device_info["id"])
+
             backup_path = os.path.join(self._results_dir, self._device_info["backup_path"])
+
 
             self._db_credentials["name"] = "%s_db" % self._device_info["name"]
 
@@ -92,6 +95,41 @@ class BackupClass(object):
                             remote_user=self._db_credentials["user"])
 
             mirror.update_roi_tables()
+
+            # os.system(f"chgrp ethoscope {backup_path}")
+
+        except KeyError as e:
+            if self._use_last_file:
+
+                logging.warning('Using last file')
+                ethoscope_dir = os.path.join(self._results_dir, self._device_info["id"], self._device_info["name"])
+                datetime_folder = sorted(os.listdir(ethoscope_dir))[-1]
+                logging.warning(datetime_folder)
+                experiment_folder = os.path.join(ethoscope_dir, datetime_folder)
+                files = os.listdir(experiment_folder)
+                dbfile = [f for f in files if f[::-1][:3] == "bd."][0]
+                backup_path = os.path.join(experiment_folder, dbfile)
+
+                answer = 'INVALID'
+                while answer != 'N' and answer != 'Y':
+                    answer = input(f'I will assume the correct backup path is {backup_path}. Is this correct? Y/N')
+                    if answer == 'Y':
+
+                        self._db_credentials["name"] = "%s_db" % self._device_info["name"]
+
+                        mirror= MySQLdbToSQlite(backup_path, self._db_credentials["name"],
+                                        remote_host=self._database_ip,
+                                        remote_pass=self._db_credentials["password"],
+                                        remote_user=self._db_credentials["user"])
+
+                        mirror.update_roi_tables()
+                    elif answer == 'N':
+                        raise e
+                    else:
+                        print('Please enter a valid answer. Either Y or N')
+
+            else:
+                raise e
 
         except DBNotReadyError as e:
             logging.warning(e)
@@ -107,7 +145,7 @@ def dummy_job(*args):
 
 
 class GenericBackupWrapper(object):
-    def __init__(self, backup_job, results_dir, safe, server, regex=None):
+    def __init__(self, backup_job, results_dir, safe, server, regex=None, use_last_file=False):
         self._TICK = 1.0  # s
         self._BACKUP_DT = 5 * 60  # 5min
         # self._BACKUP_DT = 5
@@ -116,6 +154,7 @@ class GenericBackupWrapper(object):
         self._backup_job = backup_job
         self._server = server
         self._regex = regex
+        self._use_last_file = use_last_file
 
         # for safety, starts device scanner too in case the node will go down at later stage
         self._device_scanner = EthoscopeScanner(results_dir = results_dir, regex = regex)
@@ -128,7 +167,6 @@ class GenericBackupWrapper(object):
             devices = receive_devices(self._server)
             if self._regex is not None:
                 devices = filter_by_regex(devices, self._regex)
-
 
             if not devices:
                 logging.info("Using Ethoscope Scanner to look for devices")
@@ -164,11 +202,12 @@ class GenericBackupWrapper(object):
                 args = []
                 for d in list(devices.values()):
                     if d["status"] not in ["not_in_use", "offline"] and d["name"] not in backup_off:
-                        args.append((d, self._results_dir))
-
-                logging.info("Found %s devices online" % len(args))
+                        args.append((d, self._results_dir, self._use_last_file))
 
                 logging.warning(args)
+                logging.info("Found %s devices online" % len(args))
+
+
                 if self._safe:
                     for arg in args:
                         self._backup_job(arg)
