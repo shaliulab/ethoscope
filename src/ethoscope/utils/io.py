@@ -322,7 +322,8 @@ class ImgToMySQLHelper(object):
         with open(self._tmp_file, "rb") as f:
             bstring = f.read()
 
-        identity = self.placeholder("id") if frame_idx is None else frame_idx
+        #identity = self.placeholder("id") if frame_idx is None else frame_idx
+        identity = self.placeholder("id")
 
         cmd = 'INSERT INTO ' + self._table_name + '(id,t,img) VALUES %s' % self.placeholder("value")
 
