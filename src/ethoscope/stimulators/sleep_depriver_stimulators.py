@@ -215,13 +215,41 @@ class OptomotorSleepDepriver(SleepDepStimulator):
         elif stimulus_type == 1:
             self._roi_to_channel = self._roi_to_channel_opto
 
-        self._pulse_duration= pulse_duration
+        self._pulse_duration = pulse_duration
 
     def _decide(self):
         out, dic = super(OptomotorSleepDepriver, self)._decide()
         dic["duration"] = self._pulse_duration
-        return out,dic
 
+
+class GearOptomotorSleepDepriver(OptomotorSleepDepriver):
+    """
+    Exactly the same as OptomotorSleepDepriver with the difference that the default
+    pulse_duration both via CLI and GUI is now 2000 ms and not 1000 ms
+    """
+    _description = {"overview": "A stimulator to sleep deprive an animal using gear motors. See https://github.com/gilestrolab/ethoscope_hardware/tree/master/modules/gear_motor_sleep_depriver",
+                "arguments": [
+                    {"type": "number", "min": 0.0, "max": 1.0, "step": 0.0001, "name": "velocity_correction_coef", "description": "Velocity correction coef", "default": 0.01},
+                                {"type": "number", "min": 1, "max": 3600*12, "step":1, "name": "min_inactive_time", "description": "The minimal time after which an inactive animal is awaken(s)","default":10},
+                                {"type": "number", "min": 500, "max": 10000 , "step": 50, "name": "pulse_duration", "description": "For how long to deliver the stimulus(ms)", "default": 2000},
+                                {"type": "number", "min": 0, "max": 1000, "step": 1, "name": "pulse_intensity",  "description": "intensity of stimulus 0-1000", "default": 1000},
+                                {"type": "number", "min": 0, "max": 3, "step": 1, "name": "stimulus_type",  "description": "1 = opto, 2= moto", "default": 2},
+                                {"type": "date_range", "name": "date_range",
+                                 "description": "A date and time range in which the device will perform (see http://tinyurl.com/jv7k826)",
+                                 "default": ""}
+                               ]}
+
+
+    def __init__(self, *args, pulse_duration=2000, **kwargs):
+
+        # if the user provided a duration, use that one
+        if "pulse_duration" in kwargs:
+            pass
+        # otherwise, override with the default
+        else:
+            kwargs["pulse_duration"] = pulse_duration
+
+        super(OptomotorSleepDepriver, self).__init__(*args, **kwargs)
 
 
 class ExperimentalSleepDepStimulator(SleepDepStimulator):
