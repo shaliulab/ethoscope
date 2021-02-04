@@ -1,5 +1,6 @@
 import tempfile
 import os
+import os.path
 import traceback
 import shutil
 import logging
@@ -23,7 +24,7 @@ from ethoscope.trackers.adaptive_bg_tracker import AdaptiveBGModel
 from ethoscope.trackers.rich_adaptive_bg_tracker import RichAdaptiveBGModel
 from ethoscope.hardware.interfaces.interfaces import HardwareConnection, EthoscopeSensor
 from ethoscope.stimulators.stimulators import DefaultStimulator
-from ethoscope.stimulators.sleep_depriver_stimulators import SleepDepStimulator, OptomotorSleepDepriver, ExperimentalSleepDepStimulator, MiddleCrossingStimulator, OptomotorSleepDepriverSystematic
+from ethoscope.stimulators.sleep_depriver_stimulators import SleepDepStimulator, OptomotorSleepDepriver, ExperimentalSleepDepStimulator, MiddleCrossingStimulator, OptomotorSleepDepriverSystematic, GearOptomotorSleepDepriver
 from ethoscope.stimulators.odour_stimulators import DynamicOdourSleepDepriver, MiddleCrossingOdourStimulator, MiddleCrossingOdourStimulatorFlushed
 from ethoscope.stimulators.optomotor_stimulators import OptoMidlineCrossStimulator
 
@@ -83,6 +84,7 @@ class ControlThread(Thread):
                         "possible_classes":[DefaultStimulator,
                                             SleepDepStimulator,
                                             OptomotorSleepDepriver,
+                                            GearOptomotorSleepDepriver,
                                             MiddleCrossingStimulator,
                                             #SystematicSleepDepInteractor,
                                             ExperimentalSleepDepStimulator,
@@ -321,6 +323,8 @@ class ControlThread(Thread):
 
         frame = self._drawer.last_drawn_frame
         if frame is not None:
+            tempdir = os.path.dirname(self._info["last_drawn_img"])
+            os.makedirs(tempdir, exist_ok=True)
             cv2.imwrite(self._info["last_drawn_img"], frame, [int(cv2.IMWRITE_JPEG_QUALITY), 50])
 
 

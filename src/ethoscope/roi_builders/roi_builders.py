@@ -41,36 +41,23 @@ class BaseROIBuilder(DescribedObject):
 
         else:
             i = 0
-            j = 0
             for x in input:
 
                 _, (t_ms, frame) = x
 
                 output_path = "/root/frame_%s.png" % (str(i).zfill(4))
                 cv2.imwrite(output_path, frame)
-                logging.warning(f"I: {i}")
+                logging.warning(f"ROI builder frame number: {i}")
                 logging.warning(f"mean_intensity: {np.mean(frame)}")
                 if i  == modes_n[mode]-1:
                     break
                 if mode is not None:
+
                     mean_intensity = np.mean(frame)
-                    if isinstance(input, FSLPiCameraAsync):
-                        within = mean_intensity > means[mode][0] and mean_intensity < means[mode][1]
-                        if within or j>20:
-                            i += 1
-                        else:
-                            gain = 'analog_gain' if mode == 'target_detection' else 'awb_gains'
-                            sign = 1 if mean_intensity < means[mode][0] else -1
-                            input.change_gain(gain, sign)
-                            time.sleep(1)
-                            continue
-                    else:
-                        i += 1
-
-                    j+=1
-
+                    i = input.change_gain(mean_intensity=mean_intensity, means=means, mode=mode, i=i)                    
                     if mean_intensity < modes_min[mode]:
                         modes_n[next_mode[mode]] -= 1
+
                 accum.append(frame)
 
             accum = np.median(np.array(accum),0).astype(np.uint8)
