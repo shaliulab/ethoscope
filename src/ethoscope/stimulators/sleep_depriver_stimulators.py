@@ -20,7 +20,7 @@ class IsMovingStimulator(BaseStimulator):
 
     def __init__(self, hardware_connection=None, velocity_correction_coef=3.0e-3, date_range = "", **kwargs):
         """
-        class implementing an stimulator that decides whether an animal has moved though does nothing   accordingly.
+        class implementing an stimulator that decides whether an animal has moved though does nothing accordingly.
         :param hardware_connection: a default hardware interface object
         :param velocity_correction_coef: the correction coeeficient for computing velocity at various fps. Emirically defined. When greater than one, the animal is moving
         :type velocity_correction_coef: float
@@ -174,17 +174,21 @@ class SleepDepStimulatorCR(SleepDepStimulator):
 
 
 
+
 class OptomotorSleepDepriver(SleepDepStimulator):
+
     _description = {"overview": "A stimulator to sleep deprive an animal using gear motors. See https://github.com/gilestrolab/ethoscope_hardware/tree/master/modules/gear_motor_sleep_depriver",
-                    "arguments": [
-                        {"type": "number", "min": 0.0, "max": 1.0, "step": 0.0001, "name": "velocity_correction_coef", "description": "Velocity correction coef", "default": 0.01},
-                                    {"type": "number", "min": 1, "max": 3600*12, "step":1, "name": "min_inactive_time", "description": "The minimal time after which an inactive animal is awaken(s)","default":10},
-                                    {"type": "number", "min": 500, "max": 10000 , "step": 50, "name": "pulse_duration", "description": "For how long to deliver the stimulus(ms)", "default": 1000},
-                                    {"type": "number", "min": 0, "max": 3, "step": 1, "name": "stimulus_type",  "description": "1 = opto, 2= moto", "default": 2},
-                                    {"type": "date_range", "name": "date_range",
-                                     "description": "A date and time range in which the device will perform (see http://tinyurl.com/jv7k826)",
-                                     "default": ""}
-                                   ]}
+                "arguments": [
+                    {"type": "number", "min": 0.0, "max": 1.0, "step": 0.0001, "name": "velocity_correction_coef", "description": "Velocity correction coef", "default": 0.01},
+                                {"type": "number", "min": 1, "max": 3600*12, "step":1, "name": "min_inactive_time", "description": "The minimal time after which an inactive animal is awaken(s)","default":10},
+                                {"type": "number", "min": 500, "max": 10000 , "step": 50, "name": "pulse_duration", "description": "For how long to deliver the stimulus(ms)", "default": 1000},
+                                {"type": "number", "min": 0, "max": 1000, "step": 1, "name": "pulse_intensity",  "description": "intensity of stimulus 0-1000", "default": 1000},
+                                {"type": "number", "min": 0, "max": 3, "step": 1, "name": "stimulus_type",  "description": "1 = opto, 2= moto", "default": 2},
+                                {"type": "date_range", "name": "date_range",
+                                 "description": "A date and time range in which the device will perform (see http://tinyurl.com/jv7k826)",
+                                 "default": ""}
+                               ]}
+
 
     _HardwareInterfaceClass = OptoMotor
     _roi_to_channel_opto = {1:1, 3:3, 5:5, 7:7, 9:9,
@@ -198,6 +202,7 @@ class OptomotorSleepDepriver(SleepDepStimulator):
                  velocity_correction_coef=3.0e-3,
                  min_inactive_time=120,  # s
                  pulse_duration = 1000,  #ms
+                 pulse_intensity = 1000,
                  stimulus_type = 2,  # 1 = opto, 2= moto, 3 = both
                  date_range=""
                  ):
@@ -216,10 +221,13 @@ class OptomotorSleepDepriver(SleepDepStimulator):
             self._roi_to_channel = self._roi_to_channel_opto
 
         self._pulse_duration = pulse_duration
+        self._pulse_intensity = pulse_intensity
 
     def _decide(self):
         out, dic = super(OptomotorSleepDepriver, self)._decide()
         dic["duration"] = self._pulse_duration
+        dic["intensity"] = self._pulse_intensity
+        return out, dic
 
 
 class GearOptomotorSleepDepriver(OptomotorSleepDepriver):
@@ -429,3 +437,4 @@ class OptomotorSleepDepriverSystematic(OptomotorSleepDepriver):
             return HasInteractedVariable(True), dic
 
         return HasInteractedVariable(False), {}
+
