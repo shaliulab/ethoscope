@@ -321,13 +321,13 @@ class MiddleCrossingStimulator(BaseStimulator):
     _description = {"overview": "A stimulator to disturb animal as they cross the midline",
                     "arguments": [
                                     {"type": "number", "min": 0.0, "max": 1.0, "step":0.01, "name": "p", "description": "the probability to move the tube when a beam cross was detected","default":1.0},
+                                    {"type": "number", "min": 0.0, "max": 300.0, "step":1.0, "name": "refractory_period", "description": "the minimum time between stimuli in seconds","default": 5.0},
                                     {"type": "date_range", "name": "date_range",
                                      "description": "A date and time range in which the device will perform (see http://tinyurl.com/jv7k826)",
                                      "default": ""}
                                    ]}
 
     _HardwareInterfaceClass = OptoMotor
-    _refractory_period = 5#s
 #    _roi_to_channel = {
 #            1:0,  3:2,  5:3,  7:4,  9:5,
 #            12:6, 14:7, 16:8, 18:9, 20:10
@@ -340,6 +340,7 @@ class MiddleCrossingStimulator(BaseStimulator):
     def __init__(self,
                  hardware_connection,
                  p=1.0,
+                 refractory_period=5.0,
                  date_range=""
                  ):
         """
@@ -347,11 +348,14 @@ class MiddleCrossingStimulator(BaseStimulator):
         :type hardware_connection: :class:`~ethoscope.hardawre.interfaces.sleep_depriver_interface.SleepDepriverInterface`
         :param p: the probability of disturbing the animal when a beam cross happens
         :type p: float
+        :param refractory_period: the minimum time between stimuli in seconds
+        :type p: float
         :return:
         """
 
         self._last_stimulus_time = 0
         self._p = p
+        self._refractory_period = refractory_period
         
         super(MiddleCrossingStimulator, self).__init__(hardware_connection,  date_range=date_range)
 
@@ -379,8 +383,6 @@ class MiddleCrossingStimulator(BaseStimulator):
         x_t_zero = positions[-1][0]["x"] / roi_w - 0.5
         x_t_minus_one = positions[-2][0]["x"] / roi_w - 0.5
 
-        # if roi_id == 12:
-        #     print (roi_id, channel, roi_w, positions[-1][0]["x"], positions[-2][0]["x"], x_t_zero, x_t_minus_one)
         if (x_t_zero > 0) ^ (x_t_minus_one >0): # this is a change of sign
 
             if random.uniform(0,1) < self._p:

@@ -85,7 +85,7 @@ class ControlThread(Thread):
                                             SleepDepStimulator,
                                             OptomotorSleepDepriver,
                                             GearOptomotorSleepDepriver,
-                                            MiddleCrossingStimulator,
+                                            #MiddleCrossingStimulator,
                                             #SystematicSleepDepInteractor,
                                             ExperimentalSleepDepStimulator,
                                             #GearMotorSleepDepStimulator,

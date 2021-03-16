@@ -32,6 +32,7 @@ class MotoMidlineCrossStimulator (MiddleCrossingStimulator):
     _description = {"overview": "A stimulator to turn gear motor when animals cross the midline",
                     "arguments": [
                                     {"type": "number", "min": 0.0, "max": 1.0, "step":0.01, "name": "p", "description": "the probability to move the tube when a beam cross was detected","default":1.0},
+                                    {"type": "number", "min": 0.0, "max": 300, "step":1, "name": "refractory_period", "description": "the minimum time between stimuli in seconds","default":5.0},
                                     {"type": "date_range", "name": "date_range",
                                      "description": "A date and time range in which the device will perform (see http://tinyurl.com/jv7k826)",
                                      "default": ""}
