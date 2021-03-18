@@ -136,6 +136,15 @@ class SleepDepriver(OptoMotor):
     An optomotor without intensity regulation
     """
     _inst_format = "P {channel} {duration}\r\n"
+    # _n_channels defines the for loop that is
+    # iterated when doing the warm up
+    # It assumes that the chip set pins
+    # cover the [0,   _n_channels - 1] interval (both included)
+    # It's possible Arduino maps everything >= _n_channels
+    # to the first channel
+    # i.e. a warm up of the channels 20-24 activates 5 times
+    # the first channel, something undesirable
+    _n_channels = 20
 
 
 if __name__ == "__main__":
