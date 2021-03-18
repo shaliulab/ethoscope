@@ -100,7 +100,17 @@ class OptoMotor(BaseInterface):
         return params_final
 
     def make_instruction(self, channel, duration, intensity):
-        # if inst_param_count = 2, intensity is not passed
+        """
+        Produce an instruction that can be passed to the serial handler write method (i.e. to Arduino) 
+        :param channel: the chanel idx to be activated
+        :type channel: int
+        :param duration: the time (ms) the stimulus should last for
+        :type duration: int
+        :param intensity: duty cycle, between 0 and 1000.
+        :type intensity: int
+        :return:
+        """
+ 
         params = self.val_params(channel, duration, intensity)
         params = self.filter_params(params)
         try:
@@ -111,18 +121,12 @@ class OptoMotor(BaseInterface):
         return instruction
 
 
-    def activate(self, channel, duration, intensity):
+    def activate(self, **kwargs):
         """
         Activates a component on a given channel of the PWM controller
+        Parameters are given by make_instruction
 
-        :param channel: the chanel idx to be activated
-        :type channel: int
-        :param duration: the time (ms) the stimulus should last for
-        :type duration: int
-        :param intensity: duty cycle, between 0 and 1000.
-        :type intensity: int
-        :return:
-        """
+       """
         instruction = self.make_instruction(**kwargs)
         logging.warning(instruction)
         o = self._serial.write(instruction)
