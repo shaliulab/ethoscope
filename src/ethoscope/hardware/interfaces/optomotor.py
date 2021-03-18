@@ -1,5 +1,6 @@
 import logging
 import time
+import serial
 from ethoscope.hardware.interfaces.interfaces import BaseInterface
 
 
@@ -14,8 +15,7 @@ class NoValidPortError(Exception):
 class OptoMotor(BaseInterface):
     _baud = 115200
     _n_channels = 24
-    _inst_format = b"P %i %i %i\r\n"
-    _params = ["channel", "duration", "intensity"]
+    _inst_format = "P {channel} {duration} {intensity}\r\n"
 
     def __init__(self, port=None, *args, **kwargs):
         """
@@ -87,19 +87,10 @@ class OptoMotor(BaseInterface):
         params = {"channel": channel, "duration": duration, "intensity": intensity}
         return params
 
-    def filter_params(self, params):
-        """
-        Only pass the params listed in self._params
-        """
 
-        params_final = dict(params)
-        for param in params:
-            if param not in self._params:
-                params_final.pop(param)
-
-        return params_final
-
-    def make_instruction(self, channel, duration, intensity):
+    # I need to pass them None so they are populated from kwargs
+    # but they actually should never be None
+    def make_instruction(self, channel=None, duration=None, intensity=None):
         """
         Produce an instruction that can be passed to the serial handler write method (i.e. to Arduino) 
         :param channel: the chanel idx to be activated
@@ -110,24 +101,23 @@ class OptoMotor(BaseInterface):
         :type intensity: int
         :return:
         """
- 
+
         params = self.val_params(channel, duration, intensity)
-        params = self.filter_params(params)
         try:
-            instruction = self._inst_format % params
+            instruction = self._inst_format.format_map(params).encode("utf-8")
         except TypeError as error:
-            logging.error(f"You have passed the wrong amount of things to complete the instruction. You need {self._inst_param_count} but you passed {len(params)}")
+            logging.error(f"You have passed the wrong amount of things to complete the instruction. You need {len(self._params)} but you passed {len(params)}")
             raise error
         return instruction
 
 
-    def activate(self, **kwargs):
+    def activate(self, *args, **kwargs):
         """
         Activates a component on a given channel of the PWM controller
         Parameters are given by make_instruction
+        """
 
-       """
-        instruction = self.make_instruction(**kwargs)
+        instruction = self.make_instruction(*args, **kwargs)
         logging.warning(instruction)
         o = self._serial.write(instruction)
         return o
@@ -140,9 +130,29 @@ class OptoMotor(BaseInterface):
             self.send(i, duration=1000)
             time.sleep(1.000) #s
 
+
 class SleepDepriver(OptoMotor):
     """
     An optomotor without intensity regulation
     """
-    _inst_format = b"P %i %i\r\n"
-    _params = ["channel", "duration"]
+    _inst_format = "P {channel} {duration}\r\n"
+
+
+if __name__ == "__main__":
+    found = False
+    port = 0
+    while not found:
+        try:
+            sd = SleepDepriver(port=f"/dev/ttyACM{port}", do_warm_up=False)
+            found = True
+        except serial.SerialException:
+            port += 1
+
+    sd.activate(1, 100, 1000)
+    time.sleep(1)
+    sd.activate(1, 200, 1000)
+    time.sleep(1)
+    sd.activate(1, 500, 1000)
+    time.sleep(1)
+    sd.activate(1, 1000, 1000)
+
