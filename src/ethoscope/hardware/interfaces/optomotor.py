@@ -14,6 +14,8 @@ class NoValidPortError(Exception):
 class OptoMotor(BaseInterface):
     _baud = 115200
     _n_channels = 24
+    _inst_format = b"P %i %i %i\r\n"
+    _params = ["channel", "duration", "intensity"]
 
     def __init__(self, port=None, *args, **kwargs):
         """
@@ -24,8 +26,6 @@ class OptoMotor(BaseInterface):
         :param args: additional arguments
         :param kwargs: additional keyword arguments
         """
-
-
         # lazy import
         import serial
         logging.info("Connecting to GMSD serial port...")
@@ -71,6 +71,45 @@ class OptoMotor(BaseInterface):
     def _test_serial_connection(self):
         return
 
+    def val_params(self, channel, duration, intensity=None):
+        """
+        Make sure the parameters that will be used to make the instruction
+        make sense and have the right type
+        """
+
+        if channel < 0:
+            raise Exception("chanel must be greater or equal to zero")
+
+        duration = int(duration)
+        if intensity is not None:
+            intensity = int(intensity)
+
+        params = {"channel": channel, "duration": duration, "intensity": intensity}
+        return params
+
+    def filter_params(self, params):
+        """
+        Only pass the params listed in self._params
+        """
+
+        params_final = dict(params)
+        for param in params:
+            if param not in self._params:
+                params_final.pop(param)
+
+        return params_final
+
+    def make_instruction(self, channel, duration, intensity):
+        # if inst_param_count = 2, intensity is not passed
+        params = self.val_params(channel, duration, intensity)
+        params = self.filter_params(params)
+        try:
+            instruction = self._inst_format % params
+        except TypeError as error:
+            logging.error(f"You have passed the wrong amount of things to complete the instruction. You need {self._inst_param_count} but you passed {len(params)}")
+            raise error
+        return instruction
+
 
     def activate(self, channel, duration, intensity):
         """
@@ -84,13 +123,7 @@ class OptoMotor(BaseInterface):
         :type intensity: int
         :return:
         """
-
-        if channel < 0:
-            raise Exception("chanel must be greater or equal to zero")
-
-        duration = int(duration)
-        intensity= int(intensity)
-        instruction = b"P %i %i %i\r\n" % (channel, duration, intensity)
+        instruction = self.make_instruction(**kwargs)
         logging.warning(instruction)
         o = self._serial.write(instruction)
         return o
@@ -102,3 +135,10 @@ class OptoMotor(BaseInterface):
         for i in range(self._n_channels):
             self.send(i, duration=1000)
             time.sleep(1.000) #s
+
+class SleepDepriver(OptoMotor):
+    """
+    An optomotor without intensity regulation
+    """
+    _inst_format = b"P %i %i\r\n"
+    _params = ["channel", "duration"]
