@@ -251,7 +251,7 @@ class GearOptomotorSleepDepriver(OptomotorSleepDepriver):
                                ]}
 
     _HardwareInterfaceClass = OptoMotor
-   _duration = 2000
+    _duration = 2000
 
 
     def __init__(self, *args, **kwargs):
