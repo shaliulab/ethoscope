@@ -14,6 +14,7 @@ from ethoscope.hardware.interfaces.optomotor import OptoMotor, SleepDepriver
 
 import random
 import time
+import logging
 
 class IsMovingStimulator(BaseStimulator):
     _HardwareInterfaceClass = DefaultInterface
@@ -117,6 +118,7 @@ class SleepDepStimulator(IsMovingStimulator):
         try:
             channel = self._roi_to_channel[roi_id]
         except KeyError:
+            logging.warning(f"Passed ROI ({roi_id}) is not in the mapping")
             return HasInteractedVariable(False), {}
 
         has_moved = self._has_moved()
@@ -245,6 +247,7 @@ class GearOptomotorSleepDepriver(OptomotorSleepDepriver):
                                 {"type": "number", "min": 1, "max": 3600*12, "step":1, "name": "min_inactive_time", "description": "The minimal time after which an inactive animal is awaken(s)","default":10},
                                 {"type": "number", "min": 500, "max": 10000 , "step": 50, "name": "pulse_duration", "description": "For how long to deliver the stimulus(ms)", "default": 2000},
                                 {"type": "number", "min": 0, "max": 1000, "step": 1, "name": "pulse_intensity",  "description": "intensity of stimulus 0-1000", "default": 1000},
+                                {"type": "number", "min": 0, "max": 1, "step": 1, "name": "chip",  "description": "chip for this stimulator. 0: TL5947, 1: Darlington array", "default": 0},
                                 {"type": "date_range", "name": "date_range",
                                  "description": "A date and time range in which the device will perform (see http://tinyurl.com/jv7k826)",
                                  "default": ""}
@@ -254,18 +257,25 @@ class GearOptomotorSleepDepriver(OptomotorSleepDepriver):
     _duration = 2000
 
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, chip, **kwargs):
 
         # if the user provided a duration, use that one
         if "pulse_duration" in kwargs:
             pass
         else:
+            logging.warning(f"Using default pulse_duration of {self._duration} ms")
             kwargs["pulse_duration"] = self._duration
 
         super(GearOptomotorSleepDepriver, self).__init__(*args, **kwargs)
-        self._roi_to_channel = {1:0, 3:2, 5:4, 7:6, 9:8,
-                                12:22, 14:20, 16:18, 18:16, 20:14}
- 
+        if chip == 0:
+            self._roi_to_channel = {1:0, 3:2, 5:4, 7:6, 9:8,
+                                    12:22, 14:20, 16:18, 18:16, 20:14}
+        elif chip == 1:
+            self._roi_to_channel = {1:1, 3:3, 5:5, 7:7, 9:9, 12:11, 14:13, 16:15, 18:17, 20:19}
+
+        else:
+            raise Exception("Invalid chip. Please provide either 0 (TL5947) or 1 (Darlington array)")
+     
 
 
 class RobustSleepDepriver(GearOptomotorSleepDepriver):
@@ -276,7 +286,8 @@ class RobustSleepDepriver(GearOptomotorSleepDepriver):
                 "arguments": [
                     {"type": "number", "min": 0.0, "max": 1.0, "step": 0.0001, "name": "velocity_correction_coef", "description": "Velocity correction coef", "default": 0.01},
                                 {"type": "number", "min": 1, "max": 3600*12, "step":1, "name": "min_inactive_time", "description": "The minimal time after which an inactive animal is awaken(s)","default":10},
-                                {"type": "number", "min": 10, "max": 1000 , "step": 10, "name": "pulse_duration", "description": "For how long to deliver the stimulus(ms)", "default": 100},
+                                {"type": "number", "min": 10, "max": 10000 , "step": 10, "name": "pulse_duration", "description": "For how long to deliver the stimulus(ms)", "default": 100},
+                                {"type": "number", "min": 0, "max": 1, "step": 1, "name": "chip",  "description": "chip for this stimulator. 0: TL5947, 1: Darlington array", "default": 0},
                                 {"type": "date_range", "name": "date_range",
                                  "description": "A date and time range in which the device will perform (see http://tinyurl.com/jv7k826)",
                                  "default": ""}
@@ -471,3 +482,38 @@ class OptomotorSleepDepriverSystematic(OptomotorSleepDepriver):
 
         return HasInteractedVariable(False), {}
 
+
+if __name__ == "__main__":
+
+    import numpy as np
+    from ethoscope.trackers.adaptive_bg_tracker import AdaptiveBGModel
+    from ethoscope.core.roi import ROI 
+    from ethoscope.hardware.interfaces.interfaces import HardwareConnection
+
+    def never_moving():
+        return False
+
+    hc = HardwareConnection(RobustSleepDepriver._HardwareInterfaceClass, do_warm_up=False)
+
+    sd = RobustSleepDepriver(
+            hc,
+            velocity_correction_coef=0.01,
+            min_inactive_time=10,  # s
+            pulse_duration = 1000,  #ms
+            date_range=""
+    )
+    sd._has_moved = never_moving
+    sd._t0 = 0
+
+    roi = ROI(polygon=np.array([[0, 10], [10, 10], [10, 0], [0, 0]]), idx=1)
+    tracker = AdaptiveBGModel(roi=roi)
+    tracker._last_time_point = 30000 #ms
+
+    sd.bind_tracker(tracker)
+    print("Applying")
+    interact, result = sd.apply()
+    print(interact)
+    print(result)
+    while len(hc._instructions) != 0:
+        time.sleep(1)
+    hc.stop()
