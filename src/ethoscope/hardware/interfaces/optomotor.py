@@ -1,5 +1,6 @@
 import logging
 import time
+import serial
 from ethoscope.hardware.interfaces.interfaces import BaseInterface
 
 
@@ -14,6 +15,7 @@ class NoValidPortError(Exception):
 class OptoMotor(BaseInterface):
     _baud = 115200
     _n_channels = 24
+    _inst_format = "P {channel} {duration} {intensity}\r\n"
 
     def __init__(self, port=None, *args, **kwargs):
         """
@@ -24,8 +26,6 @@ class OptoMotor(BaseInterface):
         :param args: additional arguments
         :param kwargs: additional keyword arguments
         """
-
-
         # lazy import
         import serial
         logging.info("Connecting to GMSD serial port...")
@@ -71,11 +71,28 @@ class OptoMotor(BaseInterface):
     def _test_serial_connection(self):
         return
 
-
-    def activate(self, channel, duration, intensity):
+    def val_params(self, channel, duration, intensity=None):
         """
-        Activates a component on a given channel of the PWM controller
+        Make sure the parameters that will be used to make the instruction
+        make sense and have the right type
+        """
 
+        if channel < 0:
+            raise Exception("chanel must be greater or equal to zero")
+
+        duration = int(duration)
+        if intensity is not None:
+            intensity = int(intensity)
+
+        params = {"channel": channel, "duration": duration, "intensity": intensity}
+        return params
+
+
+    # I need to pass them None so they are populated from kwargs
+    # but they actually should never be None
+    def make_instruction(self, channel=None, duration=None, intensity=None):
+        """
+        Produce an instruction that can be passed to the serial handler write method (i.e. to Arduino) 
         :param channel: the chanel idx to be activated
         :type channel: int
         :param duration: the time (ms) the stimulus should last for
@@ -85,12 +102,22 @@ class OptoMotor(BaseInterface):
         :return:
         """
 
-        if channel < 0:
-            raise Exception("chanel must be greater or equal to zero")
+        params = self.val_params(channel, duration, intensity)
+        try:
+            instruction = self._inst_format.format_map(params).encode("utf-8")
+        except TypeError as error:
+            logging.error(f"You have passed the wrong amount of things to complete the instruction. You need {len(self._params)} but you passed {len(params)}")
+            raise error
+        return instruction
 
-        duration = int(duration)
-        intensity= int(intensity)
-        instruction = b"P %i %i %i\r\n" % (channel, duration, intensity)
+
+    def activate(self, *args, **kwargs):
+        """
+        Activates a component on a given channel of the PWM controller
+        Parameters are given by make_instruction
+        """
+
+        instruction = self.make_instruction(*args, **kwargs)
         logging.warning(instruction)
         o = self._serial.write(instruction)
         return o
@@ -102,3 +129,39 @@ class OptoMotor(BaseInterface):
         for i in range(self._n_channels):
             self.send(i, duration=1000)
             time.sleep(1.000) #s
+
+
+class SleepDepriver(OptoMotor):
+    """
+    An optomotor without intensity regulation
+    """
+    _inst_format = "P {channel} {duration}\r\n"
+    # _n_channels defines the for loop that is
+    # iterated when doing the warm up
+    # It assumes that the chip set pins
+    # cover the [0,   _n_channels - 1] interval (both included)
+    # It's possible Arduino maps everything >= _n_channels
+    # to the first channel
+    # i.e. a warm up of the channels 20-24 activates 5 times
+    # the first channel, something undesirable
+    _n_channels = 20
+
+
+if __name__ == "__main__":
+    found = False
+    port = 0
+    while not found:
+        try:
+            sd = SleepDepriver(port=f"/dev/ttyACM{port}", do_warm_up=False)
+            found = True
+        except serial.SerialException:
+            port += 1
+
+    sd.activate(1, 100, 1000)
+    time.sleep(1)
+    sd.activate(1, 200, 1000)
+    time.sleep(1)
+    sd.activate(1, 500, 1000)
+    time.sleep(1)
+    sd.activate(1, 1000, 1000)
+

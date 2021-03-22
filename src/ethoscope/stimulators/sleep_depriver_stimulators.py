@@ -9,7 +9,7 @@ from ethoscope.stimulators.stimulators import BaseStimulator, HasInteractedVaria
 
 from ethoscope.hardware.interfaces.interfaces import  DefaultInterface
 from ethoscope.hardware.interfaces.sleep_depriver_interface import SleepDepriverInterface, SleepDepriverInterfaceCR
-from ethoscope.hardware.interfaces.optomotor import OptoMotor
+from ethoscope.hardware.interfaces.optomotor import OptoMotor, SleepDepriver
 
 
 import random
@@ -195,6 +195,10 @@ class OptomotorSleepDepriver(SleepDepStimulator):
                             12:23, 14:21,16:19, 18:17, 20:15}
     _roi_to_channel_moto = {1:0, 3:2, 5:4, 7:6, 9:8,
                             12:22, 14:20, 16:18, 18:16, 20:14}
+    # default is moto
+    _roi_to_channel =      {1:0, 3:2, 5:4, 7:6, 9:8,
+                            12:22, 14:20, 16:18, 18:16, 20:14}
+
 
 
     def __init__(self,
@@ -203,7 +207,7 @@ class OptomotorSleepDepriver(SleepDepStimulator):
                  min_inactive_time=120,  # s
                  pulse_duration = 1000,  #ms
                  pulse_intensity = 1000,
-                 stimulus_type = 2,  # 1 = opto, 2= moto, 3 = both
+                 stimulus_type = 3,  # 1 = opto, 2= moto, 3 = both
                  date_range=""
                  ):
 
@@ -241,30 +245,50 @@ class GearOptomotorSleepDepriver(OptomotorSleepDepriver):
                                 {"type": "number", "min": 1, "max": 3600*12, "step":1, "name": "min_inactive_time", "description": "The minimal time after which an inactive animal is awaken(s)","default":10},
                                 {"type": "number", "min": 500, "max": 10000 , "step": 50, "name": "pulse_duration", "description": "For how long to deliver the stimulus(ms)", "default": 2000},
                                 {"type": "number", "min": 0, "max": 1000, "step": 1, "name": "pulse_intensity",  "description": "intensity of stimulus 0-1000", "default": 1000},
-                                {"type": "number", "min": 0, "max": 3, "step": 1, "name": "stimulus_type",  "description": "1 = opto, 2= moto", "default": 2},
                                 {"type": "date_range", "name": "date_range",
                                  "description": "A date and time range in which the device will perform (see http://tinyurl.com/jv7k826)",
                                  "default": ""}
                                ]}
 
     _HardwareInterfaceClass = OptoMotor
-    _roi_to_channel_opto = {1:1, 3:3, 5:5, 7:7, 9:9,
-                            12:23, 14:21,16:19, 18:17, 20:15}
-    _roi_to_channel_moto = {1:0, 3:2, 5:4, 7:6, 9:8,
-                            12:22, 14:20, 16:18, 18:16, 20:14}
+    _duration = 2000
 
 
-
-    def __init__(self, *args, pulse_duration=2000, **kwargs):
+    def __init__(self, *args, **kwargs):
 
         # if the user provided a duration, use that one
         if "pulse_duration" in kwargs:
             pass
-        # otherwise, override with the default
         else:
-            kwargs["pulse_duration"] = pulse_duration
+            kwargs["pulse_duration"] = self._duration
 
         super(GearOptomotorSleepDepriver, self).__init__(*args, **kwargs)
+        self._roi_to_channel = {1:0, 3:2, 5:4, 7:6, 9:8,
+                                12:22, 14:20, 16:18, 18:16, 20:14}
+ 
+
+
+class RobustSleepDepriver(GearOptomotorSleepDepriver):
+    """
+    Sleep depriver using new PCB from Giorgio Gilestro and dedicated PSU with 300 RPM motors
+    """
+    _description = {"overview": "A stimulator to sleep deprive an animal using gear motors. See https://github.com/gilestrolab/ethoscope_hardware/tree/master/modules/gear_motor_sleep_depriver",
+                "arguments": [
+                    {"type": "number", "min": 0.0, "max": 1.0, "step": 0.0001, "name": "velocity_correction_coef", "description": "Velocity correction coef", "default": 0.01},
+                                {"type": "number", "min": 1, "max": 3600*12, "step":1, "name": "min_inactive_time", "description": "The minimal time after which an inactive animal is awaken(s)","default":10},
+                                {"type": "number", "min": 10, "max": 1000 , "step": 10, "name": "pulse_duration", "description": "For how long to deliver the stimulus(ms)", "default": 100},
+                                {"type": "date_range", "name": "date_range",
+                                 "description": "A date and time range in which the device will perform (see http://tinyurl.com/jv7k826)",
+                                 "default": ""}
+                               ]}
+
+    _HardwareInterfaceClass = SleepDepriver
+    _duration = 100
+
+    def __init__(self, *args, **kwargs):
+        super(RobustSleepDepriver, self).__init__(*args, **kwargs)
+        self._roi_to_channel = {1:1, 3:3, 5:5, 7:7, 9:9, 12:11, 14:13, 16:15, 18:17, 20:19}
+
 
 
 class ExperimentalSleepDepStimulator(SleepDepStimulator):
