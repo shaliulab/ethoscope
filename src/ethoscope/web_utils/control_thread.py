@@ -26,7 +26,7 @@ from ethoscope.hardware.interfaces.interfaces import HardwareConnection, Ethosco
 from ethoscope.stimulators.stimulators import DefaultStimulator
 from ethoscope.stimulators.sleep_depriver_stimulators import SleepDepStimulator, OptomotorSleepDepriver, ExperimentalSleepDepStimulator, MiddleCrossingStimulator, OptomotorSleepDepriverSystematic, GearOptomotorSleepDepriver
 from ethoscope.stimulators.odour_stimulators import DynamicOdourSleepDepriver, MiddleCrossingOdourStimulator, MiddleCrossingOdourStimulatorFlushed
-from ethoscope.stimulators.optomotor_stimulators import OptoMidlineCrossStimulator, MotoMidlineCrossStimulator
+from ethoscope.stimulators.optomotor_stimulators import OptoMidlineCrossStimulator, MotoMidlineCrossStimulator, RobustMotoMidlineCrossStimulator
 
 from ethoscope.utils.debug import EthoscopeException
 from ethoscope.utils.io import ResultWriter, SQLiteResultWriter
@@ -93,6 +93,7 @@ class ControlThread(Thread):
                                             DynamicOdourSleepDepriver,
                                             OptoMidlineCrossStimulator,
                                             MotoMidlineCrossStimulator,
+                                            RobustMotoMidlineCrossStimulator,
                                             OptomotorSleepDepriverSystematic,
                                             MiddleCrossingOdourStimulator,
                                             MiddleCrossingOdourStimulatorFlushed

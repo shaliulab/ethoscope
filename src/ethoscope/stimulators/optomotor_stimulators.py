@@ -59,3 +59,34 @@ class MotoMidlineCrossStimulator (MiddleCrossingStimulator):
         dic["duration"] = self._duration
         return has_interacted, dic
 
+
+class RobustMotoMidlineCrossStimulator (MotoMidlineCrossStimulator):
+    _description = {"overview": "A stimulator to turn gear motor when animals cross the midline using the new PCB design",
+                   "arguments": [
+                                   {"type": "number", "min": 0.0, "max": 1.0, "step":0.01, "name": "p", "description": "the probability to move the tube when a beam cross was detected","default":1.0},
+                                   {"type": "number", "min": 0, "max": 10000, "step":100, "name": "duration", "description": "time pulse duration","default": 100},
+                                   {"type": "date_range", "name": "date_range",
+                                    "description": "A date and time range in which the device will perform (see http://tinyurl.com/jv7k826)",
+                                    "default": ""}
+                                  ]}
+
+    _HardwareInterfaceClass = SleepDepriver
+    _roi_to_channel = {
+        1: 1,
+        3: 3,
+        5: 5,
+        7: 7,
+        9: 9,
+        12: 11,
+        14: 13,
+        16: 15,
+        18: 17,
+        20: 19
+    }
+ 
+    _duration = 100
+ 
+    def __init__(self, *args, duration=100, **kwargs):
+        self._duration = duration
+        super(RobustMotoMidlineCrossStimulator, self).__init__(*args, **kwargs)
+ 
