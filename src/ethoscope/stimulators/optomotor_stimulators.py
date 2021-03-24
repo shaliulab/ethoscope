@@ -1,5 +1,5 @@
 from ethoscope.stimulators.sleep_depriver_stimulators import MiddleCrossingStimulator
-from ethoscope.hardware.interfaces.optomotor import OptoMotor
+from ethoscope.hardware.interfaces.optomotor import OptoMotor, SleepDepriver
 
 
 class OptoMidlineCrossStimulator (MiddleCrossingStimulator):
@@ -59,12 +59,12 @@ class MotoMidlineCrossStimulator (MiddleCrossingStimulator):
         dic["duration"] = self._duration
         return has_interacted, dic
 
-
 class RobustMotoMidlineCrossStimulator (MotoMidlineCrossStimulator):
     _description = {"overview": "A stimulator to turn gear motor when animals cross the midline using the new PCB design",
                    "arguments": [
                                    {"type": "number", "min": 0.0, "max": 1.0, "step":0.01, "name": "p", "description": "the probability to move the tube when a beam cross was detected","default":1.0},
                                    {"type": "number", "min": 0, "max": 10000, "step":100, "name": "duration", "description": "time pulse duration","default": 100},
+                                   {"type": "number", "min": 0.0, "max": 300.0, "step":1.0, "name": "refractory_period", "description": "the minimum time between stimuli in seconds","default": 5.0},
                                    {"type": "date_range", "name": "date_range",
                                     "description": "A date and time range in which the device will perform (see http://tinyurl.com/jv7k826)",
                                     "default": ""}
