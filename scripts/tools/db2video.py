@@ -45,9 +45,9 @@ def make_video_file(file, output, fps=1, annotate=True):
 
             for i,c in enumerate(cursor):
                 id, t, blob = c
-                file_name = os.path.join(dir,"%05d_%i.jpg" % (id, t))
+                file_name = os.path.join(dir,"%010d_%i.jpg" % (id, t))
 
-                file_like = io.StringIO(blob)
+                file_like = io.BytesIO(blob)
                 out_file = open(file_name, "wb")
                 file_like.seek(0)
                 shutil.copyfileobj(file_like, out_file)
@@ -55,9 +55,11 @@ def make_video_file(file, output, fps=1, annotate=True):
 
             pool = Pool(4)
             pool_args = []
-            for f in glob.glob(os.path.join(dir , "*.jpg")):
-                t = int(os.path.basename(f).split("_")[1].split(".")[0])
-                pool_args.append((f,t,t0))
+            with open(os.path.join(dir, "images.txt"), "w") as fh:
+                for f in sorted(glob.glob(os.path.join(dir , "*.jpg"))):
+                    fh.write("%s\n" % f)
+                    t = int(os.path.basename(f).split("_")[1].split(".")[0])
+                    pool_args.append((f,t,t0))
 
 
             pool.map(annotate_image,pool_args)
@@ -66,7 +68,7 @@ def make_video_file(file, output, fps=1, annotate=True):
             # if option_dict["annot"]:
 
 
-        command = "ffmpeg -loglevel panic -y -framerate %i -pattern_type glob -i '%s/*.jpg' -c:v libx264 %s" % (fps, dir, output)
+        command = "ffmpeg -loglevel panic -y -framerate %i -pattern_type glob -i '%s/*.jpg' -c:v libx264 %s" % (int(fps), dir, output)
         os.system(command)
 
     finally:
@@ -85,7 +87,7 @@ if __name__ == '__main__':
     parser = OptionParser()
     parser.add_option("-i", "--input", dest="input", help="The input .db file")
     parser.add_option("-o", "--output", dest="output", help="The output mp4")
-    parser.add_option("-f", "--fps", dest="fps", default=1, help="The output fps")
+    parser.add_option("-f", "--fps", dest="fps", type=int, default=1, help="The output fps")
     parser.add_option("-a", "--annotate", dest="annot", default=False, help="Whether date and time should be written on the bottom of the frames", action="store_true")
 
     (options, args) = parser.parse_args()
