@@ -287,7 +287,7 @@ class RobustSleepDepriver(GearOptomotorSleepDepriver):
                     {"type": "number", "min": 0.0, "max": 1.0, "step": 0.0001, "name": "velocity_correction_coef", "description": "Velocity correction coef", "default": 0.01},
                                 {"type": "number", "min": 1, "max": 3600*12, "step":1, "name": "min_inactive_time", "description": "The minimal time after which an inactive animal is awaken(s)","default":10},
                                 {"type": "number", "min": 10, "max": 10000 , "step": 10, "name": "pulse_duration", "description": "For how long to deliver the stimulus(ms)", "default": 100},
-                                {"type": "number", "min": 0, "max": 1, "step": 1, "name": "chip",  "description": "chip for this stimulator. 0: TL5947, 1: Darlington array", "default": 0},
+                                {"type": "number", "min": 0, "max": 1, "step": 1, "name": "chip",  "description": "chip for this stimulator. 0: TL5947, 1: Darlington array", "default": 1},
                                 {"type": "date_range", "name": "date_range",
                                  "description": "A date and time range in which the device will perform (see http://tinyurl.com/jv7k826)",
                                  "default": ""}
