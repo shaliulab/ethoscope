@@ -273,6 +273,7 @@ class AdaptiveBGModel(BaseTracker):
         self._buff_object_old = None
         self._buff_grey_blurred = None
         self._buff_fg = None
+        self._foreground = None
         self._buff_convolved_mask = None
         self._buff_fg_backup = None
         self._buff_fg_diff = None
@@ -383,6 +384,8 @@ class AdaptiveBGModel(BaseTracker):
 
         bg = self._bg_model.bg_img.astype(np.uint8)
         cv2.subtract(grey, bg, self._buff_fg)
+        self._foreground = self._buff_fg.copy()
+
         cv2.threshold(self._buff_fg, 20, 255, cv2.THRESH_TOZERO, dst=self._buff_fg)
 
         hull, is_ambiguous = self.get_hull(img, t)

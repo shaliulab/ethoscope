@@ -29,7 +29,7 @@ from ethoscope.stimulators.odour_stimulators import DynamicOdourSleepDepriver, M
 from ethoscope.stimulators.optomotor_stimulators import OptoMidlineCrossStimulator, MotoMidlineCrossStimulator, RobustMotoMidlineCrossStimulator
 
 from ethoscope.utils.debug import EthoscopeException
-from ethoscope.utils.io import ResultWriter, SQLiteResultWriter
+from ethoscope.utils.io import ResultWriter, DebugResultWriter, SQLiteResultWriter
 from ethoscope.utils.description import DescribedObject
 from ethoscope.web_utils.helpers import isMachinePI, hasPiCamera, isExperimental, get_machine_name
 
@@ -107,7 +107,7 @@ class ControlThread(Thread):
                         "possible_classes":[FSLPiCameraAsync, OurPiCameraAsync, MovieVirtualCamera, DummyPiCameraAsync, V4L2Camera, FSLVirtualCamera],
                     },
         "result_writer":{
-                        "possible_classes":[ResultWriter, SQLiteResultWriter],
+                        "possible_classes":[ResultWriter, DebugResultWriter, SQLiteResultWriter],
                 },
         "experimental_info":{
                         "possible_classes":[ExperimentalInformation],
@@ -117,7 +117,7 @@ class ControlThread(Thread):
     #some classes do not need to be offered as choices to the user in normal conditions
     #these are shown only if the machine is not a PI
     _is_a_rPi = isMachinePI() and hasPiCamera() and not isExperimental()
-    _hidden_options = {'result_writer'}
+    _hidden_options = {}#{'result_writer'}
 
     for k in _option_dict:
         _option_dict[k]["class"] =_option_dict[k]["possible_classes"][0]

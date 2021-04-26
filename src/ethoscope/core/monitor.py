@@ -93,6 +93,18 @@ class Monitor(object):
         """
         self._force_stop = True
 
+    def flush(self, t, frame, frame_idx, result_writer=None, tracking_units=None):
+
+        if result_writer is not None:
+            if result_writer.imgHelperClass.__name__ == "ImgToMySQLHelper":
+                result_writer.flush(t, frame, frame_idx=i)
+            
+            elif result_writer.imgHelperClass.__name__ == "ImgToMySQLDebugHelper":
+                result_writer.flush(t, frame, tracking_units=tracking_units, frame_idx=i)
+
+        return 0
+
+
     def run(self, result_writer = None, drawer = None, quality_controller=None, M=None):
         """
         Runs the monitor indefinitely.
@@ -153,9 +165,7 @@ class Monitor(object):
                         data_rows[0].append(frame_count)
                         result_writer.write(t, track_u.roi, data_rows)
 
-
-                if result_writer is not None:
-                    result_writer.flush(t, frame, frame_idx=i)
+                self.flush(t, frame, frame_idx, result_writer, tracking_units=self._unit_trackers))
 
                 if drawer is not None:
                     drawer.draw(frame, tracking_units=self._unit_trackers, positions=self._last_positions)
