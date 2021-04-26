@@ -474,7 +474,7 @@ class ControlThread(Thread):
 
         logging.warning("Detected camera start time is %d", cam.start_time)
         # hardware_interface is a running thread
-        rw = ResultWriterClass(self._db_credentials, rois, self._metadata, sensor=sensor, **result_writer_kwargs)
+        rw = ResultWriterClass(self._db_credentials, rois, metadata=self._metadata, sensor=sensor, **result_writer_kwargs)
         return  (cam, rw, rois, M, TrackerClass, tracker_kwargs,
                         hardware_connection, StimulatorClass, stimulator_kwargs)
 

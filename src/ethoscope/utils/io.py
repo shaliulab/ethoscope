@@ -152,7 +152,6 @@ class AsyncMySQLWriter(multiprocessing.Process):
                 i += 1
                 try:
                     msg = self._queue.get()
-                    print(msg)
 
                     if (msg == 'DONE'):
                         do_run=False

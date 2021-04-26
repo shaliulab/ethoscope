@@ -3,6 +3,10 @@ logging.basicConfig(level=logging.DEBUG)
 import tempfile
 import os
 import time, datetime
+
+import numpy as np
+import cv2
+
 from ethoscope.utils.io_helpers import Null
 
 class ImgToMySQLHelper(object):
@@ -72,10 +76,11 @@ class ImgToMySQLHelper(object):
 
         return cmd, args
 
-    def serialize_img(img, path):
-        cv2.imwrite(self._tmp_file, img, [int(cv2.IMWRITE_JPEG_QUALITY), 50])
+    @staticmethod
+    def _serialize_img(img, path):
+        cv2.imwrite(path, img, [int(cv2.IMWRITE_JPEG_QUALITY), 50])
 
-        with open(self._tmp_file, "rb") as f:
+        with open(path, "rb") as f:
             bstring = f.read()
         
         return bstring
@@ -83,8 +88,8 @@ class ImgToMySQLHelper(object):
 class ImgToMySQLDebugHelper(ImgToMySQLHelper):
     _table_headers = {"id" : "INT NOT NULL AUTO_INCREMENT PRIMARY KEY",
                       "t"  : "INT",
-                      "date": "date char(100)",
-                      "time": "time char(100)",
+                      "date": "char(100)",
+                      "time": "char(100)",
                       "img" : "LONGBLOB",
                       "foreground": "LONGBLOB"
     }
@@ -98,26 +103,60 @@ class ImgToMySQLDebugHelper(ImgToMySQLHelper):
 
     
     def stack_foreground(self, tracking_units, nrow=10, ncol=2):
-        shape = np.vstack([t_u.tracker._foreground.shape for t_u in tracking_units])
-        shape = shape.min(axis=0) # get smallest shape and use it for all
+
+        roi_to_col = {
+                1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6:0, 7:0, 8:0, 9:0, 10:0,
+                11: 1, 12: 1, 13: 1, 14: 1, 15: 1, 16:1, 17:1, 18:1, 19:1, 20:1
+        }
+
+        roi_to_row = {
+                1: 0, 2: 1, 3: 2, 4:3, 5:4, 6:5, 7:6, 8:7, 9:8, 10:9,
+                11: 0, 12: 1, 13: 2, 14:3, 15:4, 16:5, 17:6, 18:7, 19:8, 20:9,
+
+        }
+        # TODO Be smarter when _foreground is still None
+        try:
+            shape = np.vstack([t_u._tracker._foreground.shape for t_u in tracking_units])
+            shape = shape.min(axis=0) # get smallest shape and use it for all
+        except Exception as error:
+            logging.warning(error)
+            shape = np.array([40, 300])
+
         # this means all foregrounds will have the smallest size that all can provide
         empty_foreground = np.zeros(shape, dtype=np.uint8)
 
-        layout = [[None, ] * nrow, ] * ncol 
-        
-        for i, t_u in enumerate(tracking_units):
-            col_idx = 0 if i < 10 else 1
-            row_idx = i % 10
+        columns = {"0": [None,]*nrow, "1": [None,]*nrow}
+       
+        for t_u in tracking_units[::-1]:
+            i = t_u.roi._idx
+            col_idx = roi_to_col[i]
+            row_idx = roi_to_row[i]
+            logging.warning("ROI: %d taking foreground", i)
+            logging.warning("col: %d taking foreground", col_idx)
+            logging.warning("row: %d taking foreground", row_idx)
+            logging.warning("rectangle: %s", ",".join([str(e) for e in t_u.roi._rectangle]))
             try:
-                foreground = t_u.tracker._foreground[:shape[0], :shape[1]]
+                foreground = t_u._tracker._foreground[:shape[0], :shape[1]]
             except Exception as error:
                 logging.warning(error)
                 foreground = empty_foreground
     
-            layout[col_idx][row_idx] = foreground
+            columns[str(col_idx)][row_idx] = foreground.copy()
 
-        foreground = np.hstack([np.vstack(col) for col in layout])
-        return foreground
+        layout_stack = np.hstack([
+            np.vstack(columns["0"]),
+            np.vstack(columns["1"])
+        ])
+
+        #layout_stack = None
+        #for col in layout:
+        #    if layout_stack is None:
+        #        layout_stack = np.vstack(col)
+        #    else:
+        #        layout_stack = np.hstack([layout_stack, np.vstack(col)])
+        #    break
+
+        return layout_stack
 
 
     def flush(self, t, img, tracking_units=None, frame_idx=None):
@@ -138,7 +177,7 @@ class ImgToMySQLDebugHelper(ImgToMySQLHelper):
 
         cmd = 'INSERT INTO ' + self._table_name + '(id,t, date, time, img, foreground) VALUES %s' % self.placeholder("value")
 
-        args = (identity, date_time_fields[0], date_time_fields[1], int(t), bstring, bstring_fg)
+        args = (identity, int(t), date_time_fields[0], date_time_fields[1], bstring, bstring_fg)
 
         self._last_tick = tick
 
