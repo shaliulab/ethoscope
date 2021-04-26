@@ -1,9 +1,9 @@
 import logging
 logging.basicConfig(level=logging.DEBUG)
-import 
 import tempfile
 import os
 import time, datetime
+from ethoscope.utils.io_helpers import Null
 
 class ImgToMySQLHelper(object):
 

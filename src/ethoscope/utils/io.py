@@ -10,17 +10,11 @@ import tempfile
 import os
 
 from ethoscope.utils.io_img import ImgToMySQLHelper, ImgToMySQLDebugHelper
+from ethoscope.utils.io_helpers import Null
 
 #this code is reused from device_scanner
 import urllib.request, urllib.error, urllib.parse
 import json
-
-class Null(object):
-    def __repr__(self):
-        return "NULL"
-    def __str__(self):
-        return "NULL"
-
 
 class AsyncMySQLWriter(multiprocessing.Process):
     """
@@ -379,10 +373,16 @@ class ResultWriter(object):
     _async_writing_class = AsyncMySQLWriter
     _imgHelperClass = ImgToMySQLHelper
     _null = 0
-    _period = 300
+    _description = {
+            "overview": "Select this class on all experiments",
+            "arguments": [
+            ]
+    }
 
-    def __init__(self, db_credentials, rois, metadata=None, make_dam_like_table=True, take_frame_shots=True, erase_old_db=True, sensor=None, *args, **kwargs):
 
+    def __init__(self, db_credentials, rois, *args, metadata=None, make_dam_like_table=True, take_frame_shots=True, erase_old_db=True, sensor=None, period=300, **kwargs):
+
+        self._period = period 
         sql_flavour = self._async_writing_class._sql_flavour
 
         self._queue = multiprocessing.JoinableQueue()
@@ -741,6 +741,15 @@ class DebugResultWriter(ResultWriter):
     _imgHelperClass = ImgToMySQLDebugHelper
      # every two seconds save a snapshot!
     _period = 2
+    _description = {
+            "overview": "Only select this class if you are debugging the ethoscope",
+            "arguments": [
+                {"type": "number", "min": 0.0, "max": 300, "step":2, "name": "period", "description": "Time in between saved snapshots","default":2}
+            ]
+    }
+
+    def __init__(self, *args, period=2, **kwargs):
+        super().__init__(*args, period=period, **kwargs)
 
 
 class SQLiteResultWriter(ResultWriter):

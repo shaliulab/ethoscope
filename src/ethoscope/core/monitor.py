@@ -165,7 +165,7 @@ class Monitor(object):
                         data_rows[0].append(frame_count)
                         result_writer.write(t, track_u.roi, data_rows)
 
-                self.flush(t, frame, frame_idx, result_writer, tracking_units=self._unit_trackers))
+                self.flush(t, frame, frame_idx, result_writer, tracking_units=self._unit_trackers)
 
                 if drawer is not None:
                     drawer.draw(frame, tracking_units=self._unit_trackers, positions=self._last_positions)
