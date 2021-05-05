@@ -2,6 +2,7 @@ import re
 import datetime
 import time
 import logging
+import warnings
 
 class DateRangeError(Exception):
     pass
@@ -87,6 +88,11 @@ class Scheduler(object):
         if out[0] >= out[1]:
             raise DateRangeError("Error in date %s, the end date appears to be in the past" % str)
         return out
+
+
+    @staticmethod
+    def totimestamp(datestr):
+        return time.mktime(datetime.datetime.strptime(datestr,'%Y-%m-%d %H:%M:%S').timetuple())
         
     def _parse_date(self, str):
         pattern = re.compile("^\s*(?P<date>[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2})\s*$")
@@ -95,4 +101,121 @@ class Scheduler(object):
         if not re.match(pattern, str):
             raise DateRangeError("%s not match the expected pattern" % str)
         datestr = re.match(pattern, str).groupdict()["date"]
-        return time.mktime(datetime.datetime.strptime(datestr,'%Y-%m-%d %H:%M:%S').timetuple())
+        return self.totimestamp(datestr)
+
+
+class SegmentedScheduler(Scheduler):
+
+    """
+    Advanced sleep deprivation
+
+    Use this scheduler to program a different stimulus duration
+    for different segments of the sleep deprivation treatment
+
+    Format the input string as follows
+
+    RANGE_START > RANGE_END;HOUR_SINCE ~ DURATION|HOUR_SINCE ~ DURATION
+    """
+
+    def __init__(self, *args, **kwargs):
+
+        # Get the schedule part
+        # of the input string
+        args = list(args)
+        in_str = args[0]
+        schedules  = in_str.split(",")
+
+        basic_schedule = ""
+        programs = []
+        for sche_i, sch in enumerate(schedules):
+            if sche_i > 0:
+                basic_schedule += ","
+
+            schedule, program = sch.split(";")
+            basic_schedule += schedule
+            programs.append(program)
+        args[0] = basic_schedule 
+        # Make use of the new part: the program
+        self._programs = programs
+        args = tuple(args)
+        super().__init__(*args, **kwargs)
+
+    def check_duration(self, t=None):
+
+        if t is None:
+            t = time.time()
+
+        index = None
+        for i, r in enumerate(self._date_ranges):
+            if r[1] > t > r[0]:
+                index = i
+                hours_since_range_start = (t - r[0]) / 3600
+                hours_to_finish = (r[1] - t) / 3600
+                break
+
+        if hours_to_finish < 0 or hours_since_range_start < 0:
+            warnings.warn("I am not in a range but I somehow got called")
+            warnings.warn("I will return a default duration:")
+            return None
+
+        # this is possible if
+        # we are not in any range
+
+        # also possible if we just finished a range
+        # in the time between the first check in stimulator.apply()
+        # and here
+        if index is None:
+            return None
+        
+        program = self._programs[index]
+
+
+        steps = program.split("|")
+        times = []
+        durations = []
+        old_hours_since = 0
+        for step in steps:
+            hours_since, duration = step.split("~")
+            hours_since = int(hours_since.replace(" ", ""))
+            if hours_since <= old_hours_since and old_hours_since != 0:
+                raise Exception(
+                        """
+                        Scheduler string format is wrong.
+                        Please make sure all timepoints
+                        are passed in chronologically increasing order
+                        There should be no duplicates either 
+                        """
+                        )
+            times.append(hours_since)
+            duration = int(duration.replace(" ", ""))
+            durations.append(duration)
+            old_hours_since = hours_since
+
+        for t_i in range(0, len(times)):
+
+            
+            if t_i == (len(times) - 1):
+                return durations[-1]
+            elif hours_since_range_start > times[t_i] and hours_since_range_start < times[t_i+1]:
+                return durations[t_i]
+
+        return None
+
+
+Scheduler = SegmentedScheduler
+
+if __name__ == "__main__":
+
+    schedule = Scheduler("2021-05-05 22:00:00 > 2021-05-06 10:00:00;0~250|3~500|6~750|9~1000")
+    d250 = schedule.check_duration(schedule.totimestamp("2021-05-05 23:00:00"))
+    d500 = schedule.check_duration(schedule.totimestamp("2021-05-06 02:00:00"))
+    d750 = schedule.check_duration(schedule.totimestamp("2021-05-06 05:00:00"))
+    print(d250, d500, d750)
+
+    
+
+
+
+
+
+
