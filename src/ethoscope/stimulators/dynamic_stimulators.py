@@ -41,8 +41,9 @@ class SegmentedStimulator(RobustSleepDepriver):
 
     def __init__(self, *args, **kwargs):
 
+        program = kwargs.pop("program", "")
         super().__init__(*args, **kwargs)
-        self._scheduler = self._schedulerClass(kwargs["date_range"], program=kwargs["program"])
+        self._scheduler = self._schedulerClass(kwargs["date_range"], program=program)
 
     def _decide(self, **kwargs):
         
