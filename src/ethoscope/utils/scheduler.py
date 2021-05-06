@@ -140,7 +140,17 @@ class SegmentedScheduler(Scheduler):
         args = tuple(args)
         super().__init__(*args, **kwargs)
 
+
     def check_duration(self, t=None):
+        """
+        Return the interaction duration that should be delivered
+        or None if the default should be used or at least
+        or no alternative is clear:
+
+        An alternative is not clear if:
+        this function finds it is out of range (possible due to overhead).
+        Maybe we were when called but not when running)
+        """
 
         if t is None:
             t = time.time()
@@ -192,7 +202,6 @@ class SegmentedScheduler(Scheduler):
             old_hours_since = hours_since
 
         for t_i in range(0, len(times)):
-
             
             if t_i == (len(times) - 1):
                 return durations[-1]

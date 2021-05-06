@@ -40,13 +40,17 @@ class SegmentedStimulator(RobustSleepDepriver):
         super().__init__(*args, **kwargs)
         self._scheduler = self._schedulerClass(kwargs["date_range"])
 
-    def _deliver(self, **kwargs):
+    def _decide(self, **kwargs):
+        
+        out, dic = super()._decide(**kwargs)
+
         duration = self._scheduler.check_duration()
         if duration is None:
             pass
         else:
-            kwargs["duration"] = duration
-        result = super()._deliver(**kwargs)
+            dic["duration"] = duration
+
+        return out, dic 
 
 
     def apply(self, *args, **kwargs):
