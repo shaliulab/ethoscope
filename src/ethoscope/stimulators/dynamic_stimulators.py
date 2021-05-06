@@ -1,6 +1,16 @@
-from ethoscope.stimulators.sleep_depriver_stimulators import RobustSleepDepriver, SleepDepriver
+from ethoscope.stimulators.sleep_depriver_stimulators import RobustSleepDepriver
+from ethoscope.core.variables import BaseIntVariable
 from ethoscope.utils.scheduler import Scheduler, SegmentedScheduler
 from ethoscope.hardware.interfaces.optomotor import SleepDepriver
+
+
+class InteractionDuration(BaseIntVariable):
+    """
+    Custom variable to save the duration of the stimulus / interaction sent to the animal
+    """
+    functional_type = "count"
+    header_name = "duration"
+
 
 
 class SegmentedStimulator(RobustSleepDepriver):
@@ -36,7 +46,17 @@ class SegmentedStimulator(RobustSleepDepriver):
             pass
         else:
             kwargs["duration"] = duration
-        return super()._deliver(**kwargs)
+        result = super()._deliver(**kwargs)
+
+
+    def apply(self, *args, **kwargs):
+        x = super().apply(*args, **kwargs)
+        interaction, result = x
+
+        interaction = [interaction, InteractionDuration(result["duration"])]
+        return interaction, result
+
+
 
     #def apply(self):
 
