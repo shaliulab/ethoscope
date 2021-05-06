@@ -117,28 +117,11 @@ class SegmentedScheduler(Scheduler):
     RANGE_START > RANGE_END;HOUR_SINCE ~ DURATION|HOUR_SINCE ~ DURATION
     """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, program="", **kwargs):
 
-        # Get the schedule part
-        # of the input string
-        args = list(args)
-        in_str = args[0]
-        schedules  = in_str.split(",")
 
-        basic_schedule = ""
-        programs = []
-        for sche_i, sch in enumerate(schedules):
-            if sche_i > 0:
-                basic_schedule += ","
-
-            schedule, program = sch.split(";")
-            basic_schedule += schedule
-            programs.append(program)
-        args[0] = basic_schedule 
-        # Make use of the new part: the program
-        self._programs = programs
-        args = tuple(args)
         super().__init__(*args, **kwargs)
+        self._programs = program.split(",")
 
 
     def check_duration(self, t=None):
@@ -211,11 +194,9 @@ class SegmentedScheduler(Scheduler):
         return None
 
 
-Scheduler = SegmentedScheduler
-
 if __name__ == "__main__":
 
-    schedule = Scheduler("2021-05-05 22:00:00 > 2021-05-06 10:00:00;0~250|3~500|6~750|9~1000")
+    schedule = SegmentedScheduler(in_str="2021-05-05 22:00:00 > 2021-05-06 10:00:00", program="0~250|3~500|6~750|9~1000")
     d250 = schedule.check_duration(schedule.totimestamp("2021-05-05 23:00:00"))
     d500 = schedule.check_duration(schedule.totimestamp("2021-05-06 02:00:00"))
     d750 = schedule.check_duration(schedule.totimestamp("2021-05-06 05:00:00"))

@@ -28,7 +28,11 @@ class SegmentedStimulator(RobustSleepDepriver):
                                 {"type": "number", "min": 0, "max": 3, "step": 1, "name": "stimulus_type",  "description": "1 = opto, 2= moto", "default": 2},
                                 {"type": "date_range", "name": "date_range",
                                  "description": "A date and time range in which the device will perform. See SegmentedScheduler help",
+                                 "default": ""},
+                                {"type": "str", "name": "program",
+                                 "description": "A scheduling program to SD flies with different pulse duration throughout the experiment",
                                  "default": ""}
+
                                ]}
 
     _schedulerClass = SegmentedScheduler
@@ -38,7 +42,7 @@ class SegmentedStimulator(RobustSleepDepriver):
     def __init__(self, *args, **kwargs):
 
         super().__init__(*args, **kwargs)
-        self._scheduler = self._schedulerClass(kwargs["date_range"])
+        self._scheduler = self._schedulerClass(kwargs["date_range"], program=kwargs["program"])
 
     def _decide(self, **kwargs):
         
@@ -62,23 +66,6 @@ class SegmentedStimulator(RobustSleepDepriver):
             interaction_data = (interaction, InteractionDuration(0))
         return interaction_data, result
 
-
-
-    #def apply(self):
-
-    #    if self._tracker is None:
-    #        raise ValueError("No tracker bound to this stimulator. Use `bind_tracker()` methods")
-
-    #    time_range_checkup = self._scheduler.check_time_range()
-
-    #    if time_range_checkup is False:
-    #        return HasInteractedVariable(False), {}
-
-    #    interact, result = self._decide()
-    #    result["duration"] = time_range_checkup["duration"]
-    #    if interact > 0:
-    #        self._deliver(**result)
-    #    return interact, result
 
 if __name__ == "__main__":
     print(SegmentedStimulator._HardwareInterfaceClass)
