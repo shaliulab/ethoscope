@@ -135,6 +135,9 @@ class SegmentedScheduler(Scheduler):
         Maybe we were when called but not when running)
         """
 
+        steps_separator = ";"
+        time_to_duration_separator = ">"
+
         if t is None:
             t = time.time()
 
@@ -163,12 +166,12 @@ class SegmentedScheduler(Scheduler):
         program = self._programs[index]
 
 
-        steps = program.split("|")
+        steps = program.split(steps_separator)
         times = []
         durations = []
         old_hours_since = 0
         for step in steps:
-            hours_since, duration = step.split("~")
+            hours_since, duration = step.split(time_to_duration_separator)
             hours_since = int(hours_since.replace(" ", ""))
             if hours_since <= old_hours_since and old_hours_since != 0:
                 raise Exception(
@@ -196,7 +199,7 @@ class SegmentedScheduler(Scheduler):
 
 if __name__ == "__main__":
 
-    schedule = SegmentedScheduler(in_str="2021-05-05 22:00:00 > 2021-05-06 10:00:00", program="0~250|3~500|6~750|9~1000")
+    schedule = SegmentedScheduler(in_str="2021-05-05 22:00:00 > 2021-05-06 10:00:00", program="0 > 250;3 > 500;6 > 750;9 > 1000")
     d250 = schedule.check_duration(schedule.totimestamp("2021-05-05 23:00:00"))
     d500 = schedule.check_duration(schedule.totimestamp("2021-05-06 02:00:00"))
     d750 = schedule.check_duration(schedule.totimestamp("2021-05-06 05:00:00"))
