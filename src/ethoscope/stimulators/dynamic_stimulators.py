@@ -52,9 +52,11 @@ class SegmentedStimulator(RobustSleepDepriver):
     def apply(self, *args, **kwargs):
         x = super().apply(*args, **kwargs)
         interaction, result = x
-
-        interaction = [interaction, InteractionDuration(result["duration"])]
-        return interaction, result
+        if interaction:
+            interaction_data = (interaction, InteractionDuration(result["duration"]))
+        else:
+            interaction_data = (interaction, InteractionDuration(0))
+        return interaction_data, result
 
 
 
