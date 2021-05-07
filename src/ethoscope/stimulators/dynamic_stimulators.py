@@ -19,7 +19,13 @@ class SegmentedStimulator(RobustSleepDepriver):
     depending on the time elapsed since stimuli delivery started
     """
 
-    _description = {"overview": "A stimulator to sleep deprive an animal using gear motors. See https://github.com/gilestrolab/ethoscope_hardware/tree/master/modules/gear_motor_sleep_depriver",
+    _description = {"overview":
+    """
+    A stimulator to sleep deprive an animal using gear motors. See https://github.com/gilestrolab/ethoscope_hardware/tree/master/modules/gear_motor_sleep_depriver
+    
+    A custom pulse duration can be provided so a different stimulus duration is delivered throughout the experiment.
+    This might better follow the arousal threshold change    
+    """,
                 "arguments": [
                     {"type": "number", "min": 0.0, "max": 1.0, "step": 0.0001, "name": "velocity_correction_coef", "description": "Velocity correction coef", "default": 0.01},
                                 {"type": "number", "min": 1, "max": 3600*12, "step":1, "name": "min_inactive_time", "description": "The minimal time after which an inactive animal is awaken(s)","default":10},
@@ -39,15 +45,13 @@ class SegmentedStimulator(RobustSleepDepriver):
     _HardwareInterfaceClass = SleepDepriver
     _duration = 500
 
-    def __init__(self, *args, **kwargs):
-
-        program = kwargs.pop("program", "")
+    def __init__(self, *args, program="", **kwargs):
         super().__init__(*args, **kwargs)
         self._scheduler = self._schedulerClass(kwargs["date_range"], program=program)
 
-    def _decide(self, **kwargs):
+    def _decide(self, *args, **kwargs):
         
-        out, dic = super()._decide(**kwargs)
+        out, dic = super()._decide(*args, **kwargs)
 
         duration = self._scheduler.check_duration()
         if duration is None:
@@ -66,8 +70,3 @@ class SegmentedStimulator(RobustSleepDepriver):
         else:
             interaction_data = (interaction, InteractionDuration(0))
         return interaction_data, result
-
-
-if __name__ == "__main__":
-    print(SegmentedStimulator._HardwareInterfaceClass)
-    
