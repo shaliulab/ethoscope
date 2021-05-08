@@ -99,11 +99,11 @@ class DynamicStimulator(RobustSleepDepriver):
     _duration = 500
     # exponential decay: the older an interaction is, the less it should matter
     # weight an interaction from 10 seconds ago with weight 1
-    _weight_function: lambda x: min(120 /x, 1)
+    _weight_function = lambda x: min(120 /x, 1)
 
     def __init__(self, *args, **kwargs):
-        super()__init__(*args, min_pulse_duration=100, max_pulse_duration=2000, **kwargs)
-
+        
+        super().__init__(*args, min_pulse_duration=100, max_pulse_duration=2000, **kwargs)
         from ethoscope.web_utils.helpers import get_machine_name        
         
         self._scale_factor = 1 / min_inactive_time
