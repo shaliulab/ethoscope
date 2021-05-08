@@ -5,7 +5,7 @@ from ethoscope.stimulators.stimulators import DefaultStimulator
 
 
 class TrackingUnit(object):
-    def __init__(self, tracking_class, roi, stimulator=None, *args, **kwargs):
+    def __init__(self, tracking_class, roi, stimulator=None, tracker=None, *args, **kwargs):
         r"""
         Class instantiating a tracker(:class:`~ethoscope.trackers.trackers.BaseTracker`),
         and linking it with an individual ROI(:class:`~ethoscope.rois.roi_builders.ROI`) and
@@ -30,7 +30,10 @@ class TrackingUnit(object):
         else:
             self._stimulator = DefaultStimulator(None)
 
-        self._stimulator.bind_tracker(self._tracker)
+        if tracker is None:
+            self._stimulator.bind_tracker(self._tracker)
+        else:
+            self._stimulator.bind_tracker(tracker)
 
 
     @property

@@ -70,6 +70,9 @@ class ControlThread(Thread):
     """
     _evanescent = False
     _option_dict = {
+        "monitor": {
+            "possible_classes": [Monitor]
+        },
         "roi_builder":{
                 "possible_classes":[DefaultROIBuilder, SleepMonitorWithTargetROIBuilder, TargetGridROIBuilder, OlfactionAssayROIBuilder, ElectricShockAssayROIBuilder],
             },
@@ -299,7 +302,8 @@ class ControlThread(Thread):
 
 
     def _start_tracking(self, camera, result_writer, rois, TrackerClass, tracker_kwargs,
-                        hardware_connection, StimulatorClass, stimulator_kwargs):
+                        hardware_connection, StimulatorClass, stimulator_kwargs,
+                        monitorClass, monitor_kwargs):
 
         #Here the stimulator passes args. Hardware connection was previously open as thread.
         stimulators = [StimulatorClass(hardware_connection, **stimulator_kwargs) for _ in rois]
@@ -307,11 +311,14 @@ class ControlThread(Thread):
         kwargs = self._monit_kwargs.copy()
         kwargs.update(tracker_kwargs)
 
+        self._monit_kwargs.update(monitor_kwargs)
+
         # todo: pickle hardware connection, camera, rois, tracker class, stimulator class,.
         # then rerun stimulators and Monitor(......)
-        self._monit = Monitor(camera, TrackerClass, rois,
+        self._monit = monitorClass(camera, TrackerClass, rois,
                               stimulators=stimulators,
-                              *self._monit_args)
+                              *self._monit_args,
+                              **self._monit_kwargs)
         self._info["status"] = "running"
         logging.info("Setting monitor status as running: '%s'" % self._info["status"])
 
@@ -329,13 +336,15 @@ class ControlThread(Thread):
                 time.sleep(15)
                 return pickle.load(f)
 
-    def _save_pickled_state(self, camera, result_writer, rois, TrackerClass, tracker_kwargs, hardware_connection, StimulatorClass, stimulator_kwargs, running_info):
+    def _save_pickled_state(self, camera, result_writer, rois, TrackerClass, tracker_kwargs, hardware_connection, StimulatorClass, stimulator_kwargs, monitorClass, monitor_kwargs, running_info):
         """
         note that cv2.videocapture is not a serializable object and cannot be pickled
         """
 
         tpl = (camera, result_writer, rois, TrackerClass, tracker_kwargs,
-                        hardware_connection, StimulatorClass, stimulator_kwargs, running_info)
+                        hardware_connection, StimulatorClass, stimulator_kwargs,
+                        monitorClass, monitor_kwargs,
+                        running_info)
 
 
         if not os.path.exists(os.path.dirname(self._persistent_state_file)):
@@ -363,6 +372,9 @@ class ControlThread(Thread):
 
         ResultWriterClass = self._option_dict["result_writer"]["class"]
         result_writer_kwargs = self._option_dict["result_writer"]["kwargs"]
+
+        MonitorClass = self._option_dict["monitor"]["class"]
+        monitor_kwargs = self._option_dict["monitor"]["kwargs"]
 
         cam = CameraClass(**camera_kwargs)
 
@@ -413,7 +425,8 @@ class ControlThread(Thread):
         rw = ResultWriter(self._db_credentials, rois, self._metadata, take_frame_shots=True, sensor=sensor)
 
         return  (cam, rw, rois, TrackerClass, tracker_kwargs,
-                        hardware_connection, StimulatorClass, stimulator_kwargs)
+                        hardware_connection, StimulatorClass, stimulator_kwargs,
+                        monitorClass, monitor_kwargs)
 
     def run(self):
         cam = None
@@ -431,7 +444,7 @@ class ControlThread(Thread):
                 logging.warning("Attempting to resume a previously interrupted state")
                 
                 try:
-                    cam, rw, rois, TrackerClass, tracker_kwargs, hardware_connection, StimulatorClass, stimulator_kwargs, self._info = self._set_tracking_from_pickled()
+                    cam, rw, rois, TrackerClass, tracker_kwargs, hardware_connection, StimulatorClass, stimulator_kwargs, monitorClass, monitor_kwargs, self._info = self._set_tracking_from_pickled()
 
                 except Exception as e:
                     logging.error("Could not load previous state for unexpected reason:")
@@ -439,17 +452,17 @@ class ControlThread(Thread):
             
             #a previous instance does not exist, hence we create a new one
             else:
-                cam, rw, rois, TrackerClass, tracker_kwargs, hardware_connection, StimulatorClass, stimulator_kwargs = self._set_tracking_from_scratch()
+                cam, rw, rois, TrackerClass, tracker_kwargs, hardware_connection, StimulatorClass, stimulator_kwargs, monitorClass, monitor_kwargs = self._set_tracking_from_scratch()
                 
             
             with rw as result_writer:
                 
                 # and we save it if we can
                 if cam.canbepickled:
-                    self._save_pickled_state(cam, rw, rois, TrackerClass, tracker_kwargs, hardware_connection, StimulatorClass, stimulator_kwargs, self._info)
+                    self._save_pickled_state(cam, rw, rois, TrackerClass, tracker_kwargs, hardware_connection, StimulatorClass, stimulator_kwargs, monitorClass, monitor_kwargs, self._info)
                 
                 # then we start tracking
-                self._start_tracking(cam, result_writer, rois, TrackerClass, tracker_kwargs, hardware_connection, StimulatorClass, stimulator_kwargs)
+                self._start_tracking(cam, result_writer, rois, TrackerClass, tracker_kwargs, hardware_connection, StimulatorClass, stimulator_kwargs, monitorClass, monitor_kwargs)
             
             self.stop()
 

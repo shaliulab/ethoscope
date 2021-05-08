@@ -3,12 +3,30 @@ __author__ = 'quentin'
 from .tracking_unit import TrackingUnit
 import logging
 import traceback
+import json
+
+from ethoscope.utils.description import DescribedObject
 
 
-class Monitor(object):
+class Monitor(DescribedObject):
 
+    _description = {"overview":
+    """
+    A monitor orchestrates the different software modules
+    and implements the logic to scale experiments to more than 1 animal
+    """,
+    
+        "arguments": [
+            {
+                "type": "str", "name": "yoke",
+                "description": "A mapping of yoke:focal animals",
+                "default": ""}
+
+        ]}
+                                   
     def __init__(self, camera, tracker_class,
                  rois = None, stimulators=None,
+                 yoke=None
                  *args, **kwargs  # extra arguments for the tracker objects
                  ):
         r"""
@@ -30,6 +48,8 @@ class Monitor(object):
         :type rois: list(:class:`~ethoscope.core.roi.ROI`)
         :param stimulators: The class that will be used to analyse the position of the object and interact with the system/hardware.
         :type stimulators: list(:class:`~ethoscope.stimulators.stimulators.BaseInteractor`
+        :param yoke: Pairs of focal (key) and yoked (value) region_ids. An animal in a yoked region_id will be stimulated following its focal counterpart.
+        :type yoke: dictionary 
         :param args: additional arguments passed to the tracking algorithm
         :param kwargs: additional keyword arguments passed to the tracking algorithm
         """
@@ -49,7 +69,35 @@ class Monitor(object):
             self._unit_trackers = [TrackingUnit(tracker_class, r, None, *args, **kwargs) for r in rois]
 
         elif len(stimulators) == len(rois):
-            self._unit_trackers = [TrackingUnit(tracker_class, r, inter, *args, **kwargs) for r, inter in zip(rois, stimulators)]
+            if yoke is None:
+                self._unit_trackers = [TrackingUnit(tracker_class, r, inter, *args, **kwargs) for r, inter in zip(rois, stimulators)]
+            else:
+
+                yoke = json.loads(yoke)
+                self._unit_trackers = [None for r in rois]
+                for f in yoke.values():
+                    # check if the corresponding unit tracker
+                    # is still None or not
+                    # It wont be none if the same animal is followed
+                    # by another yoke animal
+                    # i.e. if the focal animal is not mapped to a single yoke 
+                    ff = int(f)
+                    if self._unit_trackers[ff-1] is None:
+                        self._unit_trackers[ff-1] = TrackingUnit(tracker_class, rois[ff-1], stimulators[ff-1], *args, **kwargs)
+                
+                for y, f in yoke.items():
+                    yy = int(y)
+                    ff = int(f)
+                    self._unit_trackers[yy-1] = TrackingUnit(
+                        tracker_class, rois[yy-1], stimulators[yy-1], *args,
+                        # assign to the stimulator the tracker of the focal animal
+                        # instead of that of this animal.
+                        # this causes this stimulator to obey the behavior of the other animal
+                        tracker=self._unit_trackers[ff-1]._tracker,
+                        **kwargs)
+                
+                assert all([not ut._tracker is None for ut in self._unit_trackers])
+
         else:
             raise ValueError("You should have one interactor per ROI")
 
