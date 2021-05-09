@@ -96,6 +96,11 @@ class Monitor(DescribedObject):
                         tracker=self._unit_trackers[ff-1]._tracker,
                         **kwargs)
                 
+                # finally, if a region id is neither yoke nor focal, assume focal
+                for i, ut in enumerate(self._unit_trackers):
+                    if ut is None:
+                        self._unit_trackers[i] = TrackingUnit(tracker_class, rois[i], stimulators[i], *args, **kwargs)
+
                 assert all([not ut._tracker is None for ut in self._unit_trackers])
 
         else:
