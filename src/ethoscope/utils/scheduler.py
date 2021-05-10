@@ -4,6 +4,8 @@ import time
 import logging
 import warnings
 
+logger = logging.getLogger(__name__)
+
 class DateRangeError(Exception):
     pass
 
@@ -122,7 +124,17 @@ class SegmentedScheduler(Scheduler):
 
         super().__init__(*args, **kwargs)
         self._programs = program.split(",")
+        self._validate_programs()
 
+    def _validate_programs(self):
+        for pr in self._programs:
+            try:
+                self.parse_program(pr)
+            except Exception as error:
+                logger.warning(f"Could not parse program {pr}")
+                raise error
+
+        return 0
 
     def check_duration(self, t=None):
         """
@@ -135,8 +147,6 @@ class SegmentedScheduler(Scheduler):
         Maybe we were when called but not when running)
         """
 
-        steps_separator = ";"
-        time_to_duration_separator = ">"
 
         if t is None:
             t = time.time()
@@ -164,7 +174,26 @@ class SegmentedScheduler(Scheduler):
             return None
         
         program = self._programs[index]
+        times, durations = self.parse_program(program)
 
+        for t_i in range(0, len(times)):
+            
+            if t_i == (len(times) - 1):
+                return durations[-1]
+            elif hours_since_range_start > times[t_i] and hours_since_range_start < times[t_i+1]:
+                return durations[t_i]
+
+        return None
+
+
+    @staticmethod
+    def parse_program(program):
+        """
+        Given a program, return the duration that should be delivered now
+        """
+
+        time_to_duration_separator = ">"
+        steps_separator = ";"
 
         steps = program.split(steps_separator)
         times = []
@@ -187,14 +216,8 @@ class SegmentedScheduler(Scheduler):
             durations.append(duration)
             old_hours_since = hours_since
 
-        for t_i in range(0, len(times)):
-            
-            if t_i == (len(times) - 1):
-                return durations[-1]
-            elif hours_since_range_start > times[t_i] and hours_since_range_start < times[t_i+1]:
-                return durations[t_i]
+        return times, durations
 
-        return None
 
 
 if __name__ == "__main__":
