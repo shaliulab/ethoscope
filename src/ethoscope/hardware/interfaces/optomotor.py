@@ -17,7 +17,7 @@ class OptoMotor(BaseInterface):
     _n_channels = 24
     _inst_format = "P {channel} {duration} {intensity}\r\n"
 
-    def __init__(self, port=None, *args, **kwargs):
+    def __init__(self, port=None, *args, testing=False, **kwargs):
         """
         TODO
 
@@ -29,6 +29,9 @@ class OptoMotor(BaseInterface):
         # lazy import
         import serial
         logging.info("Connecting to GMSD serial port...")
+
+        if testing:
+            return
 
         self._serial = None
         if port is None:

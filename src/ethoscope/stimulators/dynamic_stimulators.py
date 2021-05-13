@@ -1,3 +1,6 @@
+import time
+import numpy as np
+
 from ethoscope.stimulators.sleep_depriver_stimulators import RobustSleepDepriver
 from ethoscope.core.variables import BaseIntVariable
 from ethoscope.utils.scheduler import Scheduler, SegmentedScheduler
@@ -99,28 +102,31 @@ class DynamicStimulator(RobustSleepDepriver):
     _duration = 500
     # exponential decay: the older an interaction is, the less it should matter
     # weight an interaction from 10 seconds ago with weight 1
-    _weight_function = lambda x: min(120 /x, 1)
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, min_pulse_duration=100, max_pulse_duration=5000, **kwargs):
         
-        super().__init__(*args, min_pulse_duration=100, max_pulse_duration=2000, **kwargs)
-        from ethoscope.web_utils.helpers import get_machine_name        
-        
-        self._scale_factor = 1 / min_inactive_time
+        super().__init__(*args, **kwargs)
+        self._scale_factor = 1 / self._inactivity_time_threshold_ms
 
         self._arousal_threshold = 1
-        self._MAX_HISTORY_LENGTH = 100
-        self._MIN_HISTORY_LENGTH = 10
         self._min_pulse_duration = min_pulse_duration
         self._max_pulse_duration = max_pulse_duration
-        self._duration = pulse_duration
+        self._HISTORY_LENGTH = 30*60*1000 # half an hour in ms
+        self._MIN_HISTORY_LENGTH = 5*60*1000 # if the SD has been going on for less than this time, skip the dynamic computation
+        # interactions that a fly with a standard arousability would have in half an hour (one / 2 mins)
+        self._STANDARD_INTERACTIONS = self._HISTORY_LENGTH / (2*60*1000)
         self._history = np.array([])
 
     @property
     def arousal_threshold(self):
+        self._arousal_threshold = self._last_n_interactions / self._STANDARD_INTERACTIONS
         return self._arousal_threshold
 
-    
+    @property
+    def history_length(self):
+        return self._history[-1] - self._history[0]
+
+  
     def register(self, t, duration=0):
         """
         If the interaction is non null (i.e. we are actually delivering)
@@ -130,10 +136,8 @@ class DynamicStimulator(RobustSleepDepriver):
         if duration == 0:
             return 0
 
-        elif len(self._history) >= self._HISTORY_LENGTH:
-            self._history = self._history[1:]
-            
-        self._history.append(t)
+        self._history = self._history[(t - self._history) < self._HISTORY_LENGTH]
+        self._history = np.append(self._history, t)
         return 0
 
 
@@ -141,34 +145,73 @@ class DynamicStimulator(RobustSleepDepriver):
 
         out, dic = super()._decide(*args, **kwargs)
 
-        duration = self._dynamic_duration(out, dic["duration"])
+        duration = self.dynamic_duration(out, dic["duration"])
         if duration is None:
             pass
         else:
             dic["duration"] = duration
 
+
+        dic["arousal_threshold"] = self.arousal_threshold
+
         return out, dic
 
-    def _dynamic_duration(self, interaction, duration):
+    def dynamic_duration(self, duration, t=None):
         """
+        Compute what the duration of the stimulus should be
+        based on the history of previous stimuli
+        """
+        self.register(t, duration)
+        n_interactions = len(self._history)
 
-        """  
-        t = time.time()
-        self._register(t, duration)
-        
-        if len(self._history) < self._MIN_HISTORY_LENGTH:
-            return self._duration
-        
-        freq = 1 / np.diff(self._history)
-        weights = self._weight_function(1 + t - self._history[1:])
-        sum_weights = weights.sum()
-        avg_freq = np.mean(freq * weights)
-        self._arousal_threshold = avg_freq  / self._scale_factor
-                    
-        duration = self._arousal_threshold * duration
-        if sum_weights < 1:
-            duration += (1 - sum_weights) * self._duration
+        if self.history_length < self._MIN_HISTORY_LENGTH:
+            return duration
 
-        # duration = max(self._arousal_threshold * self._duration, self._min_pulse_duration)
-        # duration = min(duration, self._max_pulse_duration)
+        if self.history_length < self._HISTORY_LENGTH:
+            scalar = self._HISTORY_LENGTH / self.history_length
+            n_interactions *= scalar
+
+        self._last_n_interactions = n_interactions
+        duration *= self.arousal_threshold
+        duration = int(duration)
+
+        duration = max(duration, self._min_pulse_duration)
+        duration = min(duration, self._max_pulse_duration)
         return duration
+        
+
+    def apply(self, *args, **kwargs):
+        x = super().apply(*args, **kwargs)
+        interaction, result = x
+        if interaction:
+            interaction_data = (interaction, InteractionDuration(result["duration"]))
+        else:
+            interaction_data = (interaction, InteractionDuration(0))
+        
+        return interaction_data, result
+
+        
+
+if __name__ == "__main__":
+    
+    from ethoscope.hardware.interfaces.interfaces import HardwareConnection
+
+    ds = DynamicStimulator(HardwareConnection(SleepDepriver, testing=True), min_inactive_time=10000)
+    durations = []
+    for i in range(60000, 60000*30, 60000):
+        dur=ds.dynamic_duration(1000, i)
+        durations.append(dur)
+
+    durations.append("Switch")
+
+    for i in range(60000*30, 120000*30, 120000):
+        dur=ds.dynamic_duration(1000, i)
+        durations.append(dur)
+
+    durations.append("Switch")
+
+    for i in range(120000*30, 180000*30, 15000):
+        dur=ds.dynamic_duration(1000, i)
+        durations.append(dur)
+
+    print(durations)
