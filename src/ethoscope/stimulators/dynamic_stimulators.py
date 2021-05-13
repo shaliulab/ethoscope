@@ -124,7 +124,10 @@ class DynamicStimulator(RobustSleepDepriver):
 
     @property
     def history_length(self):
-        return self._history[-1] - self._history[0]
+        try:
+            return self._history[-1] - self._history[0]
+        except IndexError:
+            return 0
 
   
     def register(self, t, duration=0):
