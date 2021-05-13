@@ -115,6 +115,7 @@ class DynamicStimulator(RobustSleepDepriver):
         self._MIN_HISTORY_LENGTH = 5*60*1000 # if the SD has been going on for less than this time, skip the dynamic computation
         # interactions that a fly with a standard arousability would have in half an hour (one / 2 mins)
         self._STANDARD_INTERACTIONS = self._HISTORY_LENGTH / (2*60*1000)
+        self._last_n_interactions = self._STANDARD_INTERACTIONS
         self._history = np.array([])
 
     @property
@@ -153,7 +154,6 @@ class DynamicStimulator(RobustSleepDepriver):
             pass
         else:
             dic["duration"] = duration
-
 
         dic["arousal_threshold"] = self.arousal_threshold
 
