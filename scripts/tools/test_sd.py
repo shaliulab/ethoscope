@@ -65,6 +65,8 @@ class SDClient:
                 duration  = input("Please enter stimulus duration in ms [1000]\n")
                 if duration == "":
                     duration = 1000
+                else:
+                    duration = int(duration)
 
                 self.activate(region_ids, duration)
 

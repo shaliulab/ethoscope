@@ -18,6 +18,8 @@ from ethoscope.web_utils.control_thread import ControlThread
 from ethoscope.web_utils.helpers import *
 from ethoscope.web_utils.record import ControlThreadVideoRecording
 
+logging.getLogger("camera").setLevel(logging.ERROR)
+
 #from bottle import Bottle, ServerAdapter, request, server_names
 
 try:

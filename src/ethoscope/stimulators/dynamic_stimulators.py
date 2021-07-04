@@ -1,8 +1,9 @@
 import time
+import logging
 import numpy as np
 
 from ethoscope.stimulators.sleep_depriver_stimulators import RobustSleepDepriver
-from ethoscope.core.variables import BaseIntVariable
+from ethoscope.core.variables import BaseIntVariable, BaseFloatVariable
 from ethoscope.utils.scheduler import Scheduler, SegmentedScheduler
 from ethoscope.hardware.interfaces.optomotor import SleepDepriver
 
@@ -13,6 +14,10 @@ class InteractionDuration(BaseIntVariable):
     """
     functional_type = "count"
     header_name = "duration"
+
+class ArousalThreshold(BaseFloatVariable):
+    functional_type = "parameter"
+    header_name = "arousal_threshold"
 
 
 
@@ -108,23 +113,27 @@ class DynamicStimulator(RobustSleepDepriver):
         super().__init__(*args, **kwargs)
         self._scale_factor = 1 / self._inactivity_time_threshold_ms
 
-        self._arousal_threshold = 1
+        self._arousal_threshold = 1.0
         self._min_pulse_duration = min_pulse_duration
         self._max_pulse_duration = max_pulse_duration
         self._HISTORY_LENGTH = 30*60*1000 # half an hour in ms
         self._MIN_HISTORY_LENGTH = 5*60*1000 # if the SD has been going on for less than this time, skip the dynamic computation
         # interactions that a fly with a standard arousability would have in half an hour (one / 2 mins)
-        self._STANDARD_INTERACTIONS = self._HISTORY_LENGTH / (2*60*1000)
+        self._STANDARD_INTERACTIONS = int(self._HISTORY_LENGTH / (2*60*1000))
         self._history = np.array([])
+        logging.warning(self._hardware_connection)
 
     @property
     def arousal_threshold(self):
-        self._arousal_threshold = self._last_n_interactions / self._STANDARD_INTERACTIONS
+        self._arousal_threshold = float(len(self._history) / self._STANDARD_INTERACTIONS)
         return self._arousal_threshold
 
     @property
     def history_length(self):
-        return self._history[-1] - self._history[0]
+        try:
+            return self._history[-1] - self._history[0]
+        except IndexError:
+            return 0
 
   
     def register(self, t, duration=0):
@@ -133,11 +142,11 @@ class DynamicStimulator(RobustSleepDepriver):
         add this interaction to history
         Make sure the history is not too long
         """
-        if duration == 0:
-            return 0
 
         self._history = self._history[(t - self._history) < self._HISTORY_LENGTH]
         self._history = np.append(self._history, t)
+        if self._tracker._roi.idx == 20:
+            logging.warning(f"Length of history is {len(self._history)}")
         return 0
 
 
@@ -146,32 +155,24 @@ class DynamicStimulator(RobustSleepDepriver):
         out, dic = super()._decide(*args, **kwargs)
 
         duration = self.dynamic_duration(out, dic["duration"])
-        if duration is None:
-            pass
-        else:
+        if out:
             dic["duration"] = duration
-
-
-        dic["arousal_threshold"] = self.arousal_threshold
-
         return out, dic
 
-    def dynamic_duration(self, duration, t=None):
+    def dynamic_duration(self, out, duration, t=None):
         """
         Compute what the duration of the stimulus should be
         based on the history of previous stimuli
         """
-        self.register(t, duration)
-        n_interactions = len(self._history)
+        if t is None:
+            t = time.time() * 1000
+
+        if  out:
+            self.register(t, duration)
 
         if self.history_length < self._MIN_HISTORY_LENGTH:
             return duration
 
-        if self.history_length < self._HISTORY_LENGTH:
-            scalar = self._HISTORY_LENGTH / self.history_length
-            n_interactions *= scalar
-
-        self._last_n_interactions = n_interactions
         duration *= self.arousal_threshold
         duration = int(duration)
 
@@ -181,13 +182,17 @@ class DynamicStimulator(RobustSleepDepriver):
         
 
     def apply(self, *args, **kwargs):
+        # super.apply where the delivery happens
         x = super().apply(*args, **kwargs)
+        # here we are just appending stuff to interaction_data
+        # so they are saved in the produced data
         interaction, result = x
         if interaction:
-            interaction_data = (interaction, InteractionDuration(result["duration"]))
+            interaction_data = (interaction, InteractionDuration(result["duration"]), ArousalThreshold(self.arousal_threshold))
+            logging.warning(interaction_data)
         else:
-            interaction_data = (interaction, InteractionDuration(0))
-        
+            interaction_data = (interaction, InteractionDuration(0), ArousalThreshold(self.arousal_threshold))
+
         return interaction_data, result
 
         
