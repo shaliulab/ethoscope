@@ -390,6 +390,7 @@ class ResultWriter(object):
 
         self._last_t, self._last_flush_t, self._last_dam_t = [0] * 3
 
+        print(metadata)
         self._metadata = metadata
         self._rois = rois
         self._db_credentials = db_credentials
@@ -436,11 +437,11 @@ class ResultWriter(object):
 
     def _create_all_tables(self):
         logging.info("Creating master table 'ROI_MAP'")
-        self._create_table("ROI_MAP", "roi_idx SMALLINT, roi_value SMALLINT, x SMALLINT,y SMALLINT,w SMALLINT,h SMALLINT")
+        self._create_table("ROI_MAP", "roi_name CHAR(100), roi_idx SMALLINT, roi_value SMALLINT, x SMALLINT,y SMALLINT,w SMALLINT,h SMALLINT")
 
         for r in self._rois:
             fd = r.get_feature_dict()
-            command = "INSERT INTO ROI_MAP VALUES %s" % str((fd["idx"], fd["value"], fd["x"], fd["y"], fd["w"], fd["h"]))
+            command = "INSERT INTO ROI_MAP VALUES %s" % str((fd["roi_name"], fd["idx"], fd["value"], fd["x"], fd["y"], fd["w"], fd["h"]))
             self._write_async_command(command)
 
 
@@ -633,22 +634,8 @@ class AsyncSQLiteWriter(multiprocessing.Process):
 
     _sql_flavour = "SQLite"
 
-    def sql_flavour(self):
-        return self._sql_flavour
-
-    def __init__(self, db_credentials, queue, erase_old_db=True, **kwargs):
-
-        self._db_name = db_credentials["name"]
-        self._db_user_name = db_credentials["user"]
-        self._db_user_pass = db_credentials["password"]
-
-        logging.warning("kwargs")
-        logging.warning(kwargs)
-
-        path = kwargs.pop("path")
-        logging.warning(path)
-        self._path = path
-
+    def __init__(self, db_credentials, queue, erase_old_db=True):
+        self._db_name = db_credentials["database"]
         self._queue = queue
         self._erase_old_db =  erase_old_db
 
@@ -667,16 +654,13 @@ class AsyncSQLiteWriter(multiprocessing.Process):
                 command = "PRAGMA %s = %s" %(str(k), str(v))
                 c.execute(command)
 
+        
     def _get_connection(self):
         import sqlite3
-
-        FOLDER = os.path.dirname(self._path)
-        if FOLDER != '':
-            logging.warning(f'Creating folder {FOLDER}')
-            os.makedirs(FOLDER, exist_ok=True)
-
-        db = sqlite3.connect(self._path)
+        print(self._db_name)
+        db = sqlite3.connect(self._db_name)
         return db
+
 
     def run(self):
 
@@ -689,11 +673,11 @@ class AsyncSQLiteWriter(multiprocessing.Process):
                     msg = self._queue.get()
 
                     if (msg == 'DONE'):
-                        print(msg)
-                        do_run = False
+                        do_run=False
                         continue
 
                     command, args = msg
+
 
                     c = db.cursor()
                     if args is None:
@@ -703,12 +687,10 @@ class AsyncSQLiteWriter(multiprocessing.Process):
 
                     db.commit()
 
-                except Exception as e:
+                except:
                     do_run=False
                     try:
                         logging.error("Failed to run mysql command:\n%s" % command)
-                        logging.error(e)
-                        logging.error(traceback.print_exc())
                     except:
                         logging.error("Did not retrieve queue value")
 
@@ -734,6 +716,114 @@ class AsyncSQLiteWriter(multiprocessing.Process):
             if db is not None:
                 db.close()
 
+# class AsyncSQLiteWriter(multiprocessing.Process):
+#     _pragmas = {"temp_store": "MEMORY",
+#                 "journal_mode": "OFF",
+#                 "locking_mode":  "EXCLUSIVE"}
+
+#     _sql_flavour = "SQLite"
+
+#     def sql_flavour(self):
+#         return self._sql_flavour
+
+#     def __init__(self, db_credentials, queue, erase_old_db=True, **kwargs):
+
+#         self._db_name = db_credentials["name"]
+#         self._db_user_name = db_credentials["user"]
+#         self._db_user_pass = db_credentials["password"]
+
+#         logging.warning("kwargs")
+#         logging.warning(kwargs)
+
+#         path = kwargs.pop("path")
+#         logging.warning(path)
+#         self._path = path
+
+#         self._queue = queue
+#         self._erase_old_db =  erase_old_db
+
+#         super(AsyncSQLiteWriter,self).__init__()
+#         if erase_old_db:
+#             try:
+#                 os.remove(self._db_name)
+#             except:
+#                 pass
+
+#             conn = self._get_connection()
+
+#             c = conn.cursor()
+#             logging.info("Setting DB parameters'")
+#             for k,v in list(self._pragmas.items()):
+#                 command = "PRAGMA %s = %s" %(str(k), str(v))
+#                 c.execute(command)
+
+#     def _get_connection(self):
+#         import sqlite3
+
+#         FOLDER = os.path.dirname(self._path)
+#         if FOLDER != '':
+#             logging.warning(f'Creating folder {FOLDER}')
+#             os.makedirs(FOLDER, exist_ok=True)
+
+#         db = sqlite3.connect(self._path)
+#         return db
+
+#     def run(self):
+
+#         db = None
+#         do_run = True
+#         try:
+#             db = self._get_connection()
+#             while do_run:
+#                 try:
+#                     msg = self._queue.get()
+
+#                     if (msg == 'DONE'):
+#                         print(msg)
+#                         do_run = False
+#                         continue
+
+#                     command, args = msg
+
+#                     c = db.cursor()
+#                     if args is None:
+#                         c.execute(command)
+#                     else:
+#                         c.execute(command, args)
+
+#                     db.commit()
+
+#                 except Exception as e:
+#                     do_run=False
+#                     try:
+#                         logging.error("Failed to run mysql command:\n%s" % command)
+#                         logging.error(e)
+#                         logging.error(traceback.print_exc())
+#                     except:
+#                         logging.error("Did not retrieve queue value")
+
+#                 finally:
+#                     if self._queue.empty():
+#                         #we sleep if we have an empty queue. this way, we don't over use a cpu
+#                         time.sleep(.1)
+
+#         except KeyboardInterrupt as e:
+#             logging.warning("DB async process interrupted with KeyboardInterrupt")
+#             raise e
+
+#         except Exception as e:
+#             logging.error("DB async process stopped with an exception")
+#             raise e
+
+#         finally:
+#             logging.info("Closing async mysql writer")
+#             while not self._queue.empty():
+#                 self._queue.get()
+
+#             self._queue.close()
+#             if db is not None:
+#                 db.close()
+
 
 class DebugResultWriter(ResultWriter):
     # extended img helper that will also write the result of frame - background
@@ -755,7 +845,7 @@ class SQLiteResultWriter(ResultWriter):
     _async_writing_class = AsyncSQLiteWriter
     _null= Null()
     def __init__(self, db_credentials, rois, metadata=None, make_dam_like_table=False, take_frame_shots=False, *args, **kwargs):
-        super(SQLiteResultWriter, self).__init__(db_credentials, rois, metadata, make_dam_like_table, take_frame_shots, *args, **kwargs)
+        super(SQLiteResultWriter, self).__init__(db_credentials, rois, *args, metadata=metadata, make_dam_like_table=make_dam_like_table, take_frame_shots=take_frame_shots, **kwargs)
 
     def _create_table(self, name, fields, engine=None):
 

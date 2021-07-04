@@ -70,6 +70,11 @@ class ImgToMySQLHelper(object):
 
         cmd = 'INSERT INTO ' + self._table_name + '(id,t,img) VALUES %s' % self.placeholder("value")
 
+        print("ÏMG SNAPSHOTS arguments:")
+        print(identity)
+        print(int(t))
+        print(len(bstring))
+
         args = (identity, int(t), bstring)
 
         self._last_tick = tick
