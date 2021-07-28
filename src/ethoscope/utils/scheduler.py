@@ -114,7 +114,10 @@ class SegmentedScheduler(Scheduler):
 
     Format the input string as follows
 
-    RANGE_START > RANGE_END;HOUR_SINCE ~ DURATION|HOUR_SINCE ~ DURATION
+    HOUR_SINCE_START > PULSE_DURATION;HOUR_SINCE_START > PULSE_DURATION;HOUR_SINCE_START > PULSE_DURATION
+    example:
+    0 > 500; 6 > 1000; 12 > 1500; 18 > 2000
+    will use 500 ms for the first 6 hours, 1000 for the next 6, 1500 for the next 6 and 2000 for the remaining ones
     """
 
     def __init__(self, *args, program="", **kwargs):
