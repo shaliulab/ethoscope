@@ -117,30 +117,26 @@ class SegmentedScheduler(Scheduler):
     RANGE_START > RANGE_END;HOUR_SINCE ~ DURATION|HOUR_SINCE ~ DURATION
     """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, program="", **kwargs):
 
-        # Get the schedule part
-        # of the input string
-        args = list(args)
-        in_str = args[0]
-        schedules  = in_str.split(",")
 
-        basic_schedule = ""
-        programs = []
-        for sche_i, sch in enumerate(schedules):
-            if sche_i > 0:
-                basic_schedule += ","
-
-            schedule, program = sch.split(";")
-            basic_schedule += schedule
-            programs.append(program)
-        args[0] = basic_schedule 
-        # Make use of the new part: the program
-        self._programs = programs
-        args = tuple(args)
         super().__init__(*args, **kwargs)
+        self._programs = program.split(",")
+
 
     def check_duration(self, t=None):
+        """
+        Return the interaction duration that should be delivered
+        or None if the default should be used or at least
+        or no alternative is clear:
+
+        An alternative is not clear if:
+        this function finds it is out of range (possible due to overhead).
+        Maybe we were when called but not when running)
+        """
+
+        steps_separator = ";"
+        time_to_duration_separator = ">"
 
         if t is None:
             t = time.time()
@@ -170,12 +166,12 @@ class SegmentedScheduler(Scheduler):
         program = self._programs[index]
 
 
-        steps = program.split("|")
+        steps = program.split(steps_separator)
         times = []
         durations = []
         old_hours_since = 0
         for step in steps:
-            hours_since, duration = step.split("~")
+            hours_since, duration = step.split(time_to_duration_separator)
             hours_since = int(hours_since.replace(" ", ""))
             if hours_since <= old_hours_since and old_hours_since != 0:
                 raise Exception(
@@ -192,7 +188,6 @@ class SegmentedScheduler(Scheduler):
             old_hours_since = hours_since
 
         for t_i in range(0, len(times)):
-
             
             if t_i == (len(times) - 1):
                 return durations[-1]
@@ -202,11 +197,9 @@ class SegmentedScheduler(Scheduler):
         return None
 
 
-Scheduler = SegmentedScheduler
-
 if __name__ == "__main__":
 
-    schedule = Scheduler("2021-05-05 22:00:00 > 2021-05-06 10:00:00;0~250|3~500|6~750|9~1000")
+    schedule = SegmentedScheduler(in_str="2021-05-05 22:00:00 > 2021-05-06 10:00:00", program="0 > 250;3 > 500;6 > 750;9 > 1000")
     d250 = schedule.check_duration(schedule.totimestamp("2021-05-05 23:00:00"))
     d500 = schedule.check_duration(schedule.totimestamp("2021-05-06 02:00:00"))
     d750 = schedule.check_duration(schedule.totimestamp("2021-05-06 05:00:00"))

@@ -9,17 +9,12 @@ import cv2
 import tempfile
 import os
 
+from ethoscope.utils.io_img import ImgToMySQLHelper, ImgToMySQLDebugHelper
+from ethoscope.utils.io_helpers import Null
 
 #this code is reused from device_scanner
 import urllib.request, urllib.error, urllib.parse
 import json
-
-class Null(object):
-    def __repr__(self):
-        return "NULL"
-    def __str__(self):
-        return "NULL"
-
 
 class AsyncMySQLWriter(multiprocessing.Process):
     """
@@ -157,7 +152,6 @@ class AsyncMySQLWriter(multiprocessing.Process):
                 i += 1
                 try:
                     msg = self._queue.get()
-                    print(msg)
 
                     if (msg == 'DONE'):
                         do_run=False
@@ -260,78 +254,6 @@ class SensorDataToMySQLHelper(object):
     def create_command(self):
         return ",".join([ "%s %s" % (key, self._table_headers[key]) for key in self._table_headers])
 
-
-class ImgToMySQLHelper(object):
-
-    _table_name = "IMG_SNAPSHOTS"
-    _table_headers = {"id" : "INT NOT NULL AUTO_INCREMENT PRIMARY KEY",
-                      "t"  : "INT",
-                      "img" : "LONGBLOB"}
-
-    _value_placeholders = {"MySQL": "(%s, %s, %s)", "SQLite": "(?, ?, ?)"}
-    _id_placeholders = {"MySQL": 0, "SQLite": Null()}
-
-    @property
-    def table_name (self):
-        return self._table_name
-
-    @property
-    def create_command(self):
-        return ",".join([ "%s %s" % (key, self._table_headers[key]) for key in self._table_headers])
-
-    def placeholder(self, name="value"):
-        if name == "value":
-            return self._value_placeholders[self._sql_flavour]
-        elif name == "id":
-            return self._id_placeholders[self._sql_flavour]
-        else:
-            raise Exception("Invalid placeholder name. Please select value or id")
-
-    def __init__(self, period=300.0, sql_flavour="MySQL"):
-        """
-        :param period: how often snapshots are saved, in seconds
-        :return:
-        """
-
-        self._period = period
-        self._last_tick = 0
-        self._tmp_file = tempfile.mktemp(prefix="ethoscope_", suffix=".jpg")
-        self._sql_flavour = sql_flavour
-
-    def __del__(self):
-        try:
-            os.remove(self._tmp_file)
-        except:
-            logging.error("Could not remove temp file: %s", self._tmp_file)
-
-    def flush(self, t, img, frame_idx=None):
-        """
-        :param t: the time since start of the experiment, in ms
-        :param img: an array representing an image.
-        :type img: np.ndarray
-        :return:
-        """
-
-        tick = int(round((t/1000.0)/self._period))
-
-        if tick == self._last_tick:
-            return
-
-        cv2.imwrite(self._tmp_file, img, [int(cv2.IMWRITE_JPEG_QUALITY), 50])
-
-        with open(self._tmp_file, "rb") as f:
-            bstring = f.read()
-
-        #identity = self.placeholder("id") if frame_idx is None else frame_idx
-        identity = self.placeholder("id")
-
-        cmd = 'INSERT INTO ' + self._table_name + '(id,t,img) VALUES %s' % self.placeholder("value")
-
-        args = (identity, int(t), bstring)
-
-        self._last_tick = tick
-
-        return cmd, args
 
 
 class DAMFileHelper(object):
@@ -448,16 +370,18 @@ class ResultWriter(object):
     # _flush_every_ns = 30 # flush every 10s of data
     _max_insert_string_len = 1000
     _async_writing_class = AsyncMySQLWriter
+    _imgHelperClass = ImgToMySQLHelper
     _null = 0
+    _description = {
+            "overview": "Select this class on all experiments",
+            "arguments": [
+            ]
+    }
 
-    def __init__(self, db_credentials, rois, metadata=None, make_dam_like_table=True, take_frame_shots=True, erase_old_db=True, sensor=None, *args, **kwargs):
 
-        period = 300
-        try:
-            period = kwargs.pop("period")
-        except KeyError:
-            pass
+    def __init__(self, db_credentials, rois, *args, metadata=None, make_dam_like_table=True, take_frame_shots=True, erase_old_db=True, sensor=None, period=300, **kwargs):
 
+        self._period = period 
         sql_flavour = self._async_writing_class._sql_flavour
 
         self._queue = multiprocessing.JoinableQueue()
@@ -482,7 +406,7 @@ class ResultWriter(object):
             self._dam_file_helper = None
 
         if take_frame_shots:
-            self._shot_saver = ImgToMySQLHelper(period=period, sql_flavour=sql_flavour)
+            self._shot_saver = self._imgHelperClass(period=self._period, sql_flavour=sql_flavour)
         else:
             self._shot_saver = None
 
@@ -585,7 +509,7 @@ class ResultWriter(object):
         if self._dam_file_helper is not None:
             self._dam_file_helper.input_roi_data(t, roi, dr)
 
-    def flush(self, t, img=None, frame_idx=None):
+    def flush(self, t, img=None, frame_idx=None, **kwargs):
         """
         This is were we actually write SQL commands
         """
@@ -596,7 +520,7 @@ class ResultWriter(object):
                 self._write_async_command(c)
 
         if self._shot_saver is not None and img is not None:
-            c_args = self._shot_saver.flush(t, img, frame_idx)
+            c_args = self._shot_saver.flush(t, img, frame_idx=frame_idx, **kwargs)
             if c_args is not None:
                 self._write_async_command(*c_args)
                 logging.warning("An image was successfully written to the SQLite database")
@@ -810,6 +734,21 @@ class AsyncSQLiteWriter(multiprocessing.Process):
             if db is not None:
                 db.close()
 
+
+class DebugResultWriter(ResultWriter):
+    # extended img helper that will also write the result of frame - background
+    _imgHelperClass = ImgToMySQLDebugHelper
+     # every two seconds save a snapshot!
+    _period = 2
+    _description = {
+            "overview": "Only select this class if you are debugging the ethoscope",
+            "arguments": [
+                {"type": "number", "min": 0.0, "max": 300, "step":2, "name": "period", "description": "Time in between saved snapshots","default":2}
+            ]
+    }
+
+    def __init__(self, *args, period=2, **kwargs):
+        super().__init__(*args, period=period, **kwargs)
 
 
 class SQLiteResultWriter(ResultWriter):

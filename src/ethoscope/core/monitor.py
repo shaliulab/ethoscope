@@ -55,7 +55,11 @@ class Monitor(object):
             raise NotImplementedError("rois must exist (cannot be None)")
 
         if stimulators is None:
-            self._unit_trackers = [TrackingUnit(tracker_class, r, None, *args, **kwargs) for r in rois]
+            self._unit_trackers = []
+            for r in rois:
+                print(r._idx)
+                print(r._rectangle)
+                self._unit_trackers.append(TrackingUnit(tracker_class, r, None, *args, **kwargs))
 
         elif len(stimulators) == len(rois):
             self._unit_trackers = [TrackingUnit(tracker_class, r, inter, *args, **kwargs) for r, inter in zip(rois, stimulators)]
@@ -92,6 +96,18 @@ class Monitor(object):
         Interrupts the `run` method. This is meant to be called by another thread to stop monitoring externally.
         """
         self._force_stop = True
+
+    def flush(self, t, frame, frame_idx, result_writer=None, tracking_units=None):
+
+        if result_writer is not None:
+            if result_writer._imgHelperClass.__name__ == "ImgToMySQLHelper":
+                result_writer.flush(t, frame, frame_idx=frame_idx)
+            
+            elif result_writer._imgHelperClass.__name__ == "ImgToMySQLDebugHelper":
+                result_writer.flush(t, frame, tracking_units=tracking_units, frame_idx=frame_idx)
+
+        return 0
+
 
     def run(self, result_writer = None, drawer = None, quality_controller=None, M=None):
         """
@@ -153,9 +169,7 @@ class Monitor(object):
                         data_rows[0].append(frame_count)
                         result_writer.write(t, track_u.roi, data_rows)
 
-
-                if result_writer is not None:
-                    result_writer.flush(t, frame, frame_idx=i)
+                self.flush(t, frame, frame_idx=i, result_writer=result_writer, tracking_units=self._unit_trackers)
 
                 if drawer is not None:
                     drawer.draw(frame, tracking_units=self._unit_trackers, positions=self._last_positions)

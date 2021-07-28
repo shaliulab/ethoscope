@@ -97,6 +97,11 @@ class TrackingUnit(object):
 
         # TODO data_row should have some result
         for dr in data_rows:
-            dr.append(interact)
+            try:
+                iter(interact)
+                for i in interact:
+                    dr.append(i)
+            except TypeError:
+                dr.append(interact)
 
         return data_rows

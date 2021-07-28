@@ -273,6 +273,7 @@ class AdaptiveBGModel(BaseTracker):
         self._buff_object_old = None
         self._buff_grey_blurred = None
         self._buff_fg = None
+        self._foreground = None
         self._buff_convolved_mask = None
         self._buff_fg_backup = None
         self._buff_fg_diff = None
@@ -346,18 +347,12 @@ class AdaptiveBGModel(BaseTracker):
 
         mode = np.mean(list(self._smooth_mode))
         scale = 128. / mode
-
-        # cv2.GaussianBlur(self._buff_grey,(5,5), 1.5,self._buff_grey)
-
         cv2.multiply(self._buff_grey, scale, dst=self._buff_grey)
-
-
         cv2.bitwise_and(self._buff_grey, mask, self._buff_grey)
 
         cv2.blur(self._buff_grey, (blur_rad, blur_rad), self._buff_grey_blurred)
         #fixme could be optimised
         self._buff_grey_blurred = (self._buff_grey_blurred / self._buff_convolved_mask).astype(np.uint8)
-
 
         cv2.absdiff(self._buff_grey, self._buff_grey_blurred, self._buff_grey)
 
@@ -369,18 +364,11 @@ class AdaptiveBGModel(BaseTracker):
     def _find_position(self, img, mask, t):
 
         grey = self._pre_process_input_minimal(img, mask, t)
-        # cv2.imshow("grey", grey)
-        # cv2.waitKey(0)
-        # grey = self._pre_process_input(img, mask, t)
+
         try:
             points = self._track(img, grey, mask, t)
-            # print(points)
-            # cv2.imshow("img", img)
-
-
             return points
         except NoPositionError:
-            # logging.warning("Fly not found")
             self._bg_model.update(grey, t)
             raise NoPositionError
 
@@ -391,27 +379,14 @@ class AdaptiveBGModel(BaseTracker):
             self._buff_fg = np.empty_like(grey)
             self._buff_object = np.empty_like(grey)
             self._buff_fg_backup = np.empty_like(grey)
-  #          self._buff_fg_diff = np.empty_like(grey)
             self._old_pos = 0.0+0.0j
-   #         self._old_sum_fg = 0
-            # logging.warning("Background image is None")
             raise NoPositionError
 
         bg = self._bg_model.bg_img.astype(np.uint8)
         cv2.subtract(grey, bg, self._buff_fg)
-
-        summary = np.hstack([
-            grey,
-            cv2.threshold(self._buff_fg, 5, 255, cv2.THRESH_BINARY)[1]
-        ])
-        cv2.imwrite("/home/antortjim/summary_%s.png" % str(t).zfill(9), summary)
-
-        # import ipdb; ipdb.set_trace()
-
+        self._foreground = self._buff_fg.copy()
 
         cv2.threshold(self._buff_fg, 20, 255, cv2.THRESH_TOZERO, dst=self._buff_fg)
-        # cv2.imshow("threshold", self._buff_fg)
-
 
         hull, is_ambiguous = self.get_hull(img, t)
         self._update(img, grey, mask, t, hull, is_ambiguous)
