@@ -287,7 +287,6 @@ class RobustSleepDepriver(GearOptomotorSleepDepriver):
     _duration = 100
 
     def __init__(self, *args, **kwargs):
-        kwargs["chip"]=1
         super(RobustSleepDepriver, self).__init__(*args, **kwargs)
         self._roi_to_channel = {1:1, 3:3, 5:5, 7:7, 9:9, 12:11, 14:13, 16:15, 18:17, 20:19}
 
