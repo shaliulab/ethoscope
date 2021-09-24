@@ -17,6 +17,7 @@ from ethoscope.hardware.input.cameras import OurPiCameraAsync, MovieVirtualCamer
 from ethoscope.roi_builders.target_roi_builder import OlfactionAssayROIBuilder, FSLSleepMonitorWithTargetROIBuilder, SleepMonitorWithTargetROIBuilder, TargetGridROIBuilder, ElectricShockAssayROIBuilder
 from ethoscope.roi_builders.fsl_roi_builder import HighContrastTargetROIBuilder
 from ethoscope.roi_builders.manual_roi_builder import ManualROIBuilder
+from ethoscope.roi_builders.automatic_roi_builder import AutomaticROIBuilder 
 from ethoscope.roi_builders.roi_builders import  DefaultROIBuilder
 from ethoscope.core.monitor import Monitor
 from ethoscope.core.qc import QualityControl
@@ -77,7 +78,7 @@ class ControlThread(Thread):
     _evanescent = False
     _option_dict = {
         "roi_builder":{
-                "possible_classes":[FSLSleepMonitorWithTargetROIBuilder, SleepMonitorWithTargetROIBuilder, HighContrastTargetROIBuilder, ManualROIBuilder, DefaultROIBuilder, TargetGridROIBuilder, OlfactionAssayROIBuilder, ElectricShockAssayROIBuilder],
+                "possible_classes":[FSLSleepMonitorWithTargetROIBuilder, SleepMonitorWithTargetROIBuilder, HighContrastTargetROIBuilder, AutomaticROIBuilder, ManualROIBuilder, DefaultROIBuilder, TargetGridROIBuilder, OlfactionAssayROIBuilder, ElectricShockAssayROIBuilder],
             },
         "tracker":{
                 "possible_classes":[AdaptiveBGModel, RichAdaptiveBGModel],

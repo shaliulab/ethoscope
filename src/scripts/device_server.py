@@ -543,7 +543,7 @@ if __name__ == '__main__':
 
         while address is False:
             try:
-                #address = socket.gethostbyname(hostname+".local")
+                address = socket.gethostbyname(hostname+".local")
                 if ADDRESS is None or ADDRESS == "auto":
                     address = socket.gethostbyname(hostname)
                 else:

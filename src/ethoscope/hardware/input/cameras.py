@@ -7,6 +7,7 @@ import os
 import re
 import datetime
 import threading
+import traceback
 
 try:
     from cv2.cv import CV_CAP_PROP_FRAME_WIDTH as CAP_PROP_FRAME_WIDTH
@@ -512,9 +513,9 @@ class PiFrameGrabber(threading.Thread):
             import picamera
             import picamera.array
 
+            logging.warning("resolution")
+            logging.warning(self._target_resolution)
             with init_camera(resolution=self._target_resolution, framerate=self._target_fps) as capture:
-            #with picamera.PiCamera() as capture:
-
                 #capture.resolution = self._target_resolution
                 camera_info = capture.exif_tags
                 logging.info("Detected camera %s: " % camera_info)
@@ -533,6 +534,10 @@ class PiFrameGrabber(threading.Thread):
                     capture.awb_mode = 'off'
                     capture.awb_gains = (1.8, 1.5) #TODO: allow user-specified gains
                     logging.info("piNoIR v2 detected - using custom awb parameters")
+                elif camera_info['IFD0.Model'] == "RP_imx477":
+                    capture.awb_mode = 'off'
+                    capture.awb_gains = (1.8, 1.5) #TODO: allow user-specified gains
+                    logging.info("HQ camera detected - using greyworld awb mode")
                 else:
                     # we are disabling auto white balance for IMX219
                     capture.awb_mode = 'auto'
@@ -542,18 +547,26 @@ class PiFrameGrabber(threading.Thread):
                 with open('/etc/picamera-version', 'w') as outfile:
                     print(camera_info, file=outfile)
 
+
+                logging.warning("Initialising stream")
                 stream = picamera.array.PiRGBArray(capture, size=self._target_resolution)
                 time.sleep(0.2) # sleep 200ms to allow the camera to warm up
 
                 for frame in capture.capture_continuous(stream, format="bgr", use_video_port=True):
 
+
                     #This syntax changed from picamera > 1.7    - see https://picamera.readthedocs.io/en/release-1.10/deprecated.html
+                    logging.warning("Truncating stream")
                     stream.seek(0)
                     stream.truncate()
                     # out = np.copy(frame.array)
+
+                    logging.warning("Grabbing frame")
                     out = cv2.cvtColor(frame.array,cv2.COLOR_BGR2GRAY)
+                    cv2.imwrite("/root/from_camera.png", out)
                     #fixme here we could actually pass a JPG compressed file object (http://docs.scipy.org/doc/scipy-0.16.0/reference/generated/scipy.misc.imsave.html)
                     # This way, we would manage to get faster FPS
+                    logging.warning("Putting frame")
                     self._queue.put(out)
 
                     if not self._stop_queue.empty():
@@ -562,7 +575,9 @@ class PiFrameGrabber(threading.Thread):
                         self._stop_queue.task_done()
                         break
 
-        except:
+        except Exception as error:
+            logging.error(error)
+            logging.error(traceback.print_exc())
             logging.warning("Some problem acquiring frames from the camera")
 
         finally:
@@ -665,6 +680,7 @@ class DualPiFrameGrabber(PiFrameGrabber):
                     try:
 
                         for frame in capture.capture_continuous(raw_capture, format="bgr", use_video_port=True):
+
     
                             try:
                                 gain, sign = self._exposure_queue.get(block=False)
@@ -710,6 +726,7 @@ class DualPiFrameGrabber(PiFrameGrabber):
     
                             # out = np.copy(frame.array)
                             out = cv2.cvtColor(frame.array,cv2.COLOR_BGR2GRAY)
+                            cv2.imwrite("/root/from_camera.png", out)
                             #fixme here we could actually pass a JPG compressed file object (http://docs.scipy.org/doc/scipy-0.16.0/reference/generated/scipy.misc.imsave.html)
                             # This way, we would manage to get faster FPS
                             self._queue.put(out)
@@ -748,7 +765,7 @@ class OurPiCameraAsync(BaseCamera):
 
 
     _frame_grabber_class = PiFrameGrabber
-    def __init__(self, target_fps=20, target_resolution=(1280, 960), *args, **kwargs):
+    def __init__(self, target_fps=20, target_resolution=None, *args, **kwargs):
         """
         Class to acquire frames from the raspberry pi camera asynchronously.
         At the moment, frames are only greyscale images.
@@ -760,6 +777,17 @@ class OurPiCameraAsync(BaseCamera):
         :param kwargs: additional keyword arguments
         """
         self.canbepickled = True #cv2.videocapture object cannot be serialized, hence cannot be picked
+
+        if target_resolution is None:
+            import picamera
+            with picamera.PiCamera() as capture: exif_tags = capture.exif_tags
+
+            if exif_tags['IFD0.Model'] == "RP_imx477":
+                target_resolution = (1280, 960)
+            else:
+                target_resolution = (1280, 960)
+
+
 
         w,h = target_resolution
         if not isinstance(target_fps, int):

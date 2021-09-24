@@ -26,26 +26,30 @@ from ethoscope.roi_builders.helpers import *
 
 NROIS = 20
 
-class ManualROIBuilder(BaseROIBuilder):
+class AutomaticROIBuilder(BaseROIBuilder):
 
 
     _description = {"overview": "A flmanual exible ROI builder that allows users to enter directly the coordinates of the ROIs",
-                    "arguments": [{"type": "str", "name": f"ROI_{i}", "description": f"Coordinates of ROI {i}. Example (1,1), (2,2), (3,3), (4,4). Four coordinates must be passed", "default":""} for i in range(1, NROIS+1)]}
+            "arguments": [
+                {"type": "str", "name": "top_left", "description": "Coordinates of top left corner. Example: (0, 0).", "default":"(0,0)"},
+                {"type": "number", "name": "roi_width", "description": "Width of ROIs", "default": 978}, 
+                {"type": "number", "name": "roi_height", "description": "Height of ROIs", "default": 86}, 
+                {"type": "number", "name": "roi_offset", "description": "Vertical displacement of ROIs", "default": 110}, 
+                {"type": "number", "name": "nrois", "description": "Number of ROIs", "default": 9}, 
+                ]}
 
     def __init__(self, args,  kwargs):
 
         self._coordinates = []
-        for i in range(1, NROIS+1):
-            key = f"ROI_{i}"
-            logging.warning(key)
-            data = kwargs.pop(key, "")
-            logging.warning(data)
-            self._coordinates.append(data)
-
-        self._coordinates  = ["(232, 50), (1210, 50),(1210, 134), (232, 134)"]
-
+        nrois = kwargs.pop("nrois")
+        width = kwargs.pop("roi_width")
+        height = kwargs.pop("roi_height")
+        offset = kwargs.pop("offset")
+        top_left = kwargs.pop("top_left")
+        tl = eval(top_left)
+        self._coordinates = [f"({tl[0]}, {tl[1] + offset*i}), ({tl[0]+width}, {tl[1] + offset*i}),({tl[0]+width}, {tl[1]+height + offset*i}), ({tl[0]}, {tl[1]+height + offset*i})" for i in range(nrois)]
         logging.warning(self._coordinates)
-        super(ManualROIBuilder, self).__init__()
+        super(AutomaticROIBuilder, self).__init__()
 
     def build(self, cam):
 
@@ -64,6 +68,9 @@ class ManualROIBuilder(BaseROIBuilder):
                 idx += 1
                 continue
             cnt = np.array(coord).reshape(4,1,2)
+            width, height = cam.resolution
+            cnt[:, :, 0] = np.array([[width, ] * 4, cnt[:,:,0]]).min(axis=0)
+            cnt[:, :, 1] = np.array([[height, ] * 4, cnt[:,:,1]]).min(axis=0)
             rois.append(ROI(cnt, idx))
             idx +=1
 

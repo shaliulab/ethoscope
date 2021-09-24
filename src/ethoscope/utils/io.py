@@ -70,8 +70,8 @@ class AsyncMySQLWriter(multiprocessing.Process):
         c.execute(command)
 
         # we remove bin logs to save space!
-        command = "RESET MASTER"
-        c.execute(command)
+        #command = "RESET MASTER"
+        #c.execute(command)
 
         to_execute = []
         # for t in c:
@@ -463,7 +463,7 @@ class ResultWriter(object):
 
 
         logging.info("Creating 'METADATA' table")
-        self._create_table("METADATA", "field CHAR(100), value VARCHAR(4000)")
+        self._create_table("METADATA", "field CHAR(100), value VARCHAR(6000)")
 
         logging.info("Creating 'START_EVENTS' table")
         self._create_table("START_EVENTS", "id INT  NOT NULL AUTO_INCREMENT PRIMARY KEY, t INT, event CHAR(100)")

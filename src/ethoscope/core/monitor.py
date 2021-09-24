@@ -123,6 +123,7 @@ class Monitor(object):
             logging.info("Monitor starting a run")
             for x in self._camera:
                 i, (t, frame) = x
+                cv2.imwrite("/root/from_monitor.png", frame)
                 img = drawer.draw(frame, tracking_units=self._unit_trackers, positions=None)
                 roi_builder_output_path = os.path.join('/root', "roi_builder_output.png")
                 logging.info(f"Saving roi builder result to {roi_builder_output_path}")
