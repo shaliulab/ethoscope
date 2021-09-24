@@ -241,13 +241,12 @@ class GearOptomotorSleepDepriver(OptomotorSleepDepriver):
     Exactly the same as OptomotorSleepDepriver with the difference that the default
     pulse_duration both via CLI and GUI is now 2000 ms and not 1000 ms
     """
-    _description = {"overview": "A stimulator to sleep deprive an animal using gear motors. See https://github.com/gilestrolab/ethoscope_hardware/tree/master/modules/gear_motor_sleep_depriver",
+    _description = {"overview": "A stimulator to sleep deprive an animal using gear motors. See https://github.com/gilestrolab/ethoscope_hardware/tree/master/modules/gear_motor_sleep_depriver . NOTE: Use this class if you are using a SD module usig the Adafruit TLC5947 chip",
                 "arguments": [
                     {"type": "number", "min": 0.0, "max": 1.0, "step": 0.0001, "name": "velocity_correction_coef", "description": "Velocity correction coef", "default": 0.01},
                                 {"type": "number", "min": 1, "max": 3600*12, "step":1, "name": "min_inactive_time", "description": "The minimal time after which an inactive animal is awaken(s)","default":10},
                                 {"type": "number", "min": 500, "max": 10000 , "step": 50, "name": "pulse_duration", "description": "For how long to deliver the stimulus(ms)", "default": 2000},
                                 {"type": "number", "min": 0, "max": 1000, "step": 1, "name": "pulse_intensity",  "description": "intensity of stimulus 0-1000", "default": 1000},
-                                {"type": "number", "min": 0, "max": 1, "step": 1, "name": "chip",  "description": "chip for this stimulator. 0: TL5947, 1: Darlington array", "default": 0},
                                 {"type": "date_range", "name": "date_range",
                                  "description": "A date and time range in which the device will perform (see http://tinyurl.com/jv7k826)",
                                  "default": ""}
@@ -257,7 +256,7 @@ class GearOptomotorSleepDepriver(OptomotorSleepDepriver):
     _duration = 2000
 
 
-    def __init__(self, *args, chip, **kwargs):
+    def __init__(self, *args, **kwargs):
 
         # if the user provided a duration, use that one
         if "pulse_duration" in kwargs:
@@ -267,27 +266,18 @@ class GearOptomotorSleepDepriver(OptomotorSleepDepriver):
             kwargs["pulse_duration"] = self._duration
 
         super(GearOptomotorSleepDepriver, self).__init__(*args, **kwargs)
-        if chip == 0:
-            self._roi_to_channel = {1:0, 3:2, 5:4, 7:6, 9:8,
-                                    12:22, 14:20, 16:18, 18:16, 20:14}
-        elif chip == 1:
-            self._roi_to_channel = {1:1, 3:3, 5:5, 7:7, 9:9, 12:11, 14:13, 16:15, 18:17, 20:19}
-
-        else:
-            raise Exception("Invalid chip. Please provide either 0 (TL5947) or 1 (Darlington array)")
-     
-
+        self._roi_to_channel = {1:0, 3:2, 5:4, 7:6, 9:8,
+                                12:22, 14:20, 16:18, 18:16, 20:14}
 
 class RobustSleepDepriver(GearOptomotorSleepDepriver):
     """
-    Sleep depriver using new PCB from Giorgio Gilestro and dedicated PSU with 300 RPM motors
+    Sleep depriver using new PCB from Giorgio Gilestro.
     """
-    _description = {"overview": "A stimulator to sleep deprive an animal using gear motors. See https://github.com/gilestrolab/ethoscope_hardware/tree/master/modules/gear_motor_sleep_depriver",
+    _description = {"overview": "A stimulator to sleep deprive an animal using gear motors. See https://github.com/gilestrolab/ethoscope_hardware/tree/master/modules/gear_motor_sleep_depriver. NOTE: Use  this class if you are using a SD module using the new PCB (Printed Circuit Board)",
                 "arguments": [
                     {"type": "number", "min": 0.0, "max": 1.0, "step": 0.0001, "name": "velocity_correction_coef", "description": "Velocity correction coef", "default": 0.01},
                                 {"type": "number", "min": 1, "max": 3600*12, "step":1, "name": "min_inactive_time", "description": "The minimal time after which an inactive animal is awaken(s)","default":10},
-                                {"type": "number", "min": 10, "max": 10000 , "step": 10, "name": "pulse_duration", "description": "For how long to deliver the stimulus(ms)", "default": 100},
-                                #{"type": "number", "min": 0, "max": 1, "step": 1, "name": "chip",  "description": "chip for this stimulator. 0: TL5947, 1: Darlington array", "default": 1},
+                                {"type": "number", "min": 10, "max": 10000 , "step": 10, "name": "pulse_duration", "description": "For how long to deliver the stimulus(ms)", "default": 1000},
                                 {"type": "str", "name": "date_range",
                                  "description": "A date and time range in which the device will perform (see http://tinyurl.com/jv7k826)",
                                  "default": ""}
@@ -297,7 +287,6 @@ class RobustSleepDepriver(GearOptomotorSleepDepriver):
     _duration = 100
 
     def __init__(self, *args, **kwargs):
-        kwargs["chip"]=1
         super(RobustSleepDepriver, self).__init__(*args, **kwargs)
         self._roi_to_channel = {1:1, 3:3, 5:5, 7:7, 9:9, 12:11, 14:13, 16:15, 18:17, 20:19}
 
@@ -358,25 +347,18 @@ class MiddleCrossingStimulator(BaseStimulator):
                     "arguments": [
                                     {"type": "number", "min": 0.0, "max": 1.0, "step":0.01, "name": "p", "description": "the probability to move the tube when a beam cross was detected","default":1.0},
                                     {"type": "number", "min": 0.0, "max": 300.0, "step":1.0, "name": "refractory_period", "description": "the minimum time between stimuli in seconds","default": 5.0},
-                                    {"type": "date_range", "name": "date_range",
-                                     "description": "A date and time range in which the device will perform (see http://tinyurl.com/jv7k826)",
-                                     "default": ""}
+                                    {"type": "date_range", "name": "date_range", "description": "A date and time range in which the device will perform (see http://tinyurl.com/jv7k826)", "default": ""},
+                                    {"type": "number", "min": 0, "max": 1, "step": 1, "name": "chip",  "description": "chip for this stimulator. 0: TL5947, 1: Darlington array. Please make sure you chose the right one!", "default": 1}
                                    ]}
 
     _HardwareInterfaceClass = OptoMotor
-#    _roi_to_channel = {
-#            1:0,  3:2,  5:3,  7:4,  9:5,
-#            12:6, 14:7, 16:8, 18:9, 20:10
-#        }
-    _roi_to_channel = {1:0, 3:2, 5:4, 7:6, 9:8,
-                        12:22, 14:20, 16:18, 18:16, 20:14}
-
     _pulse_duration = 1000 #ms
 
     def __init__(self,
                  hardware_connection,
                  p=1.0,
                  refractory_period=5.0,
+                 chip=1,
                  date_range=""
                  ):
         """
@@ -388,6 +370,16 @@ class MiddleCrossingStimulator(BaseStimulator):
         :type p: float
         :return:
         """
+
+        if chip == 1:
+            self._roi_to_channel = {1:1, 3:3, 5:5, 7:7, 9:9,
+                       12:11, 14:13, 16:15, 18:17, 20:19}
+ 
+        elif chip == 0:
+            self._roi_to_channel = {1:0, 3:2, 5:4, 7:6, 9:8,
+                       12:22, 14:20, 16:18, 18:16, 20:14}
+            
+
 
         self._last_stimulus_time = 0
         self._p = p

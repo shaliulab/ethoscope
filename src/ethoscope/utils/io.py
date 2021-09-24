@@ -743,11 +743,11 @@ class DebugResultWriter(ResultWriter):
     _description = {
             "overview": "Only select this class if you are debugging the ethoscope",
             "arguments": [
-                {"type": "number", "min": 0.0, "max": 300, "step":2, "name": "period", "description": "Time in between saved snapshots","default":2}
+                {"type": "number", "min": 0.0, "max": 300, "step":2, "name": "period", "description": "Time in between saved snapshots","default":10}
             ]
     }
 
-    def __init__(self, *args, period=2, **kwargs):
+    def __init__(self, *args, period=10, **kwargs):
         super().__init__(*args, period=period, **kwargs)
 
 
