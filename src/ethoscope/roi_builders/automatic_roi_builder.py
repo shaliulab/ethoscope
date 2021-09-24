@@ -44,7 +44,7 @@ class AutomaticROIBuilder(BaseROIBuilder):
         nrois = kwargs.pop("nrois")
         width = kwargs.pop("roi_width")
         height = kwargs.pop("roi_height")
-        offset = kwargs.pop("offset")
+        offset = kwargs.pop("roi_offset")
         top_left = kwargs.pop("top_left")
         tl = eval(top_left)
         self._coordinates = [f"({tl[0]}, {tl[1] + offset*i}), ({tl[0]+width}, {tl[1] + offset*i}),({tl[0]+width}, {tl[1]+height + offset*i}), ({tl[0]}, {tl[1]+height + offset*i})" for i in range(nrois)]
