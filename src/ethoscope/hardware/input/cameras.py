@@ -469,6 +469,8 @@ class V4L2Camera(BaseCamera):
 
 class PiFrameGrabber(threading.Thread):
 
+    _VIDEO_PORT=True
+
     def __init__(self, target_fps, target_resolution, queue, stop_queue, *args, **kwargs):
         """
         Class to grab frames from pi camera. Designed to be used within :class:`~ethoscope.hardware.camreras.camreras.OurPiCameraAsync`
@@ -552,7 +554,7 @@ class PiFrameGrabber(threading.Thread):
                 stream = picamera.array.PiRGBArray(capture, size=self._target_resolution)
                 time.sleep(0.2) # sleep 200ms to allow the camera to warm up
 
-                for frame in capture.capture_continuous(stream, format="bgr", use_video_port=True):
+                for frame in capture.capture_continuous(stream, format="bgr", use_video_port=self._VIDEO_PORT):
 
 
                     #This syntax changed from picamera > 1.7    - see https://picamera.readthedocs.io/en/release-1.10/deprecated.html
@@ -583,6 +585,10 @@ class PiFrameGrabber(threading.Thread):
         finally:
             self._queue.task_done() # this tell the parent the thread can be closed
             logging.warning("Camera Frame grabber stopped acquisition cleanly")
+
+
+class HRPiFrameGrabber(PiFrameGrabber):
+    _VIDEO_PORT = False
 
 class DualPiFrameGrabber(PiFrameGrabber):
 
@@ -888,6 +894,17 @@ class OurPiCameraAsync(BaseCamera):
 
         except Exception as e:
             raise EthoscopeException("Could not get frame from camera\n%s", traceback.format_exc())
+
+
+class HRPiCameraAsync(OurPiCameraAsync):
+    _frame_grabber_class = HRPiFrameGrabber
+    _description = {"overview": "A class that uses the HRPiFrameGrabber to exploit the increased resolution in the RPi HQ camera",
+                    "arguments": []}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, target_resolution = (4056, 3040), **kwargs)
+
+
 
 
 class FSLPiCameraAsync(OurPiCameraAsync):

@@ -13,7 +13,7 @@ import pickle
 import secrets
 
 import trace
-from ethoscope.hardware.input.cameras import OurPiCameraAsync, MovieVirtualCamera, DummyPiCameraAsync, V4L2Camera, FSLVirtualCamera, FSLPiCameraAsync
+from ethoscope.hardware.input.cameras import OurPiCameraAsync, MovieVirtualCamera, DummyPiCameraAsync, V4L2Camera, FSLVirtualCamera, FSLPiCameraAsync, HRPiCameraAsync
 from ethoscope.roi_builders.target_roi_builder import OlfactionAssayROIBuilder, FSLSleepMonitorWithTargetROIBuilder, SleepMonitorWithTargetROIBuilder, TargetGridROIBuilder, ElectricShockAssayROIBuilder
 from ethoscope.roi_builders.fsl_roi_builder import HighContrastTargetROIBuilder
 from ethoscope.roi_builders.manual_roi_builder import ManualROIBuilder
@@ -78,10 +78,10 @@ class ControlThread(Thread):
     _evanescent = False
     _option_dict = {
         "roi_builder":{
-                "possible_classes":[FSLSleepMonitorWithTargetROIBuilder, SleepMonitorWithTargetROIBuilder, HighContrastTargetROIBuilder, AutomaticROIBuilder, ManualROIBuilder, DefaultROIBuilder, TargetGridROIBuilder, OlfactionAssayROIBuilder, ElectricShockAssayROIBuilder],
+                "possible_classes":[AutomaticROIBuilder, FSLSleepMonitorWithTargetROIBuilder, SleepMonitorWithTargetROIBuilder, HighContrastTargetROIBuilder, ManualROIBuilder, DefaultROIBuilder, TargetGridROIBuilder, OlfactionAssayROIBuilder, ElectricShockAssayROIBuilder],
             },
         "tracker":{
-                "possible_classes":[AdaptiveBGModel, RichAdaptiveBGModel],
+                "possible_classes":[RichAdaptiveBGModel, AdaptiveBGModel],
             },
         "interactor":{
                         "possible_classes":[DefaultStimulator,
@@ -108,7 +108,7 @@ class ControlThread(Thread):
                         "possible_classes":[DefaultDrawer, NullDrawer],
                     },
         "camera":{
-                        "possible_classes":[FSLPiCameraAsync, OurPiCameraAsync, MovieVirtualCamera, DummyPiCameraAsync, V4L2Camera, FSLVirtualCamera],
+                        "possible_classes":[OurPiCameraAsync, HRPiCameraAsync, FSLPiCameraAsync, MovieVirtualCamera, DummyPiCameraAsync, V4L2Camera, FSLVirtualCamera],
                     },
         "result_writer":{
                         "possible_classes":[ResultWriter, DebugResultWriter, SQLiteResultWriter],
