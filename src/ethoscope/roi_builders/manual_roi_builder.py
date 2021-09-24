@@ -34,7 +34,7 @@ class ManualROIBuilder(BaseROIBuilder):
 
     def __init__(self, *args,  **kwargs):
         self._coordinates = [kwargs.pop(f"ROI_{i}", "") for i in range(1, NROIS+1)]
-        super(ManualROIBuilder).__init__(*args,  **kwargs)
+        super(ManualROIBuilder, self).__init__(*args,  **kwargs)
 
     def build(self, img):
 
