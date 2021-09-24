@@ -34,7 +34,7 @@ class AutomaticROIBuilder(BaseROIBuilder):
                 {"type": "str", "name": "top_left", "description": "Coordinates of top left corner. Example: (0, 0).", "default":"(0,0)"},
                 {"type": "number", "name": "roi_width", "description": "Width of ROIs", "default": 978}, 
                 {"type": "number", "name": "roi_height", "description": "Height of ROIs", "default": 86}, 
-                {"type": "number", "name": "roi_offset", "description": "Vertical displacement of ROIs", "default": 110}, 
+                {"type": "number", "name": "roi_offset", "description": "Vertical displacement of ROIs", "default": 105}, 
                 {"type": "number", "name": "nrois", "description": "Number of ROIs", "default": 9}, 
                 ]}
 
@@ -67,10 +67,20 @@ class AutomaticROIBuilder(BaseROIBuilder):
             if len(coord) != 4:
                 idx += 1
                 continue
-            cnt = np.array(coord).reshape(4,1,2)
+            cnt = np.array(coord)
             width, height = cam.resolution
-            cnt[:, :, 0] = np.array([[width, ] * 4, cnt[:,:,0]]).min(axis=0)
-            cnt[:, :, 1] = np.array([[height, ] * 4, cnt[:,:,1]]).min(axis=0)
+            width -= 5
+            height -= 5
+            logging.warning(cam.resolution)
+            #cnt[:, :, 0] = np.array([[width, ] * 4, cnt[:,:,0]]).min(axis=0).reshape((4,1))
+            y = np.array([[height,] * 4, cnt[:,1]]).min(axis=0)
+            x = np.array([[width,] * 4, cnt[:,0]]).min(axis=0)
+            logging.warning(x)
+            logging.warning(x.shape)
+            cnt[:, 0] =  x
+            cnt[:, 1] =  y
+            cnt=cnt.reshape((4,1,2))
+            logging.warning(cnt)
             rois.append(ROI(cnt, idx))
             idx +=1
 
