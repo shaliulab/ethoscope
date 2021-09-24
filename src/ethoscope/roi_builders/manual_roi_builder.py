@@ -32,8 +32,8 @@ class ManualROIBuilder(BaseROIBuilder):
     _description = {"overview": "A flmanual exible ROI builder that allows users to enter directly the coordinates of the ROIs",
                     "arguments": [{"type": "str", "name": f"ROI_{i}", "description": f"Coordinates of ROI {i}. Example (1,1), (2,2), (3,3), (4,4). Four coordinates must be passed", "default":""} for i in range(1, NROIS+1)]}
 
-    def __init__(self, coordinates, *args,  **kwargs):
-        self._coordinates = coordinates
+    def __init__(self, *args,  **kwargs):
+        self._coordinates = [kwargs.pop(f"ROI_{i}", "") for i in range(1, NROIS+1)]
         super(ManualROIBuilder).__init__(*args,  **kwargs)
 
     def build(self, img):
