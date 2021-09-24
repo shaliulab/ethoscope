@@ -155,7 +155,7 @@ void help(){
 void demo(){
     //demo mode - activate all pins consecutively
     for (int i = 0; i <= 19; i++) {
-       activate (pins[i], 500);
+       activate(i, 500);
        Serial.print("P");
        Serial.print(" ");
        Serial.print(pins[i]);
