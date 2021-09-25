@@ -230,7 +230,7 @@ class RichAdaptiveBGModel(AdaptiveBGModel):
         w_im = max(shape)
         self._null_dist = round(np.log10(1. / float(w_im)) * 1000)
 
-        datapoints = super()._track(*args, **kwargs)
+        datapoints = super()._track(img, *args, **kwargs)
         self.old_datapoints = datapoints
 
         return datapoints
