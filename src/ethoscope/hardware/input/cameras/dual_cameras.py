@@ -22,10 +22,8 @@ import multiprocessing
 import traceback
 import queue
 
-from ethoscope.hardware.input.camera_settings import configure_camera
-
-
-from .cameras import PiFrameGrabber
+from .camera_settings import configure_camera
+from .cameras import OurPiCameraAsync, PiFrameGrabber
 
 
 class DualPiFrameGrabber(PiFrameGrabber):
