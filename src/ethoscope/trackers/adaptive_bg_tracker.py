@@ -314,10 +314,10 @@ class AdaptiveBGModel(BaseTracker):
 
 
         if mask is not None:
-            logging.warning("LOOK HERE")
-            logging.warning(mask.shape)
-            logging.warning(mask.dtype)
-            logging.warning(self._buff_grey.shape)
+            #logging.warning("LOOK HERE")
+            #logging.warning(mask.shape)
+            #logging.warning(mask.dtype)
+            #logging.warning(self._buff_grey.shape)
 
             cv2.bitwise_and(self._buff_grey, mask, self._buff_grey)
             return self._buff_grey
