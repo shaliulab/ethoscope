@@ -31,7 +31,7 @@ class AutomaticROIBuilder(BaseROIBuilder):
 
     _description = {"overview": "A flmanual exible ROI builder that allows users to enter directly the coordinates of the ROIs",
             "arguments": [
-                {"type": "str", "name": "top_left", "description": "Coordinates of top left corner. Example: (0, 0).", "default":"(0,0)"},
+                {"type": "str", "name": "top_left", "description": "Coordinates of top left corner. Example: (0, 0).", "default":"(232, 50)"},
                 {"type": "number", "name": "roi_width", "description": "Width of ROIs", "default": 978}, 
                 {"type": "number", "name": "roi_height", "description": "Height of ROIs", "default": 86}, 
                 {"type": "number", "name": "roi_offset", "description": "Vertical displacement of ROIs", "default": 105}, 

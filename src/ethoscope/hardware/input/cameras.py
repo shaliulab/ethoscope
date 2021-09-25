@@ -565,7 +565,6 @@ class PiFrameGrabber(threading.Thread):
 
                     logging.warning("Grabbing frame")
                     out = cv2.cvtColor(frame.array,cv2.COLOR_BGR2GRAY)
-                    cv2.imwrite("/root/from_camera.png", out)
                     #fixme here we could actually pass a JPG compressed file object (http://docs.scipy.org/doc/scipy-0.16.0/reference/generated/scipy.misc.imsave.html)
                     # This way, we would manage to get faster FPS
                     logging.warning("Putting frame")
@@ -732,7 +731,6 @@ class DualPiFrameGrabber(PiFrameGrabber):
     
                             # out = np.copy(frame.array)
                             out = cv2.cvtColor(frame.array,cv2.COLOR_BGR2GRAY)
-                            cv2.imwrite("/root/from_camera.png", out)
                             #fixme here we could actually pass a JPG compressed file object (http://docs.scipy.org/doc/scipy-0.16.0/reference/generated/scipy.misc.imsave.html)
                             # This way, we would manage to get faster FPS
                             self._queue.put(out)

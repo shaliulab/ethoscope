@@ -59,6 +59,7 @@ class RichAdaptiveBGModel(AdaptiveBGModel):
         self.old_datapoints = None
         self._old_ellipse = None
         self._debug = debug == "TRUE"
+        #self._debug = True
 
     # def _get_coordinates_of_parts(self, foreground):
     #     """
@@ -153,7 +154,7 @@ class RichAdaptiveBGModel(AdaptiveBGModel):
         # otherwise just return the null movements,
         # defined as 1 / number of pixels on x dimension
         if self.old_foreground is not None:
-            new_foreground = self._buff_fg_backup
+            new_foreground = self._original_gray
 
             # get the old and new coordinates of both parts
 
@@ -178,7 +179,7 @@ class RichAdaptiveBGModel(AdaptiveBGModel):
                     logging.warning(diff_segmented.shape)
                     cv2.putText(diff_segmented, str(diff_count).zfill(3), (int(diff_segmented.shape[1] * 0.7), 20),  cv2.FONT_HERSHEY_COMPLEX_SMALL, 1, 255)
                     cv2.imwrite(
-                        "/tmp/last_grey_diff_ROI_%s_t%s.png" % (str(self._roi.idx).zfill(2), self._last_time_point),
+                        "/tmp/last_grey_diff_ROI_%s_t%s.png" % (str(self._roi.idx).zfill(2), str(self._last_time_point).zfill(10)),
                         np.vstack([
                             np.hstack([old_body[part], new_body[part]]),
                             np.hstack([diff, np.zeros_like(diff)]),

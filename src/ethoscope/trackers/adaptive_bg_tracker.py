@@ -260,6 +260,7 @@ class AdaptiveBGModel(BaseTracker):
         self._previous_shape = None
         self._object_expected_size = 0.05 # proportion of the roi main axis
         self._max_area = (5 * self._object_expected_size) ** 2
+        self._roi = roi
 
         self._smooth_mode = deque()
         self._smooth_mode_tstamp = deque()
@@ -276,6 +277,7 @@ class AdaptiveBGModel(BaseTracker):
         self._foreground = None
         self._buff_convolved_mask = None
         self._buff_fg_backup = None
+        self._original_gray = None
         self._buff_fg_diff = None
         self._old_sum_fg = 0
         self.live_tracking = True
@@ -283,7 +285,7 @@ class AdaptiveBGModel(BaseTracker):
 
         super(AdaptiveBGModel, self).__init__(roi, data)
 
-    def _pre_process_input_minimal(self, img, mask, t, darker_fg=True):
+    def _pre_process_input_minimal(self, img, mask, t, darker_fg=True, factor=1):
         blur_rad = int(self._object_expected_size * np.max(img.shape) / 2.0)
 
         if blur_rad % 2 == 0:
@@ -295,7 +297,13 @@ class AdaptiveBGModel(BaseTracker):
                 mask = np.ones_like(self._buff_grey) * 255
 
         cv2.cvtColor(img, cv2.COLOR_BGR2GRAY, self._buff_grey)
-        # cv2.imshow("dbg",self._buff_grey)
+        self._gray_original = self._buff_grey.copy()
+
+        dim =tuple((np.array(self._buff_grey.shape) * factor).tolist())
+        dim = tuple([int(e) for e in dim])
+        self._buff_grey = cv2.resize(self._buff_grey, dim, cv2.INTER_AREA)
+        mask = cv2.resize(mask, dim, cv2.INTER_AREA)
+
         cv2.GaussianBlur(self._buff_grey, (blur_rad, blur_rad), 1.2, self._buff_grey)
         if darker_fg:
             cv2.subtract(255, self._buff_grey, self._buff_grey)
@@ -366,10 +374,18 @@ class AdaptiveBGModel(BaseTracker):
 
     def _find_position(self, img, mask, t):
 
-        grey = self._pre_process_input_minimal(img, mask, t)
+        grey = self._pre_process_input_minimal(img, mask, t, factor=0.25)
+        dim = self._buff_grey.shape[:2][::-1]
+        img_small = cv2.resize(img, dim, cv2.INTER_AREA)
+        mask_small = cv2.resize(mask, dim, cv2.INTER_AREA)
+        logging.warning("##### 1")
+        logging.warning(img_small.shape)
+        logging.warning(grey.shape)
+        logging.warning(mask_small.shape)
+        logging.warning("#####")
 
         try:
-            points = self._track(img, grey, mask, t)
+            points = self._track(img_small, grey, mask_small, t)
             return points
         except NoPositionError:
             self._bg_model.update(grey, t)
@@ -382,12 +398,23 @@ class AdaptiveBGModel(BaseTracker):
             self._buff_fg = np.empty_like(grey)
             self._buff_object = np.empty_like(grey)
             self._buff_fg_backup = np.empty_like(grey)
+            self._original_gray = np.empty_like(grey)
             self._old_pos = 0.0+0.0j
             raise NoPositionError
 
         bg = self._bg_model.bg_img.astype(np.uint8)
+
+        logging.warning("##### 2")
+        logging.warning(grey.shape)
+        logging.warning(bg.shape)
+        logging.warning(self._buff_fg.shape)
+        logging.warning("#####")
         cv2.subtract(grey, bg, self._buff_fg)
         self._foreground = self._buff_fg.copy()
+
+
+        if self._debug and self._roi.idx == 1:
+            cv2.imwrite(f"/tmp/foreground_{str(t).zfill(10)}.png", self._foreground)
 
         cv2.threshold(self._buff_fg, 20, 255, cv2.THRESH_TOZERO, dst=self._buff_fg)
 
@@ -399,6 +426,9 @@ class AdaptiveBGModel(BaseTracker):
 
         n_fg_pix = np.count_nonzero(self._buff_fg)
         prop_fg_pix = n_fg_pix / float(np.prod(self._buff_fg.shape))
+
+        logging.warning(prop_fg_pix)
+        logging.warning(self._max_area)
 
         if  prop_fg_pix > self._max_area:
             self._bg_model.increase_learning_rate()
@@ -521,6 +551,7 @@ class AdaptiveBGModel(BaseTracker):
         # TODO center mass just on the ellipse area
         cv2.bitwise_and(self._buff_fg_backup, self._buff_fg, self._buff_fg_backup)
         cv2.bitwise_and(self._buff_fg_backup, self.ellipse, self._buff_fg_backup)
+        cv2.bitwise_and(self._gray_original, self.ellipse, self._gray_original)
 
         y, x = ndimage.measurements.center_of_mass(self._buff_fg_backup)
         pos = x +1.0j * y
