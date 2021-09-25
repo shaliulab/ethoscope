@@ -1,6 +1,10 @@
 __author__ = 'quentin'
 
 from collections import deque
+import logging
+
+import numpy as np
+import cv2
 
 from ethoscope.utils.description  import DescribedObject
 from ethoscope.core.variables import *
@@ -46,10 +50,12 @@ class BaseTracker(DescribedObject):
         dim = tuple([int(e * factor) for e in dim])
         img_resized = cv2.resize(img, dim, cv2.INTER_AREA)
         result = [img_resized, ]
+        #logging.warning("Length of args")
+        #logging.warning(len(args))
 
         for arg in args:
-            if isinstance(arg, np.array):
-                arg_resized = cv2.resize(img, dim, cv2.INTER_AREA)
+            if isinstance(arg, np.ndarray):
+                arg_resized = np.uint8(cv2.resize(arg, dim, cv2.INTER_AREA))
                 result.append(arg_resized)
 
         result = tuple(result)

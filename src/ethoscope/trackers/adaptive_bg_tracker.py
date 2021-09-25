@@ -314,12 +314,19 @@ class AdaptiveBGModel(BaseTracker):
 
 
         if mask is not None:
+            logging.warning("LOOK HERE")
+            logging.warning(mask.shape)
+            logging.warning(mask.dtype)
+            logging.warning(self._buff_grey.shape)
+
             cv2.bitwise_and(self._buff_grey, mask, self._buff_grey)
             return self._buff_grey
 
     def _find_position(self, img, mask, t):
 
-        cv2.cvtColor(img, cv2.COLOR_BGR2GRAY, self._buff_grey)
+        #cv2.cvtColor(img, cv2.COLOR_BGR2GRAY, self._buff_grey)
+        self._buff_grey = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
 
         if not self._gray_original is None:
             self._old_gray_original = self._gray_original.copy()
@@ -327,10 +334,12 @@ class AdaptiveBGModel(BaseTracker):
         self._gray_original = self._buff_grey.copy()
 
         img, mask, self._buff_grey = self._rescale_resolution(img, mask, self._buff_grey, factor=self._SCALING_FACTOR)
+        if len(mask.shape) == 3:
+            mask = cv2.cvtColor(mask, cv2.COLOR_BGR2GRAY)
         grey = self._pre_process_input_minimal(img, mask, t)
 
         try:
-            points = self._track(img_small, grey, mask_small, t)
+            points = self._track(img, grey, mask, t)
             points = self._rescale_points(points, factor=self._SCALING_FACTOR)
 
             return points
