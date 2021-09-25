@@ -370,7 +370,13 @@ class AdaptiveBGModel(BaseTracker):
 
         hull, is_ambiguous = self.get_hull(img, t)
         self._update(img, grey, mask, t, hull, is_ambiguous)
-        return self.extract_features(hull)
+        data = self.extract_features(hull)
+
+        if self._debug and self._roi.idx == 1:
+            cv2.imwrite(f"/tmp/gray_original_{str(t).zfill(10)}.png", self._gray_original)
+            cv2.imwrite(f"/tmp/segmented_foreground_{str(t).zfill(10)}.png", self._buff_fg_backup)
+
+        return data
 
     def _check_prop_fg_pix(self):
 
