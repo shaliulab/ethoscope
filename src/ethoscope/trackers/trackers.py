@@ -38,6 +38,36 @@ class BaseTracker(DescribedObject):
         # if self.data_point is None:
         #     raise NotImplementedError("Trackers must have a DataPoint object.")
 
+
+    @staticmethod
+    def _rescale_resolution(img, *args, factor=1, **kwargs):
+
+        dim = img.shape[:2][::-1]
+        dim = tuple([int(e * factor) for e in dim])
+        img_resized = cv2.resize(img, dim, cv2.INTER_AREA)
+        result = [img_resized, ]
+
+        for arg in args:
+            if isinstance(arg, np.array):
+                arg_resized = cv2.resize(img, dim, cv2.INTER_AREA)
+                result.append(arg_resized)
+
+        result = tuple(result)
+        return result
+
+    @staticmethod        
+    def _rescale_points(points, factor=1):
+        
+        points["x"] = int(points["x"] / factor)
+        points["y"] = int(points["y"] / factor)
+        points["w"] = int(points["w"] / factor)
+        points["h"] = int(points["h"] / factor)
+        
+        dist=10**(points["xy_dist_log10x1000"] / 1000)
+        points["xy_dist_log10x1000"] = int(np.log10(dist / factor) * 1000)
+        # angle is insensitive to scale
+        return points
+
     def track(self, t, img):
         """
         Locate the animal in a image, at a given time.

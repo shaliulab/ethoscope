@@ -36,7 +36,13 @@ class RichAdaptiveBGModel(AdaptiveBGModel):
     _description = {
         "overview": "An extended tracker for fruit flies. One animal per ROI.",
         "arguments": [
-            {"type": "str", "value": "FALSE", "name": "debug", "description": "If True, I will save to /tmp all the computed foregrounds with format foreground_ROI_DD_t_MS.png"}
+            {"type": "str", "value": "FALSE", "name": "debug", "description": "If True, I will save to /tmp all the computed foregrounds with format foreground_ROI_DD_t_MS.png"},
+            {"type": "number", "value": 1, "name": "scale_factor", "description": """
+            If less than 1, the resolution of the images is decreased accordingly (for computational efficiency) in the fly segmentation step.
+            However, the pixel difference part stays with original resolution
+            """
+            },
+            
         ]
     }
 
@@ -50,7 +56,9 @@ class RichAdaptiveBGModel(AdaptiveBGModel):
 
 
 
-    def __init__(self, *args, debug="TRUE", **kwargs):
+
+
+    def __init__(self, *args, debug="TRUE", scale_factor=1, **kwargs):
         super().__init__(*args, **kwargs)
         self._fly_pixel_count = None
         self._last_movements = {part: None for part in self._body_parts}
@@ -59,6 +67,7 @@ class RichAdaptiveBGModel(AdaptiveBGModel):
         self.old_datapoints = None
         self._old_ellipse = None
         self._debug = debug == "TRUE"
+        self._SCALE_FACTOR=scale_factor
         #self._debug = True
 
     # def _get_coordinates_of_parts(self, foreground):
@@ -206,17 +215,17 @@ class RichAdaptiveBGModel(AdaptiveBGModel):
         return datapoints
 
 
-    def _track(self, *args, **kwargs):
+    def _track(self, img, *args, **kwargs):
         """
-        Override the abstract's class _track method so it keeps a copy
+        Extend the abstract's class _track method so it keeps a copy
         of the previous foreground of the fly. This way, the last and previous foregrounds
         can be compared and the extract_features method gets material to work on.
         """
 
         self.old_ellipse = np.copy(self.ellipse)
-        self.old_foreground = np.copy(self._buff_fg_backup)
-        assert isinstance(args[0], np.ndarray)
-        shape = args[1].shape
+        # self.old_foreground = np.copy(self._buff_fg_backup)
+        self.old_foreground = cv2.bitwise_and(self.old_ellipse, self._gray_original)
+        shape = img.shape
         # h_im = min(shape)
         w_im = max(shape)
         self._null_dist = round(np.log10(1. / float(w_im)) * 1000)

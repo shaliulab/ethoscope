@@ -247,6 +247,7 @@ class AdaptiveBGModel(BaseTracker):
                     "arguments": []}
 
     fg_model = ObjectModel()
+    _SCALING_FACTOR=1
 
     def __init__(self, roi, data=None):
         """
@@ -296,14 +297,6 @@ class AdaptiveBGModel(BaseTracker):
             if mask is None:
                 mask = np.ones_like(self._buff_grey) * 255
 
-        cv2.cvtColor(img, cv2.COLOR_BGR2GRAY, self._buff_grey)
-        self._gray_original = self._buff_grey.copy()
-
-        dim =tuple((np.array(self._buff_grey.shape) * factor).tolist())
-        dim = tuple([int(e) for e in dim])
-        self._buff_grey = cv2.resize(self._buff_grey, dim, cv2.INTER_AREA)
-        mask = cv2.resize(mask, dim, cv2.INTER_AREA)
-
         cv2.GaussianBlur(self._buff_grey, (blur_rad, blur_rad), 1.2, self._buff_grey)
         if darker_fg:
             cv2.subtract(255, self._buff_grey, self._buff_grey)
@@ -323,69 +316,22 @@ class AdaptiveBGModel(BaseTracker):
             cv2.bitwise_and(self._buff_grey, mask, self._buff_grey)
             return self._buff_grey
 
-    def _pre_process_input(self, img, mask, t):
-
-        blur_rad = int(self._object_expected_size * np.max(img.shape) * 2.0)
-        if blur_rad % 2 == 0:
-            blur_rad += 1
-
-
-        if self._buff_grey is None:
-            self._buff_grey = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-            self._buff_grey_blurred = np.empty_like(self._buff_grey)
-            # self._buff_grey_blurred = np.empty_like(self._buff_grey)
-            if mask is None:
-                mask = np.ones_like(self._buff_grey) * 255
-
-            mask_conv = cv2.blur(mask, (blur_rad, blur_rad))
-
-            self._buff_convolved_mask = (1 / 255.0 * mask_conv.astype(np.float32))
-
+    def _find_position(self, img, mask, t):
 
         cv2.cvtColor(img, cv2.COLOR_BGR2GRAY, self._buff_grey)
 
-        hist = cv2.calcHist([self._buff_grey], [0], None, [256], [0, 255]).ravel()
-        hist = np.convolve(hist, [1] * 3)
-        mode = np.argmax(hist)
+        if not self._gray_original is None:
+            self._old_gray_original = self._gray_original.copy()
 
-        self._smooth_mode.append(mode)
-        self._smooth_mode_tstamp.append(t)
+        self._gray_original = self._buff_grey.copy()
 
-        if len(self._smooth_mode_tstamp) > 2 and self._smooth_mode_tstamp[-1] - self._smooth_mode_tstamp[0] > self._smooth_mode_window_dt:
-            self._smooth_mode.popleft()
-            self._smooth_mode_tstamp.popleft()
-
-
-        mode = np.mean(list(self._smooth_mode))
-        scale = 128. / mode
-        cv2.multiply(self._buff_grey, scale, dst=self._buff_grey)
-        cv2.bitwise_and(self._buff_grey, mask, self._buff_grey)
-
-        cv2.blur(self._buff_grey, (blur_rad, blur_rad), self._buff_grey_blurred)
-        #fixme could be optimised
-        self._buff_grey_blurred = (self._buff_grey_blurred / self._buff_convolved_mask).astype(np.uint8)
-
-        cv2.absdiff(self._buff_grey, self._buff_grey_blurred, self._buff_grey)
-
-        if mask is not None:
-            cv2.bitwise_and(self._buff_grey, mask, self._buff_grey)
-            return self._buff_grey
-
-
-    def _find_position(self, img, mask, t):
-
-        grey = self._pre_process_input_minimal(img, mask, t, factor=0.25)
-        dim = self._buff_grey.shape[:2][::-1]
-        img_small = cv2.resize(img, dim, cv2.INTER_AREA)
-        mask_small = cv2.resize(mask, dim, cv2.INTER_AREA)
-        logging.warning("##### 1")
-        logging.warning(img_small.shape)
-        logging.warning(grey.shape)
-        logging.warning(mask_small.shape)
-        logging.warning("#####")
+        img, mask, self._buff_grey = self._rescale_resolution(img, mask, self._buff_grey, factor=self._SCALING_FACTOR)
+        grey = self._pre_process_input_minimal(img, mask, t)
 
         try:
             points = self._track(img_small, grey, mask_small, t)
+            points = self._rescale_points(points, factor=self._SCALING_FACTOR)
+
             return points
         except NoPositionError:
             self._bg_model.update(grey, t)
@@ -403,12 +349,6 @@ class AdaptiveBGModel(BaseTracker):
             raise NoPositionError
 
         bg = self._bg_model.bg_img.astype(np.uint8)
-
-        logging.warning("##### 2")
-        logging.warning(grey.shape)
-        logging.warning(bg.shape)
-        logging.warning(self._buff_fg.shape)
-        logging.warning("#####")
         cv2.subtract(grey, bg, self._buff_fg)
         self._foreground = self._buff_fg.copy()
 
