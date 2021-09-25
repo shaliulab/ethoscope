@@ -182,19 +182,20 @@ class RichAdaptiveBGModel(AdaptiveBGModel):
                 diff_count = np.sum(diff_bool)
 
                 if self._debug and self._roi.idx == 1:
-                    logging.warning(diff.dtype)
-                    logging.warning(diff.shape)
-                    logging.warning(diff_segmented.dtype)
-                    logging.warning(diff_segmented.shape)
-                    cv2.putText(diff_segmented, str(diff_count).zfill(3), (int(diff_segmented.shape[1] * 0.7), 20),  cv2.FONT_HERSHEY_COMPLEX_SMALL, 1, 255)
-                    cv2.imwrite(
-                        "/tmp/last_grey_diff_ROI_%s_t%s.png" % (str(self._roi.idx).zfill(2), str(self._last_time_point).zfill(10)),
-                        np.vstack([
-                            np.hstack([old_body[part], new_body[part]]),
-                            np.hstack([diff, np.zeros_like(diff)]),
-                            np.hstack([self._gray_original, diff_segmented])
-                        ])
-                    )
+                    pass
+                    # logging.warning(diff.dtype)
+                    # logging.warning(diff.shape)
+                    # logging.warning(diff_segmented.dtype)
+                    # logging.warning(diff_segmented.shape)
+                    # cv2.putText(diff_segmented, str(diff_count).zfill(3), (int(diff_segmented.shape[1] * 0.7), 20),  cv2.FONT_HERSHEY_COMPLEX_SMALL, 1, 255)
+                    # cv2.imwrite(
+                    #     "/tmp/last_grey_diff_ROI_%s_t%s.png" % (str(self._roi.idx).zfill(2), str(self._last_time_point).zfill(10)),
+                    #     np.vstack([
+                    #         np.hstack([old_body[part], new_body[part]]),
+                    #         np.hstack([diff, np.zeros_like(diff)]),
+                    #         np.hstack([self._gray_original, diff_segmented])
+                    #     ])
+                    # )
                 logging.warning(diff_count)
 
                 # take a sqroot to make it distance-like and normalize with the sqroot of the area of the fly
