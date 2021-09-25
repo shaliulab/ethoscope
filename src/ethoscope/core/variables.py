@@ -144,10 +144,13 @@ class FrameCountVariable(BaseIntVariable):
     sql_data_type = "INT"
 
 class BodyMovement(XYDistance):
+    sql_data_type = "INT"
     header_name = "body_movement"
 
 class CoreMovement(XYDistance):
+    sql_data_type = "INT"
     header_name = "core_movement"
 
 class PeripheryMovement(XYDistance):
+    sql_data_type = "INT"
     header_name = "periphery_movement"
