@@ -192,7 +192,7 @@ class RichAdaptiveBGModel(AdaptiveBGModel):
                         np.vstack([
                             np.hstack([old_body[part], new_body[part]]),
                             np.hstack([diff, np.zeros_like(diff)]),
-                            np.hstack([self._last_grey, diff_segmented])
+                            np.hstack([self._gray_original, diff_segmented])
                         ])
                     )
                 logging.warning(diff_count)
@@ -234,7 +234,3 @@ class RichAdaptiveBGModel(AdaptiveBGModel):
         self.old_datapoints = datapoints
 
         return datapoints
-
-    def _find_position(self, *args, **kwargs):
-        self._last_grey = np.copy(cv2.cvtColor(args[0], cv2.COLOR_BGR2GRAY))
-        return super()._find_position(*args, **kwargs)
