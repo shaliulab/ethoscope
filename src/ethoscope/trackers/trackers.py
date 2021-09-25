@@ -64,13 +64,13 @@ class BaseTracker(DescribedObject):
     @staticmethod        
     def _rescale_points(points, factor=1):
         
-        points["x"] = int(points["x"] / factor)
-        points["y"] = int(points["y"] / factor)
-        points["w"] = int(points["w"] / factor)
-        points["h"] = int(points["h"] / factor)
+        points["x"] = XPosVariable(int(points["x"] / factor))
+        points["y"] = YPosVariable(int(points["y"] / factor))
+        points["w"] = WidthVariable(int(points["w"] / factor))
+        points["h"] = HeightVariable(int(points["h"] / factor))
         
         dist=10**(points["xy_dist_log10x1000"] / 1000)
-        points["xy_dist_log10x1000"] = int(np.log10(dist / factor) * 1000)
+        points["xy_dist_log10x1000"] = XYDistance(int(np.log10(dist / factor) * 1000))
         # angle is insensitive to scale
         return points
 
