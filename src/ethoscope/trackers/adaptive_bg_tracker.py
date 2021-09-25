@@ -283,6 +283,7 @@ class AdaptiveBGModel(BaseTracker):
         self._old_sum_fg = 0
         self.live_tracking = True
         self.ellipse = None
+        self._gray_original = None
 
         super(AdaptiveBGModel, self).__init__(roi, data)
 
