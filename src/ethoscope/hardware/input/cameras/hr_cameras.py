@@ -50,24 +50,24 @@ class HRPiCameraAsync(OurPiCameraAsync):
         else:
             self._store = None
 
-        def _next_time_image(self):
-            t, img = super()._next_time_image()
+    def _next_time_image(self):
+        t, img = super()._next_time_image()
 
-            logging.warning("next time image from HR")
-            logging.warning(self._store)
+        logging.warning("next time image from HR")
+        logging.warning(self._store)
 
-            if self._store:
-                logging.warning(img.shape)
-                logging.warning(self._resolution)
-                logging.warning(self._framerate)
-                imgstore.add_image(img, self._frame_idx, t)
+        if self._store:
+            logging.warning(img.shape)
+            logging.warning(self._resolution)
+            logging.warning(self._framerate)
+            imgstore.add_image(img, self._frame_idx, t)
 
-            return t, img
+        return t, img
 
-        def _close(self):
-            result = super()._close()
-            imgstore.close()
-            return result
+    def _close(self):
+        result = super()._close()
+        imgstore.close()
+        return result
 
 
 
