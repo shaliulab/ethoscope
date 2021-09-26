@@ -230,6 +230,16 @@ class BackgroundModel(object):
         # how much the current frame should be accounted for
         alpha = 1 - np.exp(-lam * dt)
 
+        # if the frame rate is low
+        # -> dt becomes big
+        # -> np.exp(-lam * dt) becomes closer to 0 (exp of a big negative number)
+        # -> alpha becomes closer to 1 (1 - 0.000 = 1)
+        # -> the new image has maximum weight and the algorithm works as if there was no background model
+
+        # compensate -> if dt is too big, lam needs to decrease
+        # lam is snaller if it is divided by a higher quantity
+        # we need a higher half life
+
         # set-p a matrix of learning rate. it is 0 where foreground map is true
         self._buff_alpha_matrix.fill(alpha)
         if fg_mask is not None:
@@ -296,8 +306,6 @@ class AdaptiveBGModel(BaseTracker):
         self.ellipse = None
         self._gray_original = None
         self._last_t = 0
-
-
         super(AdaptiveBGModel, self).__init__(roi, data)
 
     def _pre_process_input_minimal(self, img, mask, t, darker_fg=True, factor=1):

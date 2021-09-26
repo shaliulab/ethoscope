@@ -9,7 +9,9 @@ import os.path
 import argparse
 import sys
 from tqdm import tqdm
- 
+home_folder = os.environ["HOME"]
+
+
 logger = logging.getLogger('__main__')
 
 def benchmark_camera(target_fps, target_resolution, awb_gains, awb_mode, shutter_speed, exposure_mode, iso, preview_length=100): 
@@ -25,7 +27,7 @@ def benchmark_camera(target_fps, target_resolution, awb_gains, awb_mode, shutter
         filename = f'camera_stats_@{target_fps}fps_{"x".join([str(e) for e in target_resolution])}_{shutter_speed}shutter_{iso}iso_Noneawb.txt'
     else:
         filename = f'camera_stats_@{target_fps}fps_{"x".join([str(e) for e in target_resolution])}_{shutter_speed}shutter_{iso}iso_{",".join([str(f) for f in awb_gains])}awb.txt'
-    file_path = os.path.join('/root', 'benchmark_camera', filename)
+    file_path = os.path.join(home_folder, 'benchmark_camera', filename)
     logger.info(f"Saving results to {file_path}")
 
 
