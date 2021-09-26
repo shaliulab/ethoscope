@@ -118,6 +118,7 @@ class BaseTracker(DescribedObject):
                     p.append(IsInferredVariable(True))
 
         self._positions.append(points)
+        # self.old_datapoints = points/
         self._times.append(t)
 
 

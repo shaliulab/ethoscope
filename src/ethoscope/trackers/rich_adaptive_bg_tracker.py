@@ -56,10 +56,7 @@ class RichAdaptiveBGModel(AdaptiveBGModel):
     # they need to be included in the ellipse mask
     # 0 means all pixels are taken into account
     # (and then masked so only a fraction actually does)
-    _minimum_change = 10
-
-
-
+    _minimum_change = 20
 
 
     def __init__(self, *args, scale_factor=1, **kwargs):
@@ -67,7 +64,7 @@ class RichAdaptiveBGModel(AdaptiveBGModel):
         self._fly_pixel_count = None
         self._last_movements = {part: None for part in self._body_parts}
         self._null_dist = None
-        self.old_foreground = None
+        self.old_image = None
         self.old_datapoints = None
         self._old_ellipse = None
         self._SCALE_FACTOR=scale_factor
@@ -105,23 +102,23 @@ class RichAdaptiveBGModel(AdaptiveBGModel):
     def old_ellipse(self, ellipse):
         self._old_ellipse = ellipse
 
-    def _get_body(self, foreground, ellipse):
-        """
-        Return a mask of the ROI for each fly part
-        The mask has the same shape as the ROI
-        and is True on pixels that belong to the part.
-        The masks are packed in a dictionary.
-        """
+    # def _get_body(self, foreground, ellipse):
+    #     """
+    #     Return a mask of the ROI for each fly part
+    #     The mask has the same shape as the ROI
+    #     and is True on pixels that belong to the part.
+    #     The masks are packed in a dictionary.
+    #     """
 
-        # thresh = cv2.threshold(foreground, self._minimum_change, 255, cv2.THRESH_BINARY)[1]
-        non_zero = cv2.bitwise_and(foreground, ellipse)
+    #     # thresh = cv2.threshold(foreground, self._minimum_change, 255, cv2.THRESH_BINARY)[1]
+    #     non_zero = cv2.bitwise_and(foreground, ellipse)
 
-        self._fly_pixel_count = np.sum(non_zero)
-        # median = np.median(foreground[non_zero])
-        return {"body": non_zero}
+    #     self._fly_pixel_count = np.sum(non_zero)
+    #     # median = np.median(foreground[non_zero])
+    #     return {"body": non_zero}
 
-        # masks = {"core": non_zero < median, "periphery": non_zero > median}
-        # return masks
+    #     # masks = {"core": non_zero < median, "periphery": non_zero > median}
+    #     # return masks
 
     @staticmethod
     def _get_non_overlapping(coords_1, coords_2):
@@ -165,45 +162,35 @@ class RichAdaptiveBGModel(AdaptiveBGModel):
         # if an old foreground is available, compute the features
         # otherwise just return the null movements,
         # defined as 1 / number of pixels on x dimension
-        if self.old_foreground is not None:
-            new_foreground = self._original_gray
+        self._new_image = self._gray_original
+
+        if self.old_image is not None:
 
             # get the old and new coordinates of both parts
 
             # TODO Use the information about the position of the fly
             # in the datapoints to mask noisy foreground
             # i.e. pixels segmented as foreground but which dont belong to the fly
-            old_body = self._get_body(self.old_foreground, self.old_ellipse)
-            new_body = self._get_body(new_foreground, self.ellipse)
+            # old_body = self._get_body(self.old_image, self.ellipse)
+            # new_body = self._get_body(self._new_image, self.ellipse)
+            part = "body" 
 
-            for part in ["body"]:
-                # count how many pixels belong to the part on only one but noth both masks
-                # xored = np.bitwise_xor(old_body[part], new_body[part])
-                diff = np.abs(old_body[part].astype(np.int64) - new_body[part].astype(np.int64)).astype(np.uint8)
-                diff_segmented = cv2.threshold(diff, self._minimum_change, 255, cv2.THRESH_BINARY)[1]
-                diff_bool = diff_segmented == 255
-                diff_count = np.sum(diff_bool)
+            # count how many pixels belong to the part on only one but noth both masks
+            # xored = np.bitwise_xor(old_body[part], new_body[part])
+            diff = cv2.absdiff(self._new_image, self.old_image)
+            cv2.bitwise_and(diff, self.ellipse, diff)
+            self._fly_pixel_count = np.sum(diff)
+            
+            diff_segmented = cv2.threshold(diff, self._minimum_change, 255, cv2.THRESH_BINARY)[1]
+            diff_bool = diff_segmented == 255
+            diff_count = np.sum(diff_bool)
 
-                if self._debug:
-                    pass
-                    # logging.warning(diff.dtype)
-                    # logging.warning(diff.shape)
-                    # logging.warning(diff_segmented.dtype)
-                    # logging.warning(diff_segmented.shape)
-                    # cv2.putText(diff_segmented, str(diff_count).zfill(3), (int(diff_segmented.shape[1] * 0.7), 20),  cv2.FONT_HERSHEY_COMPLEX_SMALL, 1, 255)
-                    # cv2.imwrite(
-                    #     "/tmp/last_grey_diff_ROI_%s_t%s.png" % (str(self._roi.idx).zfill(2), str(self._last_time_point).zfill(10)),
-                    #     np.vstack([
-                    #         np.hstack([old_body[part], new_body[part]]),
-                    #         np.hstack([diff, np.zeros_like(diff)]),
-                    #         np.hstack([self._gray_original, diff_segmented])
-                    #     ])
-                    # )
-                # take a sqroot to make it distance-like and normalize with the sqroot of the area of the fly
-                # self._last_movements[part] = self._process_raw_feature(diff_count)
-                self._last_movements[part] = diff_count
-                # print("Part %s: Movement: %s pixels" % (part, xor_count))
-                # print("Part %s: Movement: %s normalized pixels" % (part, self._last_movements[part]))
+            if self._debug:
+                cv2.imwrite(os.path.join(home_folder, "diff", f"ROI-{str(self._roi.idx).zfill(2)}_{str(self._last_t).zfill(10)}.png"), diff)
+                cv2.imwrite(os.path.join(home_folder, "diff_segmented", f"ROI-{str(self._roi.idx).zfill(2)}_{str(self._last_t).zfill(10)}.png"), diff_segmented)
+                cv2.imwrite(os.path.join(home_folder, "old_body", f"ROI-{str(self._roi.idx).zfill(2)}_{str(self._last_t).zfill(10)}.png"), self.old_image)
+                cv2.imwrite(os.path.join(home_folder, "new_body", f"ROI-{str(self._roi.idx).zfill(2)}_{str(self._last_t).zfill(10)}.png"), self._new_image)#, self.ellipse)
+            self._last_movements[part] = diff_count
 
             # instantiate the distances with a wrapper
             # that streamlines saving to output
@@ -225,14 +212,15 @@ class RichAdaptiveBGModel(AdaptiveBGModel):
         """
 
         self.old_ellipse = np.copy(self.ellipse)
-        # self.old_foreground = np.copy(self._buff_fg_backup)
-        self.old_foreground = cv2.bitwise_and(self.old_ellipse, self._gray_original)
+        # self.old_image = np.copy(self._buff_fg_backup)
+        if len(self._positions) > 0:
+            if not self._positions[-1][0]["is_inferred"]:
+                self.old_image = self._new_image.copy() # new image is not new anymore actually, since a new one is about to be collected
+
         shape = img.shape
         # h_im = min(shape)
         w_im = max(shape)
         self._null_dist = round(np.log10(1. / float(w_im)) * 1000)
 
         datapoints = super()._track(img, *args, **kwargs)
-        self.old_datapoints = datapoints
-
         return datapoints

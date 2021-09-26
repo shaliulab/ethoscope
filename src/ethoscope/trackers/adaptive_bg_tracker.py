@@ -16,7 +16,7 @@ import os
 import os.path
 home_folder = os.environ["HOME"]
 
-DEBUG_ROIS = [5]
+DEBUG_ROIS = list(range(1,10))
 
 
 import numpy as np
@@ -299,7 +299,6 @@ class AdaptiveBGModel(BaseTracker):
         self._foreground = None
         self._buff_convolved_mask = None
         self._buff_fg_backup = None
-        self._original_gray = None
         self._buff_fg_diff = None
         self._old_sum_fg = 0
         self.live_tracking = live_tracking
@@ -351,8 +350,11 @@ class AdaptiveBGModel(BaseTracker):
         self._buff_grey = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
 
-        if not self._gray_original is None:
-            self._old_gray_original = self._gray_original.copy()
+        if self._gray_original is None:
+            self._old_gray_original = self._buff_grey.copy()
+        else:
+            self._old_gray_original = self._gray_original.copy() 
+
 
         self._gray_original = self._buff_grey.copy()
 
@@ -379,7 +381,7 @@ class AdaptiveBGModel(BaseTracker):
             self._buff_fg = np.empty_like(grey)
             self._buff_object = np.empty_like(grey)
             self._buff_fg_backup = np.empty_like(grey)
-            self._original_gray = np.empty_like(grey)
+            self._gray_original = np.empty_like(grey)
             self._old_pos = 0.0+0.0j
             raise NoPositionError
 
@@ -388,20 +390,17 @@ class AdaptiveBGModel(BaseTracker):
         self._foreground = self._buff_fg.copy()
 
         if self._debug and self._roi.idx in DEBUG_ROIS:
-            cv2.imwrite(os.path.join(home_folder, "foreground", f"{str(t).zfill(10)}.png"), self._foreground)
+            cv2.imwrite(os.path.join(home_folder, "foreground", f"ROI-{str(self._roi.idx).zfill(2)}_{str(t).zfill(10)}.png"), self._foreground)
 
         cv2.threshold(self._buff_fg, 20, 255, cv2.THRESH_TOZERO, dst=self._buff_fg)
-        if self._debug and self._roi.idx in DEBUG_ROIS:
-            cv2.imwrite(os.path.join(home_folder, "thresholded", f"{str(t).zfill(10)}.png"), self._gray_original)
-
 
         hull, is_ambiguous = self.get_hull(img, t)
         self._update(img, grey, mask, t, hull, is_ambiguous)
         data = self.extract_features(hull)
 
         if self._debug and self._roi.idx in DEBUG_ROIS:
-            cv2.imwrite(os.path.join(home_folder, "gray_original", f"{str(t).zfill(10)}.png"), self._gray_original)
-            cv2.imwrite(os.path.join(home_folder, "segmented-foreground", f"{str(t).zfill(10)}.png"), self._buff_fg_backup)
+            cv2.imwrite(os.path.join(home_folder, "original", f"ROI-{str(self._roi.idx).zfill(2)}_{str(t).zfill(10)}.png"), self._gray_original)
+            cv2.imwrite(os.path.join(home_folder, "segmented-foreground", f"ROI-{str(self._roi.idx).zfill(2)}_{str(t).zfill(10)}.png"), self._buff_fg_backup)
 
         return data
 
@@ -516,13 +515,13 @@ class AdaptiveBGModel(BaseTracker):
 
         if self._debug and self._roi.idx in DEBUG_ROIS:
 
-            cv2.imwrite(os.path.join(home_folder, "background", f"{str(t).zfill(10)}.png"), self._bg_model.bg_img)
+            cv2.imwrite(os.path.join(home_folder, "background", f"ROI-{str(self._roi.idx).zfill(2)}_{str(t).zfill(10)}.png"), self._bg_model.bg_img)
             logging.warning("Half life")
 
-            with open(os.path.join(home_folder, "half_lifes.txt"), "a") as fh:
+            with open(os.path.join(home_folder, "half-lifes", f"ROI-{str(self._roi.idx).zfill(2)}.txt"), "a") as fh:
                 fh.write(f"{str(self._bg_model._current_half_life)}\n")
 
-            with open(os.path.join(home_folder, "alphas.txt"), "a") as fh:
+            with open(os.path.join(home_folder, "alphas", f"ROI-{str(self._roi.idx).zfill(2)}.txt"), "a") as fh:
                 fh.write(f"{str(self._bg_model.alpha)}\n")
 
             logging.warning(self._bg_model._current_half_life)
@@ -565,7 +564,7 @@ class AdaptiveBGModel(BaseTracker):
         # TODO center mass just on the ellipse area
         cv2.bitwise_and(self._buff_fg_backup, self._buff_fg, self._buff_fg_backup)
         cv2.bitwise_and(self._buff_fg_backup, self.ellipse, self._buff_fg_backup)
-        cv2.bitwise_and(self._gray_original, self.ellipse, self._gray_original)
+        # cv2.bitwise_and(self._gray_original, self.ellipse, self._gray_original)
 
         y, x = ndimage.measurements.center_of_mass(self._buff_fg_backup)
         pos = x +1.0j * y
