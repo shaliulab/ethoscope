@@ -165,7 +165,6 @@ class BaseCamera(object):
         time = self._time_stamp()
         im = self._next_image()
         self._frame_idx += 1
-        logging.warning("Base camera _next_time_image done")
         return time, im
 
     def is_last_frame(self):

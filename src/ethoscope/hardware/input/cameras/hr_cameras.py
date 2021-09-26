@@ -1,5 +1,6 @@
 import datetime
 import numpy as np
+import logging
 
 from .cameras import OurPiCameraAsync, PiFrameGrabber
 
@@ -53,13 +54,13 @@ class HRPiCameraAsync(OurPiCameraAsync):
     def _next_time_image(self):
         t, img = super()._next_time_image()
 
-        logging.warning("next time image from HR")
-        logging.warning(self._store)
+        logging.warning("next_time_image of HR")
+        logging.warning(img.shape)
+        logging.warning(self._resolution)
+        logging.warning(self._framerate)
+
 
         if self._store:
-            logging.warning(img.shape)
-            logging.warning(self._resolution)
-            logging.warning(self._framerate)
             imgstore.add_image(img, self._frame_idx, t)
 
         return t, img
