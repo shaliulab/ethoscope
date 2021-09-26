@@ -23,7 +23,6 @@ class HRPiCameraAsync(OurPiCameraAsync):
             resolution = self._resolution
             chunk_duration = 300
             videos_dir = f"/ethoscope_data/results/{machine_id}/{machine_name}"
-            os.makedirs(basedir, exist_ok=False)
             kwargs = {
                   "mode": 'w',
                   "framerate": framerate,
