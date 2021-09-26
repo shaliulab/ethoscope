@@ -514,10 +514,8 @@ class AdaptiveBGModel(BaseTracker):
             self._bg_model.update(grey, t, self._buff_fg)
 
         if self._debug and self._roi.idx in DEBUG_ROIS:
-
             cv2.imwrite(os.path.join(home_folder, "background", f"ROI-{str(self._roi.idx).zfill(2)}_{str(t).zfill(10)}.png"), self._bg_model.bg_img)
             logging.warning("Half life")
-
             with open(os.path.join(home_folder, "half-lifes", f"ROI-{str(self._roi.idx).zfill(2)}.txt"), "a") as fh:
                 fh.write(f"{str(self._bg_model._current_half_life)}\n")
 
