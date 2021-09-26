@@ -31,7 +31,7 @@ class HRPiCameraAsync(OurPiCameraAsync):
             
             machine_id = get_machine_id()
             machine_name = get_machine_name()
-            framerate = kwargs.get("framerate", 25)
+            framerate = self._framerate
             resolution = self._resolution
             chunk_duration = 300
             videos_dir = f"/ethoscope_data/results/{machine_id}/{machine_name}"
@@ -53,6 +53,10 @@ class HRPiCameraAsync(OurPiCameraAsync):
         def _next_time_image(self):
             t, img = super()._next_time_image()
             if self._store:
+                logging.warning("IMAGE")
+                logging.warning(img.shape)
+                logging.warning(self._resolution)
+                logging.warning(self._framerate)
                 imgstore.add_image(img, self._frame_idx, t)
 
             return t, img
