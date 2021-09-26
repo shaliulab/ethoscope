@@ -28,6 +28,7 @@ class HRPiCameraAsync(OurPiCameraAsync):
             videos_dir = f"/ethoscope_data/results/{machine_id}/{machine_name}"
             kwargs = {
                   "mode": 'w',
+                  "isColor": False,
                   "framerate": framerate,
                   "basedir": f"{videos_dir}/{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}",
                   "imgshape": resolution[::-1], # reverse order so it becomes nrows x ncols i.e. height x width
