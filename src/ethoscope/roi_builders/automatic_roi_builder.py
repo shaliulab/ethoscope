@@ -32,24 +32,19 @@ class AutomaticROIBuilder(BaseROIBuilder):
     _description = {"overview": "A flmanual exible ROI builder that allows users to enter directly the coordinates of the ROIs",
             "arguments": [
                 {"type": "str", "name": "top_left", "description": "Coordinates of top left corner. Example: (0, 0).", "default":"(760, 188)"},
-                {"type": "number", "name": "roi_width", "description": "Width of ROIs", "default": 3130}, 
-                {"type": "number", "name": "roi_height", "description": "Height of ROIs", "default": 231}, 
-                {"type": "number", "name": "roi_offset", "description": "Vertical displacement of ROIs", "default": 340}, 
+                {"type": "number", "name": "width", "description": "Width of ROIs", "default": 3130}, 
+                {"type": "number", "name": "height", "description": "Height of ROIs", "default": 231}, 
+                {"type": "number", "name": "offset", "description": "Vertical displacement of ROIs", "default": 340}, 
                 {"type": "number", "name": "nrois", "description": "Number of ROIs", "default": 9}, 
                 ]}
 
-    def __init__(self, args,  kwargs):
+    def __init__(self, *args,  top_left="(760, 188)", width=3130, height=231, offset=340, nrois=9, **kwargs):
 
         self._coordinates = []
-        nrois = kwargs.pop("nrois")
-        width = kwargs.pop("roi_width")
-        height = kwargs.pop("roi_height")
-        offset = kwargs.pop("roi_offset")
-        top_left = kwargs.pop("top_left")
         tl = eval(top_left)
         self._coordinates = [f"({tl[0]}, {tl[1] + offset*i}), ({tl[0]+width}, {tl[1] + offset*i}),({tl[0]+width}, {tl[1]+height + offset*i}), ({tl[0]}, {tl[1]+height + offset*i})" for i in range(nrois)]
         logging.warning(self._coordinates)
-        super(AutomaticROIBuilder, self).__init__()
+        super(AutomaticROIBuilder, self).__init__(*args, **kwargs)
 
     def build(self, cam):
 

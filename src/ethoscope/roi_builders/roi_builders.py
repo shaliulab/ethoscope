@@ -12,6 +12,9 @@ from ethoscope.utils.description import DescribedObject
 from ethoscope.core.roi import ROI
 from ethoscope.hardware.input.cameras import OurPiCameraAsync, FSLPiCameraAsync
 
+import os
+import os.path
+home_folder = os.environ["HOME"]
 
 class BaseROIBuilder(DescribedObject):
     _rois_pickle_file = ''
@@ -45,7 +48,7 @@ class BaseROIBuilder(DescribedObject):
 
                 _, (t_ms, frame) = x
 
-                output_path = "/root/frame_%s.png" % (str(i).zfill(4))
+                output_path = os.path.join(home_folder, "frame_%s.png" % (str(i).zfill(4)))
                 cv2.imwrite(output_path, frame)
                 logging.warning(f"ROI builder frame number: {i}")
                 logging.warning(f"mean_intensity: {np.mean(frame)}")

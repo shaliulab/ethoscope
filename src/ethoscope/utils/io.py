@@ -636,17 +636,11 @@ class AsyncSQLiteWriter(multiprocessing.Process):
     def sql_flavour(self):
         return self._sql_flavour
 
-    def __init__(self, db_credentials, queue, erase_old_db=True, **kwargs):
+    def __init__(self, db_credentials, queue, erase_old_db=True, path=None, **kwargs):
 
         self._db_name = db_credentials["name"]
         self._db_user_name = db_credentials["user"]
         self._db_user_pass = db_credentials["password"]
-
-        logging.warning("kwargs")
-        logging.warning(kwargs)
-
-        path = kwargs.pop("path")
-        logging.warning(path)
         self._path = path
 
         self._queue = queue
@@ -755,7 +749,7 @@ class SQLiteResultWriter(ResultWriter):
     _async_writing_class = AsyncSQLiteWriter
     _null= Null()
     def __init__(self, db_credentials, rois, metadata=None, make_dam_like_table=False, take_frame_shots=False, *args, **kwargs):
-        super(SQLiteResultWriter, self).__init__(db_credentials, rois, metadata, make_dam_like_table, take_frame_shots, *args, **kwargs)
+        super(SQLiteResultWriter, self).__init__(db_credentials, rois,  *args, metadata=metadata, make_dam_like_table=make_dam_like_table, take_frame_shots=take_frame_shots, **kwargs)
 
     def _create_table(self, name, fields, engine=None):
 

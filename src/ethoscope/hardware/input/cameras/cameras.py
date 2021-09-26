@@ -24,7 +24,7 @@ from ethoscope.utils.debug import EthoscopeException
 import multiprocessing
 import traceback
 import queue
-
+import tqdm
 
 
 def kill_all_instances():
@@ -229,6 +229,8 @@ class MovieVirtualCamera(BaseCamera):
         w = self.capture.get(CAP_PROP_FRAME_WIDTH)
         h = self.capture.get(CAP_PROP_FRAME_HEIGHT)
         self._total_n_frames =self.capture.get(CAP_PROP_FRAME_COUNT)
+        self._tqdm = tqdm.tqdm(total=self._total_n_frames)
+
         if self._total_n_frames == 0.:
             self._has_end_of_file = False
         else:
@@ -260,6 +262,7 @@ class MovieVirtualCamera(BaseCamera):
 
     def _next_image(self):
         _, frame = self.capture.read()
+        self._tqdm.update(1)
         return frame
 
     def _time_stamp(self):
@@ -276,7 +279,6 @@ class MovieVirtualCamera(BaseCamera):
 
     def _close(self):
         self.capture.release()
-
 
 class FSLVirtualCamera(MovieVirtualCamera):
     """

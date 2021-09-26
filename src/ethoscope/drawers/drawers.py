@@ -10,9 +10,11 @@ except ImportError:
 
 from ethoscope.utils.description import DescribedObject
 import os
+import os.path
+home_folder = os.environ["HOME"]
 
 class BaseDrawer(object):
-    def __init__(self, video_out=None, draw_frames=True, video_out_fourcc="DIVX", video_out_fps=2):
+    def __init__(self, video_out=None, draw_frames=True, video_out_fourcc="DIVX", video_out_fps=2, debug=False):
         """
         A template class to annotate and save the processed frames. It can also save the annotated frames in a video
         file and/or display them in a new window. The :meth:`~ethoscope.drawers.drawers.BaseDrawer._annotate_frame`
@@ -37,6 +39,7 @@ class BaseDrawer(object):
             cv2.namedWindow(self._window_name, cv2.WINDOW_AUTOSIZE)
         self._last_drawn_frame = None
         self.arena = None
+        self._debug = debug
 
     def _annotate_frame(self,img, positions, tracking_units, roi):
         """
@@ -111,7 +114,7 @@ class NullDrawer(BaseDrawer):
 
 
 class DefaultDrawer(BaseDrawer):
-    def __init__(self, video_out= None, draw_frames=False):
+    def __init__(self, *args, video_out= None, draw_frames=False, **kwargs):
         """
         The default drawer. It draws ellipses on the detected objects and polygons around ROIs. When an "interaction"
         see :class:`~ethoscope.stimulators.stimulators.BaseInteractor` happens within a ROI,
@@ -122,7 +125,7 @@ class DefaultDrawer(BaseDrawer):
         :param draw_frames: Whether frames should be displayed on the screen (a new window will be created).
         :type draw_frames: bool
         """
-        super(DefaultDrawer,self).__init__(video_out=video_out, draw_frames=draw_frames)
+        super(DefaultDrawer,self).__init__(*args, video_out=video_out, draw_frames=draw_frames, **kwargs)
 
     def _annotate_frame(self,img, tracking_units, positions=None, roi=True):
         if img is None:
@@ -156,5 +159,10 @@ class DefaultDrawer(BaseDrawer):
 
                     cv2.ellipse(img,((pos["x"],pos["y"]), (pos["w"],pos["h"]), pos["phi"]),black_colour,3, LINE_AA)
                     cv2.ellipse(img,((pos["x"],pos["y"]), (pos["w"],pos["h"]), pos["phi"]),colour,1, LINE_AA)
+
+
+        if self._debug:
+            t = tracking_units[0]._tracker._last_t
+            cv2.imwrite(os.path.join(home_folder, "drawer", f"{str(t).zfill(10)}.png"), self._last_drawn_frame)
 
         return img

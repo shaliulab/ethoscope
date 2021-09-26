@@ -5,6 +5,10 @@ import logging
 import cv2
 import numpy as np
 
+import os
+import os.path
+home_folder = os.environ["HOME"]
+
 from ethoscope.core.variables import CoreMovement, PeripheryMovement, BodyMovement
 from ethoscope.trackers.adaptive_bg_tracker import AdaptiveBGModel
 
@@ -58,7 +62,7 @@ class RichAdaptiveBGModel(AdaptiveBGModel):
 
 
 
-    def __init__(self, *args, debug="TRUE", scale_factor=1, **kwargs):
+    def __init__(self, *args, scale_factor=1, **kwargs):
         super().__init__(*args, **kwargs)
         self._fly_pixel_count = None
         self._last_movements = {part: None for part in self._body_parts}
@@ -66,7 +70,6 @@ class RichAdaptiveBGModel(AdaptiveBGModel):
         self.old_foreground = None
         self.old_datapoints = None
         self._old_ellipse = None
-        self._debug = debug == "TRUE"
         self._SCALE_FACTOR=scale_factor
         #self._debug = True
 
@@ -135,8 +138,8 @@ class RichAdaptiveBGModel(AdaptiveBGModel):
 
     @staticmethod
     def _document(mask1, mask2):
-        cv2.imwrite("/home/vibflysleep/mask1.png", mask1*255)
-        cv2.imwrite("/home/vibflysleep/mask2.png", mask2*255)
+        cv2.imwrite(os.path.join(home_folder, "mask1.png"), mask1*255)
+        cv2.imwrite(os.path.join(home_folder, "mask2.png"), mask2*255)
 
 
     def _process_raw_feature(self, raw_feature):
@@ -181,7 +184,7 @@ class RichAdaptiveBGModel(AdaptiveBGModel):
                 diff_bool = diff_segmented == 255
                 diff_count = np.sum(diff_bool)
 
-                if self._debug and self._roi.idx == 1:
+                if self._debug:
                     pass
                     # logging.warning(diff.dtype)
                     # logging.warning(diff.shape)
@@ -196,8 +199,6 @@ class RichAdaptiveBGModel(AdaptiveBGModel):
                     #         np.hstack([self._gray_original, diff_segmented])
                     #     ])
                     # )
-                logging.warning(diff_count)
-
                 # take a sqroot to make it distance-like and normalize with the sqroot of the area of the fly
                 # self._last_movements[part] = self._process_raw_feature(diff_count)
                 self._last_movements[part] = diff_count

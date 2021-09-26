@@ -12,6 +12,11 @@ except:
     CV_VERSION = 2
 
 
+import os
+import os.path
+home_folder = os.environ["HOME"]
+
+
 import numpy as np
 from scipy import ndimage
 from ethoscope.core.variables import XPosVariable, YPosVariable, XYDistance, WidthVariable, HeightVariable, PhiVariable, Label
@@ -24,7 +29,7 @@ class ObjectModel(object):
     A class to model, update and predict foreground object (i.e. tracked animal).
     """
     _sqrt_2_pi = sqrt(2.0 * pi)
-    def __init__(self, history_length=1000):
+    def __init__(self, history_length=5):
         #fixme this should be time, not number of points!
         self._features_header = [
             "fg_model_area",
@@ -167,7 +172,7 @@ class BackgroundModel(object):
     """
     A class to model background. It uses a dynamic running average and support arbitrary and heterogeneous frame rates
     """
-    def __init__(self, max_half_life=500. * 1000, min_half_life=5.* 1000, increment=1.2):
+    def __init__(self, max_half_life=500. * 1000, min_half_life=5.* 1000, increment=1.2, debug=False):
         # the maximal half life of a pixel from background, in seconds
         self._max_half_life = float(max_half_life)
         # the minimal one
@@ -186,6 +191,7 @@ class BackgroundModel(object):
         self._buff_invert_alpha_mat = None
         # the time stamp of the frame las used to update
         self.last_t = 0
+        self._debug = debug
 
     @property
     def bg_img(self):
@@ -201,6 +207,7 @@ class BackgroundModel(object):
     def update(self, img_t, t, fg_mask=None):
         dt = float(t - self.last_t)
         if dt < 0:
+            logging.warning("Negative time interval between two consecutive frames")
             # raise EthoscopeException("Negative time interval between two consecutive frames")
             raise NoPositionError("Negative time interval between two consecutive frames")
 
@@ -239,6 +246,9 @@ class BackgroundModel(object):
         np.multiply(self._buff_invert_alpha_mat, self._bg_mean, self._buff_invert_alpha_mat)
         np.add(self._buff_alpha_matrix, self._buff_invert_alpha_mat, self._bg_mean)
 
+        if self._debug:
+            cv2.imwrite(os.path.join(home_folder, "background", f"{str(t).zfill(10)}.png"), self._bg_mean)
+
         self.last_t = t
 
 
@@ -249,7 +259,7 @@ class AdaptiveBGModel(BaseTracker):
     fg_model = ObjectModel()
     _SCALING_FACTOR=1
 
-    def __init__(self, roi, data=None):
+    def __init__(self, roi, data=None, live_tracking=True, debug=False):
         """
         An adaptive background subtraction model to find position of one animal in one roi.
 
@@ -267,8 +277,9 @@ class AdaptiveBGModel(BaseTracker):
         self._smooth_mode_tstamp = deque()
         self._smooth_mode_window_dt = 30 * 1000 #miliseconds
 
-
-        self._bg_model = BackgroundModel()
+        if isinstance(debug, str): debug = bool(debug)
+        self._debug = debug       
+        self._bg_model = BackgroundModel(debug=debug)
         self._max_m_log_lik = 5.5
         self._buff_grey = None
         self._buff_object = None
@@ -281,13 +292,17 @@ class AdaptiveBGModel(BaseTracker):
         self._original_gray = None
         self._buff_fg_diff = None
         self._old_sum_fg = 0
-        self.live_tracking = True
+        self.live_tracking = live_tracking
         self.ellipse = None
         self._gray_original = None
+        self._last_t = 0
+
 
         super(AdaptiveBGModel, self).__init__(roi, data)
 
     def _pre_process_input_minimal(self, img, mask, t, darker_fg=True, factor=1):
+
+        self._last_t = t
         blur_rad = int(self._object_expected_size * np.max(img.shape) / 2.0)
 
         if blur_rad % 2 == 0:
@@ -350,6 +365,8 @@ class AdaptiveBGModel(BaseTracker):
 
     def _track(self, img, grey, mask, t):
 
+        logging.warning(t)
+
         if self._bg_model.bg_img is None:
             self._buff_fg = np.empty_like(grey)
             self._buff_object = np.empty_like(grey)
@@ -363,18 +380,21 @@ class AdaptiveBGModel(BaseTracker):
         self._foreground = self._buff_fg.copy()
 
 
-        if self._debug and self._roi.idx == 1:
-            cv2.imwrite(f"/tmp/foreground_{str(t).zfill(10)}.png", self._foreground)
+        if self._debug:
+            cv2.imwrite(os.path.join(home_folder, "foreground", f"{str(t).zfill(10)}.png"), self._foreground)
 
         cv2.threshold(self._buff_fg, 20, 255, cv2.THRESH_TOZERO, dst=self._buff_fg)
+        if self._debug:
+            cv2.imwrite(os.path.join(home_folder, "thresholded", f"{str(t).zfill(10)}.png"), self._gray_original)
+
 
         hull, is_ambiguous = self.get_hull(img, t)
         self._update(img, grey, mask, t, hull, is_ambiguous)
         data = self.extract_features(hull)
 
-        if self._debug and self._roi.idx == 1:
-            cv2.imwrite(f"/tmp/gray_original_{str(t).zfill(10)}.png", self._gray_original)
-            cv2.imwrite(f"/tmp/segmented_foreground_{str(t).zfill(10)}.png", self._buff_fg_backup)
+        if self._debug:
+            cv2.imwrite(os.path.join(home_folder, "gray_original", f"{str(t).zfill(10)}.png"), self._gray_original)
+            cv2.imwrite(os.path.join(home_folder, "segmented-foreground", f"{str(t).zfill(10)}.png"), self._buff_fg_backup)
 
         return data
 
@@ -383,17 +403,17 @@ class AdaptiveBGModel(BaseTracker):
         n_fg_pix = np.count_nonzero(self._buff_fg)
         prop_fg_pix = n_fg_pix / float(np.prod(self._buff_fg.shape))
 
-        logging.warning(prop_fg_pix)
-        logging.warning(self._max_area)
+        # logging.warning(prop_fg_pix)
+        # logging.warning(self._max_area)
 
         if  prop_fg_pix > self._max_area:
             self._bg_model.increase_learning_rate()
-            # logging.warning("Too many foreground pixels detected in ROI %s", self._roi.idx)
+            logging.warning("Too many foreground pixels detected in ROI %s", self._roi.idx)
             raise NoPositionError
 
         if  prop_fg_pix == 0:
             self._bg_model.increase_learning_rate()
-            # logging.warning("No foreground pixels detected in ROI %s", self._roi.idx)
+            logging.warning("No foreground pixels detected in ROI %s", self._roi.idx)
             raise NoPositionError
 
     def get_hull(self, img=None, t=None):
@@ -416,15 +436,20 @@ class AdaptiveBGModel(BaseTracker):
         is_ambiguous = False
         if not contours:
             self._bg_model.increase_learning_rate()
+            logging.warning("No contour detected")
             raise NoPositionError
 
         elif len(contours) > 1:
 
-            if not self.live_tracking:
-                hull = sorted(contours, key=cv2.contourArea, reverse=True)[0]
+            contour_areas = sorted(list(map(cv2.contourArea, contours)), reverse=True)
+            if not self.live_tracking and contour_areas[0] > 500 :
+                hull = sorted(contours, key=lambda c: cv2.contourArea(c), reverse=True)[0]
                 return hull, False
+            else:
+                logging.warning(f"More than 1 contour detected. Areas: {str(contour_areas)}")
 
             if not self.fg_model.is_ready:
+                logging.warning("Foreground model is not ready")
                 raise NoPositionError
             # hulls = [cv2.convexHull( c) for c in contours]
             hulls = contours
@@ -433,6 +458,7 @@ class AdaptiveBGModel(BaseTracker):
             hulls = [h for h in hulls if h.shape[0] >= 3]
 
             if len(hulls) < 1:
+                logging.warning("No hulls found")
                 raise NoPositionError
 
             elif len(hulls) > 1:
@@ -451,6 +477,7 @@ class AdaptiveBGModel(BaseTracker):
 
             if hull.shape[0] < 3:
                 self._bg_model.increase_learning_rate()
+                logging.warning("Hull has less than three points (it is a line or a single point")
                 raise NoPositionError
 
             features = self.fg_model.compute_features(img, hull)
@@ -458,6 +485,7 @@ class AdaptiveBGModel(BaseTracker):
 
         if distance > self._max_m_log_lik and self.live_tracking:
             self._bg_model.increase_learning_rate()
+            logging.warning("The detected contour does not look like the others")
             raise NoPositionError
 
         return hull, is_ambiguous
@@ -498,8 +526,13 @@ class AdaptiveBGModel(BaseTracker):
         h_im = min(self._buff_fg.shape)
         w_im = max(self._buff_fg.shape)
         max_h = 2 * h_im
-        if w > max_h or h > max_h:
+        if w > max_h:
+            logging.warning("Contour is too wide")
             raise NoPositionError
+        if h > max_h:
+            logging.warning("Contour is too high")
+            raise NoPositionError
+
 
         self.ellipse = self.object_mask(**{"x": x, "y": y, "w": w, "h": h, "angle": angle}, roi=self._buff_fg)
         # cv2.ellipse(self._buff_fg, ((x, y), (int(w * 1.5), int(h * 1.5)), angle), 255, -1)
