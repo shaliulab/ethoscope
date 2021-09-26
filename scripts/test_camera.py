@@ -59,7 +59,7 @@ def capture_continuous(resolution, backend, video_port=True, **kwargs):
     
         for i, frame in enumerate(camera.capture_continuous(stream, format="bgr", use_video_port=video_port)):
 
-            backend(i, frame, resolution=resolution)
+            backend(stream, i, frame, resolution=resolution)
 
 
 
@@ -67,7 +67,7 @@ def capture_continuous(resolution, backend, video_port=True, **kwargs):
 
 
 
-def opencv_backend(i, frame, resolution=None):
+def opencv_backend(stream, i, frame, resolution=None):
 
 
     global start_time
@@ -122,7 +122,7 @@ def capture_imgstore():
     resolution = (4056, 3040)
     return capture_continuous(resolution, backend=imgstore_backend, video_port=False, shutter_speed=2000, exposure_mode="off", awb_mode="off", awb_gains=(1.8, 1.5))
 
-def imgstore_backend(i, frame, resolution):
+def imgstore_backend(stream, i, frame, resolution):
 
     global start_time
     global duration
