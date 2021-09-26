@@ -287,7 +287,14 @@ class AdaptiveBGModel(BaseTracker):
         self._smooth_mode_tstamp = deque()
         self._smooth_mode_window_dt = 30 * 1000 #miliseconds
 
-        if isinstance(debug, str): debug = bool(debug)
+        if isinstance(debug, str):
+            if debug == "True":
+                debug = True
+            elif debug == "False":
+                debug = False:
+            else:
+                raise Exception("Invalid value of debug")
+
         self._debug = debug       
         self._bg_model = BackgroundModel(debug=debug)
         self._max_m_log_lik = 5.5

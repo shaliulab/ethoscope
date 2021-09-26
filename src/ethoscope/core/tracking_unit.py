@@ -24,8 +24,6 @@ class TrackingUnit(object):
         :param kwargs: additional keyword arguments passed to the tracking algorithm.
         """
 
-        logging.warning("kwargs when initializing tracker")
-        logging.warning(kwargs)
         self._tracker = tracking_class(roi,*args, **kwargs)
         self._roi = roi
 
