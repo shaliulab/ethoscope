@@ -8,6 +8,8 @@ import cv2
 import picamera
 import picamera.array
 
+import argparse
+
 
 logging.basicConfig(level=logging.INFO)
 
@@ -16,10 +18,12 @@ def get_parser():
 
     ap = argparse.ArgumentParser()
     ap.add_argument("--backend", choices=["opencv", "imgstore"], default="opencv")
+    ap.add_argument("--width", type=int, required=True)
+    ap.add_argument("--height", type=int, required=True)
+    ap.add_argument("--framerate", type=float, default=30.0)
     return ap
 
 
-framerate = 0.25
 video_writer = None
 
 start_time = time.time()
@@ -28,23 +32,18 @@ chunk_duration = 300
 chunk_count = 0
 frame_count = 0
 
-def capture_video():
-    resolution = (1280, 960)
+def capture_video(resolution=(1280, 960)):
     return capture_continuous(resolution, backend=opencv_backend, video_port=True)
 
-def capture_img():
-    resolution = (4064, 3040)
-    return capture_continuous(resolution, backend=opencv_backend, video_port=False, shutter_speed=2000, exposure_mode="off", awb_mode="off", awb_gains=(1.8, 1.5))
+def capture_img(resolution=(4064, 3040), framerate=30.0):
+    return capture_continuous(resolution, framerate=framerate, backend=opencv_backend, video_port=False, shutter_speed=2000, exposure_mode="off", awb_mode="off", awb_gains=(1.8, 1.5))
 
-def capture_continuous(resolution, backend, video_port=True, **kwargs):
+def capture_continuous(resolution, framerate=30.0, backend=opencv_backend, video_port=True, **kwargs):
     """
     The RPi HQ camera cannot capture better resolution than 1280x960
     when recording a video
     """
-    global framerate
     global frame_count
-
-
 
     shutter_speed = kwargs.pop("shutter_speed")
     exposure_mode = kwargs.pop("exposure_mode")
@@ -78,7 +77,6 @@ def opencv_backend(stream, i, frame, resolution=None):
 
     global start_time
     global duration
-    global framerate
     global video_writer
     global chunk_count
     global chunk_duration
@@ -125,9 +123,8 @@ def opencv_backend(stream, i, frame, resolution=None):
 
 
 
-def capture_imgstore():
-    resolution = (4064, 3040)
-    return capture_continuous(resolution, backend=imgstore_backend, video_port=False, shutter_speed=2000, exposure_mode="off", awb_mode="off", awb_gains=(1.8, 1.5))
+def capture_imgstore(resolution=(4064, 3040), framerate=30.0):
+    return capture_continuous(resolution, framerate=framerate, backend=imgstore_backend, video_port=False, shutter_speed=2000, exposure_mode="off", awb_mode="off", awb_gains=(1.8, 1.5))
 
 def imgstore_backend(stream, i, frame, resolution):
 
@@ -135,7 +132,6 @@ def imgstore_backend(stream, i, frame, resolution):
 
     global start_time
     global duration
-    global framerate
     global video_writer
     global chunk_count
     global chunk_duration
@@ -173,10 +169,13 @@ def main():
     ap = get_parser()
     args = ap.parse_args()
 
+    resolution = (args.width, args.height)
+    framerate = args.framerate
+
     if args.backend == "opencv":
-        capture_img()
+        capture_img(resolution, framerate)
     elif args.backend == "imgstore":
-        capture_imgstore()
+        capture_imgstore(resolution, framerate)
     else:
         raise Exception("Invalid backend")
 
