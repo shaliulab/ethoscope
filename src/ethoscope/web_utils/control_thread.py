@@ -302,6 +302,11 @@ class ControlThread(Thread):
             self._option_dict[key]["args"] = args
             self._option_dict[key]["kwargs"] = kwargs
 
+            if key == "tracker":
+                logging.warning("LOOK HERE")
+                logging.warning("kwargs")
+                logging.warning(kwargs)
+
 
 
     def _update_info(self):
@@ -350,6 +355,7 @@ class ControlThread(Thread):
 
         # todo: pickle hardware connection, camera, rois, tracker class, stimulator class,.
         # then rerun stimulators and Monitor(......)
+        self._monit_kwargs.update(tracker_kwargs)
         self._monit = Monitor(camera, TrackerClass, rois,
                               stimulators=stimulators,
                               *self._monit_args,
@@ -407,7 +413,10 @@ class ControlThread(Thread):
         HardWareInterfaceClass = StimulatorClass.__dict__["_HardwareInterfaceClass"]
 
         TrackerClass = self._option_dict["tracker"]["class"]
+        logging.warning("OPTION DICT")
+        logging.warning(self._option_dict)
         tracker_kwargs = self._option_dict["tracker"]["kwargs"]
+        tracker_kwargs["debug"] = True
 
         ResultWriterClass = self._option_dict["result_writer"]["class"]
         result_writer_kwargs = self._option_dict["result_writer"]["kwargs"]

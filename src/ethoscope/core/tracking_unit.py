@@ -1,8 +1,10 @@
 __author__ = 'quentin'
+
+import logging
+
 from ethoscope.core.variables import BaseRelativeVariable
 from ethoscope.core.data_point import DataPoint
 from ethoscope.stimulators.stimulators import DefaultStimulator
-
 
 class TrackingUnit(object):
     def __init__(self, tracking_class, roi, stimulator=None, *args, **kwargs):
@@ -22,6 +24,8 @@ class TrackingUnit(object):
         :param kwargs: additional keyword arguments passed to the tracking algorithm.
         """
 
+        logging.warning("kwargs when initializing tracker")
+        logging.warning(kwargs)
         self._tracker = tracking_class(roi,*args, **kwargs)
         self._roi = roi
 
