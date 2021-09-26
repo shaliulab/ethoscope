@@ -165,6 +165,7 @@ class BaseCamera(object):
         time = self._time_stamp()
         im = self._next_image()
         self._frame_idx += 1
+        self._p._frame_idx = self._frame_idx
         return time, im
 
     def is_last_frame(self):
@@ -492,6 +493,7 @@ class PiFrameGrabber(threading.Thread):
         self._stop_queue = stop_queue
         self._target_fps = target_fps
         self._target_resolution = target_resolution
+        self._frame_idx = 0
         logging.info('PiFrameGrabber queue %s', queue)
         logging.info('PiFrameGrabber stop_queue %s', stop_queue)
         logging.info('PiFrameGrabber target_fps %s', target_fps)
@@ -556,6 +558,9 @@ class PiFrameGrabber(threading.Thread):
                 time.sleep(0.2) # sleep 200ms to allow the camera to warm up
 
                 for frame in capture.capture_continuous(stream, format="bgr", use_video_port=self._VIDEO_PORT):
+
+
+                    capture.annotate_text = f'{datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")} - {str(self._frame_idx).zfill(8)}'
 
 
                     #This syntax changed from picamera > 1.7    - see https://picamera.readthedocs.io/en/release-1.10/deprecated.html
