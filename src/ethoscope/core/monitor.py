@@ -59,8 +59,6 @@ class Monitor(object):
         if stimulators is None:
             self._unit_trackers = []
             for r in rois:
-                print(r._idx)
-                print(r._rectangle)
                 self._unit_trackers.append(TrackingUnit(tracker_class, r, None, *args, **kwargs))
 
         elif len(stimulators) == len(rois):

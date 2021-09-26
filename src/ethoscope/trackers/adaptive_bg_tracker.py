@@ -16,6 +16,8 @@ import os
 import os.path
 home_folder = os.environ["HOME"]
 
+DEBUG_ROIS = [5]
+
 
 import numpy as np
 from scipy import ndimage
@@ -172,7 +174,7 @@ class BackgroundModel(object):
     """
     A class to model background. It uses a dynamic running average and support arbitrary and heterogeneous frame rates
     """
-    def __init__(self, max_half_life=500. * 1000, min_half_life=5.* 1000, increment=1.2, debug=False):
+    def __init__(self, max_half_life=500. * 1000, min_half_life=50.* 1000, increment=1.2, debug=False):
         # the maximal half life of a pixel from background, in seconds
         self._max_half_life = float(max_half_life)
         # the minimal one
@@ -192,6 +194,7 @@ class BackgroundModel(object):
         # the time stamp of the frame las used to update
         self.last_t = 0
         self._debug = debug
+        self.alpha = None
 
     @property
     def bg_img(self):
@@ -213,7 +216,6 @@ class BackgroundModel(object):
 
         # clip the half life to possible value:
         self._current_half_life = np.clip(self._current_half_life, self._min_half_life, self._max_half_life)
-
         # ensure preallocated buffers exist. otherwise, initialise them
         if self._bg_mean is None:
             self._bg_mean = img_t.astype(np.float32)
@@ -229,6 +231,7 @@ class BackgroundModel(object):
         lam = np.log(2) / self._current_half_life
         # how much the current frame should be accounted for
         alpha = 1 - np.exp(-lam * dt)
+        self.alpha = alpha
 
         # if the frame rate is low
         # -> dt becomes big
@@ -255,9 +258,6 @@ class BackgroundModel(object):
         np.multiply(self._buff_alpha_matrix, img_t, self._buff_alpha_matrix)
         np.multiply(self._buff_invert_alpha_mat, self._bg_mean, self._buff_invert_alpha_mat)
         np.add(self._buff_alpha_matrix, self._buff_invert_alpha_mat, self._bg_mean)
-
-        if self._debug:
-            cv2.imwrite(os.path.join(home_folder, "background", f"{str(t).zfill(10)}.png"), self._bg_mean)
 
         self.last_t = t
 
@@ -364,8 +364,8 @@ class AdaptiveBGModel(BaseTracker):
         try:
             points = self._track(img, grey, mask, t)
             points = self._rescale_points(points, factor=self._SCALING_FACTOR)
-
             return points
+
         except NoPositionError:
             self._bg_model.update(grey, t)
             raise NoPositionError
@@ -387,12 +387,11 @@ class AdaptiveBGModel(BaseTracker):
         cv2.subtract(grey, bg, self._buff_fg)
         self._foreground = self._buff_fg.copy()
 
-
-        if self._debug:
+        if self._debug and self._roi.idx in DEBUG_ROIS:
             cv2.imwrite(os.path.join(home_folder, "foreground", f"{str(t).zfill(10)}.png"), self._foreground)
 
         cv2.threshold(self._buff_fg, 20, 255, cv2.THRESH_TOZERO, dst=self._buff_fg)
-        if self._debug:
+        if self._debug and self._roi.idx in DEBUG_ROIS:
             cv2.imwrite(os.path.join(home_folder, "thresholded", f"{str(t).zfill(10)}.png"), self._gray_original)
 
 
@@ -400,7 +399,7 @@ class AdaptiveBGModel(BaseTracker):
         self._update(img, grey, mask, t, hull, is_ambiguous)
         data = self.extract_features(hull)
 
-        if self._debug:
+        if self._debug and self._roi.idx in DEBUG_ROIS:
             cv2.imwrite(os.path.join(home_folder, "gray_original", f"{str(t).zfill(10)}.png"), self._gray_original)
             cv2.imwrite(os.path.join(home_folder, "segmented-foreground", f"{str(t).zfill(10)}.png"), self._buff_fg_backup)
 
@@ -450,11 +449,16 @@ class AdaptiveBGModel(BaseTracker):
         elif len(contours) > 1:
 
             contour_areas = sorted(list(map(cv2.contourArea, contours)), reverse=True)
-            if not self.live_tracking and contour_areas[0] > 500 :
+            logging.warning(f"More than 1 contour detected in ROI {self._roi.idx}. Areas: {str(contour_areas)}")
+            try:
+                ratio = (contour_areas[0]  / contour_areas[1])
+            except ZeroDivisionError:
+                ratio = 4
+
+            if ratio >= 4 and (contour_areas[0] > 1000):
+                logging.warning("I will keep the first one, because it is much bigger than the other ones, so probably it is the fly")
                 hull = sorted(contours, key=lambda c: cv2.contourArea(c), reverse=True)[0]
                 return hull, False
-            else:
-                logging.warning(f"More than 1 contour detected. Areas: {str(contour_areas)}")
 
             if not self.fg_model.is_ready:
                 logging.warning("Foreground model is not ready")
@@ -485,7 +489,7 @@ class AdaptiveBGModel(BaseTracker):
 
             if hull.shape[0] < 3:
                 self._bg_model.increase_learning_rate()
-                logging.warning("Hull has less than three points (it is a line or a single point")
+                logging.warning("Hull has less than three points (it is a line or a single point)")
                 raise NoPositionError
 
             features = self.fg_model.compute_features(img, hull)
@@ -509,6 +513,19 @@ class AdaptiveBGModel(BaseTracker):
         else:
             self._bg_model.decrease_learning_rate()
             self._bg_model.update(grey, t, self._buff_fg)
+
+        if self._debug and self._roi.idx in DEBUG_ROIS:
+
+            cv2.imwrite(os.path.join(home_folder, "background", f"{str(t).zfill(10)}.png"), self._bg_model.bg_img)
+            logging.warning("Half life")
+
+            with open(os.path.join(home_folder, "half_lifes.txt"), "a") as fh:
+                fh.write(f"{str(self._bg_model._current_half_life)}\n")
+
+            with open(os.path.join(home_folder, "alphas.txt"), "a") as fh:
+                fh.write(f"{str(self._bg_model.alpha)}\n")
+
+            logging.warning(self._bg_model._current_half_life)
 
         self.fg_model.update(img, hull, t)
 

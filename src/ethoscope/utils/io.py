@@ -534,6 +534,8 @@ class ResultWriter(object):
             if len(v) > self._max_insert_string_len:
                 self._write_async_command(v)
                 self._insert_dict[k] = ""
+            else:
+                logging.warning(f"{k}: length = {len(v)}")
 
         return False
 
