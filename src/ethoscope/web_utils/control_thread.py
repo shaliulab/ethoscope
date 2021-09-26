@@ -416,7 +416,6 @@ class ControlThread(Thread):
         logging.warning("OPTION DICT")
         logging.warning(self._option_dict)
         tracker_kwargs = self._option_dict["tracker"]["kwargs"]
-        tracker_kwargs["debug"] = True
 
         ResultWriterClass = self._option_dict["result_writer"]["class"]
         result_writer_kwargs = self._option_dict["result_writer"]["kwargs"]
