@@ -45,10 +45,11 @@ class HRPiCameraAsync(OurPiCameraAsync):
                   "basedir": f"{videos_dir}/{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}",
                   "imgshape": resolution[::-1], # reverse order so it becomes nrows x ncols i.e. height x width
                   "imgdtype": np.uint8,
-                  "chunksize": framerate * chunk_duration # I want my videos to contain 5 minutes of data (300 seconds)
+                  "chunksize": int(framerate * chunk_duration) # I want my videos to contain 5 minutes of data (300 seconds)
             }
 
 
+            logging.warning(f"Chunksize: {kwargs['chunksize']}")
             self._store = imgstore.new_for_format(fmt="mjpeg/avi", **kwargs)
         else:
             self._store = None

@@ -559,9 +559,7 @@ class PiFrameGrabber(threading.Thread):
 
                 for frame in capture.capture_continuous(stream, format="bgr", use_video_port=self._VIDEO_PORT):
 
-
                     capture.annotate_text = f'{datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")} - {str(self._frame_idx).zfill(8)}'
-
 
                     #This syntax changed from picamera > 1.7    - see https://picamera.readthedocs.io/en/release-1.10/deprecated.html
                     logging.warning("Truncating stream")
