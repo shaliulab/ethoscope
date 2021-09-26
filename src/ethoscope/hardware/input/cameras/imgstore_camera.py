@@ -5,6 +5,7 @@ import cv2
 
 from .cameras import MovieVirtualCamera
 from imgstore import new_for_filename
+from ethoscope.utils.debug import EthoscopeException
 
 class ImgStoreCamera(MovieVirtualCamera):
     """
