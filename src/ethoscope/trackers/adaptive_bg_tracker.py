@@ -291,7 +291,7 @@ class AdaptiveBGModel(BaseTracker):
             if debug == "True":
                 debug = True
             elif debug == "False":
-                debug = False:
+                debug = False
             else:
                 raise Exception("Invalid value of debug")
 
