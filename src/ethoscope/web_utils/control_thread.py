@@ -420,10 +420,10 @@ class ControlThread(Thread):
         ResultWriterClass = self._option_dict["result_writer"]["class"]
         result_writer_kwargs = self._option_dict["result_writer"]["kwargs"]
 
-        print("camera_args")
-        print(camera_args)
-        print("camera_kwargs")
-        print(camera_kwargs)
+        logging.warning("camera_args")
+        logging.warning(camera_args)
+        logging.warning("camera_kwargs")
+        logging.warning(camera_kwargs)
         cam = CameraClass(*camera_args, **camera_kwargs)
 
         if isinstance(cam, OurPiCameraAsync):
