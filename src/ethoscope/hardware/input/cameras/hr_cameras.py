@@ -2,6 +2,8 @@ import datetime
 import numpy as np
 import logging
 
+import cv2
+
 from .cameras import OurPiCameraAsync, PiFrameGrabber
 
 class HRPiFrameGrabber(PiFrameGrabber):
@@ -38,7 +40,7 @@ class HRPiCameraAsync(OurPiCameraAsync):
             videos_dir = f"/ethoscope_data/results/{machine_id}/{machine_name}"
             kwargs = {
                   "mode": 'w',
-                  "isColor": False,
+                  "isColor": True,
                   "framerate": framerate,
                   "basedir": f"{videos_dir}/{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}",
                   "imgshape": resolution[::-1], # reverse order so it becomes nrows x ncols i.e. height x width
@@ -60,8 +62,10 @@ class HRPiCameraAsync(OurPiCameraAsync):
         logging.warning(self._framerate)
 
 
-        if self._store:
-            imgstore.add_image(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY), self._frame_idx, t)
+        if not self._store is None:
+            logging.warning("Writing image")
+            self._store.add_image(img, self._frame_idx, t)
+            #self._store.add_image(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY), self._frame_idx, t)
 
         return t, img
 
