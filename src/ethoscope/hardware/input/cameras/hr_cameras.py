@@ -15,6 +15,15 @@ class HRPiCameraAsync(OurPiCameraAsync):
     def __init__(self, *args, store=True, **kwargs):
         super().__init__(*args, target_resolution = (4056, 3040), **kwargs)
         
+        if isinstance(store, str):
+
+            if store == "True":
+                store = True
+            elif store == "False":
+                store = False
+            else:
+                raise Exception("Invalid value of store")
+
         if store:
             
             import imgstore
