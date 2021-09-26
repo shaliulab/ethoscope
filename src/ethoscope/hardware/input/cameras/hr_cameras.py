@@ -1,3 +1,6 @@
+import datetime
+import numpy as np
+
 from .cameras import OurPiCameraAsync, PiFrameGrabber
 
 class HRPiFrameGrabber(PiFrameGrabber):
