@@ -61,7 +61,7 @@ class HRPiCameraAsync(OurPiCameraAsync):
 
 
         if self._store:
-            imgstore.add_image(img, self._frame_idx, t)
+            imgstore.add_image(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY), self._frame_idx, t)
 
         return t, img
 
