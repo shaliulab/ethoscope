@@ -622,8 +622,8 @@ class OurPiCameraAsync(BaseCamera):
 
         w,h = target_resolution
 
-        target_fps = int(max(target_fps, 1))
         self._framerate = target_fps
+        target_fps = int(max(target_fps, 1))
 
         if not isinstance(target_fps, int):
             raise EthoscopeException("FPS must be an integer number")
