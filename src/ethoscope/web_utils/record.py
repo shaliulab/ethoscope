@@ -320,7 +320,7 @@ class ImgStoreRecorder(HDVideoRecorder):
     _description  = { "overview": "A preset 4kx3k useful when using the RPi HQ camera, 0.25fps, bitrate = 5e5 video recorder. "
                                   "which saves the frames to an imgstore","arguments": []}
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, video_prefix, video_dir, img_path):
         super(HDVideoRecorder, self).__init__(video_prefix, video_dir, img_path,
                                         width=4056, height=3040,fps=0.25,bitrate=1000000)
 
