@@ -64,6 +64,7 @@ class CamHandler(BaseHTTPRequestHandler):
             </body></html>""")
             return
   
+
 class PiCameraProcess(multiprocessing.Process):
     '''
     This opens a PiCamera process for recording or streaming video
@@ -151,6 +152,126 @@ class PiCameraProcess(multiprocessing.Process):
         except Exception as e:
             logging.error("Error on starting video recording process:" + traceback.format_exc())
 
+class ImgstorePiCameraProcess(multiprocessing.Process):
+    '''
+    This opens a PiCamera process for recording or streaming video
+    For recording, files are saved in chunks of time duration
+    In principle, the two activities couldbe done simultaneously ( see https://picamera.readthedocs.io/en/release-1.12/recipes2.html#capturing-images-whilst-recording )
+    but for now they are handled independently
+    '''
+        
+    _VIDEO_CHUNCK_DURATION = 30 * 10
+    def __init__(self, stop_queue, video_prefix, video_root_dir, img_path, width, height, fps, bitrate, stream=False):
+        self._stop_queue = stop_queue
+        self._img_path = img_path
+        self._resolution = (width, height)
+        self._fps = fps
+        self._bitrate = bitrate
+        self._video_prefix = video_prefix
+        self._video_root_dir = video_root_dir
+        self._stream = stream
+
+        if not self._stream:
+            import imgstore
+            self._recording_stream = io.BytesIO()
+            output = os.path.basedir(self._make_video_name(i))
+            resolution = (width, height)
+            kwargs = {
+              "mode": 'w',
+              "isColor": True,
+              "framerate": framerate,
+              "basedir": output,
+              "imgshape": resolution[::-1], # reverse order so it becomes nrows x ncols i.e. height x width
+              "imgdtype": np.uint8,
+              "chunksize": int(framerate * self._VIDEO_CHUNCK_DURATION) # I want my videos to contain 5 minutes of data (300 seconds)
+            }
+
+            self._store = new_for_format(fmt="mjpeg/avi", **kwargs)
+            self._frame_idx = 0
+        super(PiCameraProcess, self).__init__()
+
+    def _make_video_name(self, i):
+        w,h = self._resolution
+        video_info= "%ix%i@%i" %(w, h, self._fps)
+        return '%s_%s_%05d.h264' % (self._video_prefix, video_info, i)
+        
+    # def _write_video_index(self):
+    #     index_file = os.path.join(self._video_root_dir, "index.html")
+    #     all_video_files = [y for x in os.walk(self._video_root_dir) for y in glob.glob(os.path.join(x[0], '*.h264'))]
+    #
+    #     with open(index_file, "w") as index:
+    #         for f in all_video_files:
+    #             index.write(f + "\n")
+
+    def run(self):
+        import picamera
+        i = 0
+
+        try:
+            with picamera.PiCamera() as camera:
+                camera.resolution = self._resolution
+                camera.framerate = self._fps
+                
+                #disable auto white balance to address the following issue: https://github.com/raspberrypi/firmware/issues/1167
+                #however setting this to off would have to be coupled with custom gains
+                #some suggestion on how to set the gains can be found here: https://picamera.readthedocs.io/en/release-1.12/recipes1.html
+                #and here: https://github.com/waveform80/picamera/issues/182
+                #camera.awb_mode = 'off'
+                #camera.awb_gains = (1.8, 1.5)
+                camera.awb_mode = 'auto'
+                
+                if not self._stream:
+                    # not streaming the data i.e. if this block runs
+                    # we are recording a video (and streaming just a frame every N frames)
+                    # in that case we need a BytesIO stream
+                    # FIXME change the name of the _stream attr to make it less confusing!
+                    camera.start_preview()
+                    time.sleep(2)
+                    camera.capture(self._recording_stream, format='jpeg')
+
+                    #camera.start_recording(output, bitrate=self._bitrate)
+                    
+                # self._write_video_index()
+                start_time = time.time()
+                
+                if self._stream:
+                    try:
+                        self.server = CamStreamHTTPServer (camera, ('',8008), CamHandler)
+                        self.server.serve_forever()
+
+                    finally:
+                        self.server.shutdown()
+                        camera.close()
+
+                else:
+                    i += 1
+                    j = 0
+                    while True:
+                        # Construct a numpy array from the stream
+                        data = np.fromstring(self._recording_stream.getvalue(), dtype=np.uint8)
+                        # "Decode" the image from the array, preserving colour
+                        image = cv2.imdecode(data, 1)
+                        self._store.add_image(image, self._frame_idx, time.time())
+                        if j % 10 == 0:
+                            cv2.imwrite(self._img_path, image)
+                        #if time.time() - start_time >= self._VIDEO_CHUNCK_DURATION:
+                        #    camera.split_recording(self._make_video_name(i))
+                        #    # self._write_video_index()
+                        #    start_time = time.time()
+                        #    i += 1
+                        if not self._stop_queue.empty():
+                            self._stop_queue.get()
+                            self._stop_queue.task_done()
+                            break
+
+                        j+= 1
+                        self._frame_idx += 1
+
+                    self._store.close()
+
+        except Exception as e:
+            logging.error("Error on starting video recording process:" + traceback.format_exc())
+
 
 class GeneralVideoRecorder(DescribedObject):
     _description  = {  "overview": "A video simple recorder",
@@ -158,14 +279,17 @@ class GeneralVideoRecorder(DescribedObject):
                                 {"type": "number", "name":"width", "description": "The width of the frame","default":1280, "min":480, "max":1980,"step":1},
                                 {"type": "number", "name":"height", "description": "The height of the frame","default":960, "min":360, "max":1080,"step":1},
                                 {"type": "number", "name":"fps", "description": "The target number of frames per seconds","default":25, "min":1, "max":25,"step":1},
-                                {"type": "number", "name":"bitrate", "description": "The target bitrate","default":200000, "min":0, "max":10000000,"step":1000}
+                                {"type": "number", "name":"bitrate", "description": "The target bitrate","default":200000, "min":0, "max":10000000,"step":1000},
+                                {"type": "string", "name":"resolution", "description": "The target resolution","default": "1280x960"} 
                                ]}
 
-    def __init__(self, video_prefix, video_dir, img_path,width=1280, height=960,fps=25,bitrate=200000,stream=False):
+    _cameraClass = PiCameraProcess
+
+    def __init__(self, video_prefix, video_dir, img_path, width=1280, height=960,fps=25,bitrate=200000,stream=False):
 
         self._stop_queue = multiprocessing.JoinableQueue(maxsize=1)
         self._stream = stream
-        self._p = PiCameraProcess(self._stop_queue, video_prefix, video_dir, img_path, width, height,fps, bitrate, stream)
+        self._p = self._cameraClass(self._stop_queue, video_prefix, video_dir, img_path, width, height,fps, bitrate, stream)
 
 
     def run(self):
@@ -192,6 +316,14 @@ class HDVideoRecorder(GeneralVideoRecorder):
         super(HDVideoRecorder, self).__init__(video_prefix, video_dir, img_path,
                                         width=1920, height=1080,fps=25,bitrate=1000000)
 
+class ImgStoreRecorder(HDVideoRecorder):
+    _description  = { "overview": "A preset 4kx3k useful when using the RPi HQ camera, 0.25fps, bitrate = 5e5 video recorder. "
+                                  "which saves the frames to an imgstore","arguments": []}
+
+    def __init__(self, *args, **kwargs):
+        super(HDVideoRecorder, self).__init__(video_prefix, video_dir, img_path,
+                                        width=4056, height=3040,fps=0.25,bitrate=1000000)
+
 
 class StandardVideoRecorder(GeneralVideoRecorder):
     _description  = { "overview": "A preset 1280 x 960, 25fps, bitrate = 2e5 video recorder.", "arguments": []}
@@ -212,7 +344,7 @@ class ControlThreadVideoRecording(ControlThread):
     _option_dict = {
 
         "recorder":{
-                "possible_classes":[StandardVideoRecorder, HDVideoRecorder, GeneralVideoRecorder, RobustGeneralVideoRecorder, Streamer],
+                "possible_classes":[StandardVideoRecorder, HDVideoRecorder, ImgStoreRecorder, GeneralVideoRecorder, RobustGeneralVideoRecorder, Streamer],
             },
         "experimental_info":{
                         "possible_classes":[ExperimentalInformation],
