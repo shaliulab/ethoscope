@@ -5,7 +5,7 @@ import logging
 logging.basicConfig(level=logging.INFO)
 import time
 from ethoscope.web_utils.control_thread import ControlThread, ExperimentalInformation
-from ethoscope.hardware.input.camera_settings import configure_camera, report_camera
+from ethoscope.hardware.input.cameras.camera_settings import configure_camera, report_camera
 from ethoscope.utils.description import DescribedObject
 from ethoscope.utils.debug import EthoscopeException
 
