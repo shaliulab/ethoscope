@@ -17,6 +17,9 @@ import datetime
 from http.server import BaseHTTPRequestHandler, HTTPServer
 import io
 
+import numpy as np
+import cv2
+
 logging.basicConfig(level=logging.INFO)
 
 class CamStreamHTTPServer(HTTPServer):
@@ -173,22 +176,26 @@ class ImgstorePiCameraProcess(multiprocessing.Process):
 
         if not self._stream:
             import imgstore
-            self._recording_stream = io.BytesIO()
-            output = os.path.basedir(self._make_video_name(i))
+            output = video_root_dir
+            video_name = self._make_video_name(0)
+            output = os.path.dirname(video_name)
             resolution = (width, height)
+            self._resolution = resolution
+            self._recording_stream = None
             kwargs = {
               "mode": 'w',
               "isColor": True,
-              "framerate": framerate,
+              "framerate": self._fps,
               "basedir": output,
               "imgshape": resolution[::-1], # reverse order so it becomes nrows x ncols i.e. height x width
               "imgdtype": np.uint8,
-              "chunksize": int(framerate * self._VIDEO_CHUNCK_DURATION) # I want my videos to contain 5 minutes of data (300 seconds)
+              "chunksize": int(self._fps * self._VIDEO_CHUNCK_DURATION) # I want my videos to contain 5 minutes of data (300 seconds)
             }
 
-            self._store = new_for_format(fmt="mjpeg/avi", **kwargs)
+            self._store = imgstore.new_for_format(fmt="mjpeg/avi", **kwargs)
             self._frame_idx = 0
-        super(PiCameraProcess, self).__init__()
+
+        super(ImgstorePiCameraProcess, self).__init__()
 
     def _make_video_name(self, i):
         w,h = self._resolution
@@ -208,30 +215,18 @@ class ImgstorePiCameraProcess(multiprocessing.Process):
         i = 0
 
         try:
-            with picamera.PiCamera() as camera:
-                camera.resolution = self._resolution
-                camera.framerate = self._fps
+            with picamera.PiCamera(framerate=self._fps, resolution=self._resolution) as camera:
+                import picamera.array
+                self._recording_stream = picamera.array.PiRGBArray(camera, size=self._resolution)
                 
                 #disable auto white balance to address the following issue: https://github.com/raspberrypi/firmware/issues/1167
                 #however setting this to off would have to be coupled with custom gains
                 #some suggestion on how to set the gains can be found here: https://picamera.readthedocs.io/en/release-1.12/recipes1.html
                 #and here: https://github.com/waveform80/picamera/issues/182
-                #camera.awb_mode = 'off'
-                #camera.awb_gains = (1.8, 1.5)
-                camera.awb_mode = 'auto'
+                camera.awb_mode = 'off'
+                camera.awb_gains = (1.8, 1.5)
+                #camera.awb_mode = 'auto'
                 
-                if not self._stream:
-                    # not streaming the data i.e. if this block runs
-                    # we are recording a video (and streaming just a frame every N frames)
-                    # in that case we need a BytesIO stream
-                    # FIXME change the name of the _stream attr to make it less confusing!
-                    camera.start_preview()
-                    time.sleep(2)
-                    camera.capture(self._recording_stream, format='jpeg')
-
-                    #camera.start_recording(output, bitrate=self._bitrate)
-                    
-                # self._write_video_index()
                 start_time = time.time()
                 
                 if self._stream:
@@ -246,11 +241,10 @@ class ImgstorePiCameraProcess(multiprocessing.Process):
                 else:
                     i += 1
                     j = 0
-                    while True:
-                        # Construct a numpy array from the stream
-                        data = np.fromstring(self._recording_stream.getvalue(), dtype=np.uint8)
-                        # "Decode" the image from the array, preserving colour
-                        image = cv2.imdecode(data, 1)
+                    for frame in camera.capture_continuous(self._recording_stream, format="bgr", use_video_port=False):                    
+                        self._recording_stream.seek(0)
+                        self._recording_stream.truncate()
+                        image = frame.array
                         self._store.add_image(image, self._frame_idx, time.time())
                         if j % 10 == 0:
                             cv2.imwrite(self._img_path, image)
@@ -317,6 +311,7 @@ class HDVideoRecorder(GeneralVideoRecorder):
                                         width=1920, height=1080,fps=25,bitrate=1000000)
 
 class ImgStoreRecorder(HDVideoRecorder):
+    _cameraClass = ImgstorePiCameraProcess
     _description  = { "overview": "A preset 4kx3k useful when using the RPi HQ camera, 0.25fps, bitrate = 5e5 video recorder. "
                                   "which saves the frames to an imgstore","arguments": []}
 
