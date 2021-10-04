@@ -334,6 +334,15 @@ class ImgStoreRecorder(HDVideoRecorder):
         bitrate=1000000
         self._p = self._cameraClass(self._stop_queue, video_prefix, video_dir, img_path, width, height,fps, bitrate, stream)
 
+    def stop(self):
+        self._is_recording = False
+        self._stop_queue.put(None)
+        
+        if self._stream:
+            self._p.terminate()
+        else:
+            self._p.join(10)
+
 
 class StandardVideoRecorder(GeneralVideoRecorder):
     _description  = { "overview": "A preset 1280 x 960, 25fps, bitrate = 2e5 video recorder.", "arguments": []}
