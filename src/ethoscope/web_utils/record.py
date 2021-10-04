@@ -10,6 +10,8 @@ import os
 import tempfile
 import shutil
 import multiprocessing
+import queue
+import threading
 import glob
 import datetime
 
@@ -155,7 +157,8 @@ class PiCameraProcess(multiprocessing.Process):
         except Exception as e:
             logging.error("Error on starting video recording process:" + traceback.format_exc())
 
-class ImgstorePiCameraProcess(multiprocessing.Process):
+class ImgstorePiCameraProcess(threading.Thread):
+#class ImgstorePiCameraProcess(multiprocessing.Process):
     '''
     This opens a PiCamera process for recording or streaming video
     For recording, files are saved in chunks of time duration
@@ -173,6 +176,7 @@ class ImgstorePiCameraProcess(multiprocessing.Process):
         self._video_prefix = video_prefix
         self._video_root_dir = video_root_dir
         self._stream = stream
+        self._last_frame = None
 
         if not self._stream:
             import imgstore
@@ -218,6 +222,8 @@ class ImgstorePiCameraProcess(multiprocessing.Process):
             with picamera.PiCamera(framerate=self._fps, resolution=self._resolution) as camera:
                 import picamera.array
                 self._recording_stream = picamera.array.PiRGBArray(camera, size=self._resolution)
+
+
                 
                 #disable auto white balance to address the following issue: https://github.com/raspberrypi/firmware/issues/1167
                 #however setting this to off would have to be coupled with custom gains
@@ -226,7 +232,6 @@ class ImgstorePiCameraProcess(multiprocessing.Process):
                 camera.awb_mode = 'off'
                 camera.awb_gains = (1.8, 1.5)
                 #camera.awb_mode = 'auto'
-                
                 start_time = time.time()
                 
                 if self._stream:
@@ -242,12 +247,15 @@ class ImgstorePiCameraProcess(multiprocessing.Process):
                     i += 1
                     j = 0
                     for frame in camera.capture_continuous(self._recording_stream, format="bgr", use_video_port=False):                    
+                        camera.annotate_text = f'{datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")} - {str(self._frame_idx).zfill(8)}'
                         self._recording_stream.seek(0)
                         self._recording_stream.truncate()
                         image = frame.array
                         self._store.add_image(image, self._frame_idx, time.time())
-                        if j % 10 == 0:
-                            cv2.imwrite(self._img_path, image)
+                        logging.debug(f"Updating last frame. Shape {image.shape}")
+                        self._last_frame = image 
+                        #if j % 10 == 0:
+                        #    cv2.imwrite(self._img_path, image)
                         #if time.time() - start_time >= self._VIDEO_CHUNCK_DURATION:
                         #    camera.split_recording(self._make_video_name(i))
                         #    # self._write_video_index()
@@ -316,8 +324,15 @@ class ImgStoreRecorder(HDVideoRecorder):
                                   "which saves the frames to an imgstore","arguments": []}
 
     def __init__(self, video_prefix, video_dir, img_path):
-        super(HDVideoRecorder, self).__init__(video_prefix, video_dir, img_path,
-                                        width=4056, height=3040,fps=0.25,bitrate=1000000)
+        self._stop_queue = queue.Queue(maxsize=1)
+        #self._stop_queue = multiprocessing.JoinableQueue(maxsize=1)
+        width=4056
+        height=3040
+        fps=0.25
+        stream = False
+        self._stream = stream 
+        bitrate=1000000
+        self._p = self._cameraClass(self._stop_queue, video_prefix, video_dir, img_path, width, height,fps, bitrate, stream)
 
 
 class StandardVideoRecorder(GeneralVideoRecorder):
@@ -386,8 +401,16 @@ class ControlThreadVideoRecording(ControlThread):
         super(ControlThread, self).__init__()
 
     def _update_info(self):
+        logging.debug("Update info")
         if self._recorder is None:
             return
+
+        img_path = self._info["last_drawn_img"]
+        frame = self._recorder._p._last_frame
+        if frame is not None:
+            os.makedirs(os.path.dirname(img_path), exist_ok=True)
+            cv2.imwrite(img_path, frame)
+            logging.debug(f"Saving frame to {img_path}")
         self._last_info_t_stamp = time.time()
 
 
