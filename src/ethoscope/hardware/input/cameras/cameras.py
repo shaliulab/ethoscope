@@ -619,7 +619,7 @@ class OurPiCameraAsync(BaseCamera):
                 else:
                     target_resolution = (1280, 960)
             except ModuleNotFoundError:
-                target_resolution = (1280, 960)
+                target_resolution = (4032, 3040)
 
         w,h = target_resolution
 

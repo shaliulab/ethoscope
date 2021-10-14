@@ -52,11 +52,8 @@ class JetsonNanoFrameGrabber(PiFrameGrabber):
 
             pipeline = self.gstreamer_pipeline(flip_method=0, capture_width=self._target_resolution[0], capture_height=self._target_resolution[1], framerate=self._target_fps)
             logging.warning(pipeline)
-            logging.warning("Initialising stream")
-
 
             cap = cv2.VideoCapture(pipeline, cv2.CAP_GSTREAMER)
-            start_time = time.time()
             if cap.isOpened():
                 ret_val = True
                 while ret_val:
