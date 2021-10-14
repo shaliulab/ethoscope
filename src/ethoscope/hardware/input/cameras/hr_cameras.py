@@ -1,6 +1,8 @@
 import datetime
 import numpy as np
 import logging
+import traceback
+import time
 
 import cv2
 
@@ -40,7 +42,7 @@ class JetsonNanoFrameGrabber(PiFrameGrabber):
             )
         )
         
-    def run (self):
+    def run(self):
         """
         Initialise pi camera, get frames, convert them fo greyscale, and make them available in a queue.
         Run stops if the _stop_queue is not empty.
@@ -48,7 +50,7 @@ class JetsonNanoFrameGrabber(PiFrameGrabber):
 
         try:
 
-            pipeline = gstreamer_pipeline(flip_method=0, capture_width=self._target_resolution[1], capture_height=self._target_resolution[2], framerate=self._target_fps)
+            pipeline = self.gstreamer_pipeline(flip_method=0, capture_width=self._target_resolution[0], capture_height=self._target_resolution[1], framerate=self._target_fps)
             logging.warning(pipeline)
             logging.warning("Initialising stream")
 
