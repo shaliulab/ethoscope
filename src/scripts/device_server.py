@@ -540,10 +540,12 @@ if __name__ == '__main__':
 
         address = False
         logging.warning("Waiting for a network connection")
+        start_time = time.time()
+        TIMEOUT = 10
 
         while address is False:
             try:
-                address = socket.gethostbyname(hostname+".local")
+                address = socket.gethostbyname(hostname)
                 if ADDRESS is None or ADDRESS == "auto":
                     address = socket.gethostbyname(hostname)
                 else:
@@ -553,6 +555,12 @@ if __name__ == '__main__':
                 pass
                 #address = socket.gethostbyname(hostname)
                 #this returns '127.0.1.1' and it is useless
+
+            if (time.time() - start_time) > TIMEOUT:
+                address = socket.gethostbyname(hostname+".local")
+            if (time.time() - start_time) > 2*TIMEOUT:
+                raise Exception("Cannot detect my IP address")
+
 
 
         logging.info(f"UID {uid}")

@@ -6,6 +6,21 @@ Ethoscope
 This is the github repository of the software part of the [ethoscope platform](http://gilestrolab.github.io/ethoscope/).
 All technical information regarding ethoscope is compiled in [our documentation](https://qgeissmann.gitbooks.io/ethoscope-manual/content/).
 
+
+Organisation of the branches
+--------------------------------
+
+* `deployment`: base branch running on the ethoscopes in the lab
+* `deployment_sd`: fork of deployment with advanced interactor classes
+* `super_ethoscope`: fork of deployment with advanced tracking and camera classes:
+*    The RichAdaptiveBGTracker provides total movement correlates of activity
+*    The ImgStoreCamera allows the ethoscope platform to read from the imgstore format
+*    The HRPiCameraAsync allows the ethoscope to take HQ images (4k x 3k) and saves them to an imgstore. The FPS is reduced (~0.25 FPS vs ~2 FPS).
+
+
+
+
+
 Organisation of the code
 --------------------------
 
@@ -48,3 +63,4 @@ python device_server.py --rois-pickle-file PATH_TO_ROIS.pickle --input PATH_TO_V
 * name: Name of the offline ethoscope as displayed in the ethoscope node GUI
 * address: This argument is mandatory for now if you want to see the offline ethoscope appear on the GUI. This is because the code in charge of fetching the ip address of the ethoscopes does not work when running offline. With this argument the user can avert this issue.
  
+

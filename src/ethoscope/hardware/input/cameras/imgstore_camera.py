@@ -4,7 +4,6 @@ import tqdm
 import cv2
 
 from .cameras import MovieVirtualCamera
-from imgstore import new_for_filename
 from ethoscope.utils.debug import EthoscopeException
 
 class ImgStoreCamera(MovieVirtualCamera):
@@ -38,6 +37,7 @@ class ImgStoreCamera(MovieVirtualCamera):
 
         self.canbepickled = False #cv2.videocapture object cannot be serialized, hence cannot be picked
 
+        from imgstore import new_for_filename
         store = new_for_filename(path)
         metadata = store.get_frame_metadata()
         self._store = store
