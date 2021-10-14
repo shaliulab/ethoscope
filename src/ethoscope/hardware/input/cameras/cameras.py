@@ -610,15 +610,16 @@ class OurPiCameraAsync(BaseCamera):
         self.canbepickled = True #cv2.videocapture object cannot be serialized, hence cannot be picked
 
         if target_resolution is None:
-            import picamera
-            with picamera.PiCamera() as capture: exif_tags = capture.exif_tags
+            try:
+                import picamera
+                with picamera.PiCamera() as capture: exif_tags = capture.exif_tags
 
-            if exif_tags['IFD0.Model'] == "RP_imx477":
+                if exif_tags['IFD0.Model'] == "RP_imx477":
+                    target_resolution = (1280, 960)
+                else:
+                    target_resolution = (1280, 960)
+            except ModuleNotFoundError:
                 target_resolution = (1280, 960)
-            else:
-                target_resolution = (1280, 960)
-
-
 
         w,h = target_resolution
 
