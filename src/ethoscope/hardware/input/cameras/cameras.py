@@ -594,6 +594,8 @@ class OurPiCameraAsync(BaseCamera):
     _description = {"overview": "Default class to acquire frames from the raspberry pi camera asynchronously.",
                     "arguments": []}
 
+    _TIMEOUT = 10
+
 
     _frame_grabber_class = PiFrameGrabber
     def __init__(self, target_fps=20, target_resolution=None, *args, **kwargs):
@@ -641,7 +643,7 @@ class OurPiCameraAsync(BaseCamera):
         self._p.start()
 
         try:
-            im = self._queue.get(timeout=10)
+            im = self._queue.get(timeout=self._TIMEOUT)
 
         except Exception as e:
             logging.error("Could not get any frame from the camera after the initialisation!")

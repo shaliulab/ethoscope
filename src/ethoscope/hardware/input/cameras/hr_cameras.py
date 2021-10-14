@@ -14,6 +14,9 @@ class HRPiFrameGrabber(PiFrameGrabber):
 
 class JetsonNanoFrameGrabber(PiFrameGrabber):
 
+
+    _TIMEOUT = 20
+
     @staticmethod
     def gstreamer_pipeline(
         capture_width=1280,
