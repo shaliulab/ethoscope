@@ -10,6 +10,82 @@ class HRPiFrameGrabber(PiFrameGrabber):
     _VIDEO_PORT = False
 
 
+class JetsonNanoFrameGrabber(PiFrameGrabber):
+
+    @staticmethod
+    def gstreamer_pipeline(
+        capture_width=1280,
+        capture_height=720,
+        display_width=1280,
+        display_height=720,
+        framerate=60,
+        flip_method=0,
+    ):
+        return (
+            "nvarguscamerasrc ! "
+            "video/x-raw(memory:NVMM), "
+            "width=(int)%d, height=(int)%d, "
+            "format=(string)NV12, framerate=(fraction)%d/1 ! "
+            "nvvidconv flip-method=%d ! "
+            "video/x-raw, width=(int)%d, height=(int)%d, format=(string)BGRx ! "
+            "videoconvert ! "
+            "video/x-raw, format=(string)BGR ! appsink"
+            % (
+                capture_width,
+                capture_height,
+                framerate,
+                flip_method,
+                display_width,
+                display_height,
+            )
+        )
+        
+    def run (self):
+        """
+        Initialise pi camera, get frames, convert them fo greyscale, and make them available in a queue.
+        Run stops if the _stop_queue is not empty.
+        """
+
+        try:
+
+            pipeline = gstreamer_pipeline(flip_method=0, capture_width=self._target_resolution[1], capture_height=self._target_resolution[2], framerate=self._target_fps)
+            logging.warning(pipeline)
+            logging.warning("Initialising stream")
+
+
+            cap = cv2.VideoCapture(pipeline, cv2.CAP_GSTREAMER)
+            start_time = time.time()
+            if cap.isOpened():
+                ret_val = True
+                while ret_val:
+                    ret_val, img = cap.read()
+                    out = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+                    self._queue.put(out)
+
+                    if not self._stop_queue.empty():
+                        logging.info("The stop queue is not empty. This signals it is time to stop acquiring frames")
+                        self._stop_queue.get()
+                        self._stop_queue.task_done()
+                        break
+            
+                cap.release()
+    
+        except Exception as error:
+            logging.error(error)
+            logging.error(traceback.print_exc())
+            logging.warning("Some problem acquiring frames from the camera")
+
+        finally:
+            self._queue.task_done() # this tell the parent the thread can be closed
+            logging.warning("Camera Frame grabber stopped acquisition cleanly")
+
+
+
+
+class JetsonNanoCamera(OurPiCameraAsync):
+    _frame_grabber_class = JetsonNanoFrameGrabber
+
+
 class HRPiCameraAsync(OurPiCameraAsync):
     _frame_grabber_class = HRPiFrameGrabber
     _description = {"overview": "A class that uses the HRPiFrameGrabber to exploit the increased resolution in the RPi HQ camera",
@@ -47,7 +123,6 @@ class HRPiCameraAsync(OurPiCameraAsync):
                   "imgdtype": np.uint8,
                   "chunksize": int(framerate * chunk_duration) # I want my videos to contain 5 minutes of data (300 seconds)
             }
-
 
             logging.warning(f"Chunksize: {kwargs['chunksize']}")
             self._store = imgstore.new_for_format(fmt="mjpeg/avi", **kwargs)
