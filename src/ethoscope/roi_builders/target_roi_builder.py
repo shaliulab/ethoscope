@@ -431,7 +431,21 @@ class TargetGridROIBuilder(BaseROIBuilder):
                 ct, _, _, _ = refine_contour(ct, img, rotate=False)
                 ct = pull_contour_h(ct, point, side)
                 cv2.drawContours(img, [ct.reshape((1, 4, 2))], -1, (255, 0, 0), 1, LINE_AA)
-                rois.append(ROI(ct, idx=i+1))
+
+                extra = [8, 5, 0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0]
+                # contours are arrays of shape nx1x2
+                # where n is the number of dots
+                # and 2 are the x and y coordinates of each dot
+                # edit the ct
+                logging.warning(f"Editing ROI {i}: I will add 5 pixels to the y dimension")
+                logging.warning(f"Shape: {ct.shape}")
+                logging.warning(f"Before: {ct}")
+                ct[:,1] = ct[:,1] + extra[i]
+                logging.warning(f"After: {ct}")
+  
+                roi = ROI(ct, idx=i+1)
+                rois.append(roi)
+
 
         return rois
 
