@@ -754,8 +754,8 @@ class DebugResultWriter(ResultWriter):
 class SQLiteResultWriter(ResultWriter):
     _async_writing_class = AsyncSQLiteWriter
     _null= Null()
-    def __init__(self, db_credentials, rois, metadata=None, make_dam_like_table=False, take_frame_shots=False, *args, **kwargs):
-        super(SQLiteResultWriter, self).__init__(db_credentials, rois, metadata, make_dam_like_table, take_frame_shots, *args, **kwargs)
+    def __init__(self, db_credentials, rois, *args, metadata=None, make_dam_like_table=False, take_frame_shots=False, **kwargs):
+        super(SQLiteResultWriter, self).__init__(db_credentials, rois, *args, metadata=metadata, make_dam_like_table=make_dam_like_table, take_frame_shots=take_frame_shots, **kwargs)
 
     def _create_table(self, name, fields, engine=None):
 
