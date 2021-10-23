@@ -626,7 +626,7 @@ class ResultWriter(object):
         self.__init__(**state["args"])
 
 
-class AsyncSQLiteWriter(multiprocessing.Process):
+class AsyncSQLiteWriter(threading.Thread):
     _pragmas = {"temp_store": "MEMORY",
                 "journal_mode": "OFF",
                 "locking_mode":  "EXCLUSIVE"}
