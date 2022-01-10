@@ -68,6 +68,22 @@ class BackupClass(object):
             # "password":"node"
         # }
 
+    def infer_backup_path(self):
+        import datetime
+        import subprocess
+        machine_id = self._device_info["id"]
+        machine_name = self._device_info["name"]
+        sql_cmd = f"USE {machine_name}_db; SELECT value FROM METADATA WHERE field='date_time';"
+        ip_address = self._device_info["ip"]
+        cmd = f'mysql -uethoscope -pethoscope -h {ip_address} -e'.split(" ") + [sql_cmd]
+        p = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+        data = p.communicate()
+        date_time_float = float(data[0].decode().split("\n")[1])
+        datetime_str = datetime.datetime.fromtimestamp(date_time_float).strftime("%Y-%m-%d_%H-%M-%S")
+        backup_path = os.path.join(self._results_dir, machine_id, machine_name, datetime_str, datetime_str + "_" + machine_id + ".db")
+        return backup_path
+
+
     def __init__(self, device_info, results_dir, use_last_file=False):
 
         self._device_info = device_info
@@ -79,13 +95,14 @@ class BackupClass(object):
     def run(self):
         try:
             if "backup_path" not in self._device_info:
-                raise KeyError("Could not obtain device backup path for %s" % self._device_info["id"])
+                logging.warning("Could not obtain device backup path for %s. I will infer it" % self._device_info["id"])
+                backup_path = self.infer_backup_path()
 
-            if self._device_info["backup_path"] is None:
+            elif self._device_info["backup_path"] is None:
                 raise ValueError("backup path is None for device %s" % self._device_info["id"])
 
-            backup_path = os.path.join(self._results_dir, self._device_info["backup_path"])
-
+            else:
+                 backup_path = os.path.join(self._results_dir, self._device_info["backup_path"])
 
             self._db_credentials["name"] = "%s_db" % self._device_info["name"]
 
@@ -96,7 +113,6 @@ class BackupClass(object):
 
             mirror.update_roi_tables()
 
-            # os.system(f"chgrp ethoscope {backup_path}")
 
         except KeyError as e:
             if self._use_last_file:
