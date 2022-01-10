@@ -11,6 +11,8 @@ import urllib.request
 import json
 
 import re
+from os import stat
+from pwd import getpwuid, getpwnam
 
 cpu_available = multiprocessing.cpu_count()
 #n_parallel_threads = cpu_available
@@ -91,18 +93,23 @@ class BackupClass(object):
         self._results_dir = results_dir
         self._use_last_file = use_last_file
 
+    def _get_backup_path(self):
+        if "backup_path" not in self._device_info:
+            logging.warning("Could not obtain device backup path for %s. I will infer it" % self._device_info["id"])
+            backup_path = self.infer_backup_path()
+
+        elif self._device_info["backup_path"] is None:
+            raise ValueError("backup path is None for device %s" % self._device_info["id"])
+
+        else:
+            backup_path = os.path.join(self._results_dir, self._device_info["backup_path"])
+        
+        return backup_path
 
     def run(self):
         try:
-            if "backup_path" not in self._device_info:
-                logging.warning("Could not obtain device backup path for %s. I will infer it" % self._device_info["id"])
-                backup_path = self.infer_backup_path()
 
-            elif self._device_info["backup_path"] is None:
-                raise ValueError("backup path is None for device %s" % self._device_info["id"])
-
-            else:
-                 backup_path = os.path.join(self._results_dir, self._device_info["backup_path"])
+            backup_path = self._get_backup_path()
 
             self._db_credentials["name"] = "%s_db" % self._device_info["name"]
 
@@ -154,6 +161,27 @@ class BackupClass(object):
 
         except Exception as e:
             logging.error(traceback.format_exc())
+
+
+        self.finish_backup()
+
+
+    @staticmethod
+    def find_owner(filename):
+        return getpwuid(stat(filename).st_uid).pw_name
+
+    @staticmethod
+    def change_owner(filename, new_owner="vibflysleep"):
+        uid = getpwnam(new_owner).pw_uid
+        gid = getpwnam(new_owner).pw_gid
+        os.chown(filename, uid, gid)
+
+    def finish_backup(self):
+        backup_path = self._get_backup_path()
+        if os.path.exists(backup_path):
+            owner = self.find_owner(backup_path)
+            if owner != "vibflysleep":
+                self.change_owner(backup_path, new_owner="vibflysleep")
 
 
 def dummy_job(*args):
