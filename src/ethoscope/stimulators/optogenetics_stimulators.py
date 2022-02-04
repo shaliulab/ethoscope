@@ -100,10 +100,11 @@ def main():
         interact, result = sd.apply()
         print(interact)
         print(result)
+    
+    for sd in sds:
         hc = sd._hardware_connection
         while len(hc._instructions) != 0:
-            time.sleep(1)
-            
+            time.sleep(.1)    
         hc.stop()
     
 if __name__ == "__main__":
