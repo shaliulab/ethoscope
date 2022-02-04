@@ -60,7 +60,7 @@ def get_parser():
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--rois", nargs="+", type=int)
-    return ap
+    return parser
 
 def never_moving():
     return False
