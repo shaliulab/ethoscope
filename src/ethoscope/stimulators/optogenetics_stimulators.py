@@ -68,7 +68,7 @@ def never_moving():
 
 def setup_roi(idx):
 
-    hc = HardwareConnection(RobustSleepDepriver._HardwareInterfaceClass, do_warm_up=False)
+    hc = HardwareConnection(OptogeneticStimulator._HardwareInterfaceClass, do_warm_up=False)
 
     sd = OptogeneticStimulator(
             hc,
