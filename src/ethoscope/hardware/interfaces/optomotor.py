@@ -16,6 +16,7 @@ class OptoMotor(BaseInterface):
     _baud = 115200
     _n_channels = 24
     _inst_format = "P {channel} {duration} {intensity}\r\n"
+    _params = ["channel", "duration", "intensity"]
 
     def __init__(self, port=None, *args, **kwargs):
         """
