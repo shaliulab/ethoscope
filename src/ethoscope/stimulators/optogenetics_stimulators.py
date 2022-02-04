@@ -54,11 +54,19 @@ import numpy as np
 from ethoscope.trackers.adaptive_bg_tracker import AdaptiveBGModel
 from ethoscope.core.roi import ROI 
 from ethoscope.hardware.interfaces.interfaces import HardwareConnection
+import argparse
+
+def get_parser():
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--rois", nargs="+", type=int)
+    return ap
 
 def never_moving():
     return False
 
-def main():
+
+def setup_roi(idx):
 
     hc = HardwareConnection(RobustSleepDepriver._HardwareInterfaceClass, do_warm_up=False)
 
@@ -74,19 +82,29 @@ def main():
     sd._has_moved = never_moving
     sd._t0 = 0
 
-    roi = ROI(polygon=np.array([[0, 10], [10, 10], [10, 0], [0, 0]]), idx=1)
+    roi = ROI(polygon=np.array([[0, 10], [10, 10], [10, 0], [0, 0]]), idx=idx)
     tracker = AdaptiveBGModel(roi=roi)
     tracker._last_time_point = 30000 #ms
 
     sd.bind_tracker(tracker)
+    return sd
+
+def main():
+
+    args = get_parser().parse_args()
+
     print("Applying")
-    interact, result = sd.apply()
-    print(interact)
-    print(result)
-    while len(hc._instructions) != 0:
-        time.sleep(1)
-        
-    hc.stop()
+    sds = [setup_roi(idx) for idx in args.rois]
+
+    for sd in sds:
+        interact, result = sd.apply()
+        print(interact)
+        print(result)
+        hc = sd._hardware_connection
+        while len(hc._instructions) != 0:
+            time.sleep(1)
+            
+        hc.stop()
     
 if __name__ == "__main__":
     main()
