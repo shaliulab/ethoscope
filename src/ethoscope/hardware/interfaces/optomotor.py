@@ -90,7 +90,7 @@ class OptoMotor(BaseInterface):
 
     # I need to pass them None so they are populated from kwargs
     # but they actually should never be None
-    def make_instruction(self, channel=None, duration=None, intensity=None):
+    def make_instruction(self, *args, **kwargs):
         """
         Produce an instruction that can be passed to the serial handler write method (i.e. to Arduino) 
         :param channel: the chanel idx to be activated
@@ -102,7 +102,7 @@ class OptoMotor(BaseInterface):
         :return:
         """
 
-        params = self.val_params(channel, duration, intensity)
+        params = self.val_params(*args, **kwargs)
         try:
             instruction = self._inst_format.format_map(params).encode("utf-8")
         except TypeError as error:
