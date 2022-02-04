@@ -6,7 +6,7 @@ __author__ = 'quentin'
 
 
 from ethoscope.stimulators.sleep_depriver_stimulators import RobustSleepDepriver
-from src.ethoscope.hardware.interfaces.optogenetics import OptogeneticsStimulator
+from ethoscope.hardware.interfaces.optogenetics import OptogeneticsStimulator
 
 import random
 import time
