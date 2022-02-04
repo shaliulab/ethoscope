@@ -29,6 +29,8 @@ from ethoscope.stimulators.sleep_depriver_stimulators import SleepDepStimulator,
 from ethoscope.stimulators.odour_stimulators import DynamicOdourSleepDepriver, MiddleCrossingOdourStimulator, MiddleCrossingOdourStimulatorFlushed
 from ethoscope.stimulators.optomotor_stimulators import OptoMidlineCrossStimulator, MotoMidlineCrossStimulator, RobustMotoMidlineCrossStimulator
 from ethoscope.stimulators.dynamic_stimulators import SegmentedStimulator
+from ethoscope.stimulators.optogenetics_stimulators import OptogeneticStimulator
+
 
 from ethoscope.utils.debug import EthoscopeException
 from ethoscope.utils.io import ResultWriter, DebugResultWriter, SQLiteResultWriter
@@ -100,7 +102,8 @@ class ControlThread(Thread):
                                             OptomotorSleepDepriverSystematic,
                                             MiddleCrossingOdourStimulator,
                                             MiddleCrossingOdourStimulatorFlushed,
-                                            SegmentedStimulator
+                                            SegmentedStimulator,
+                                            OptogeneticStimulator,
                                             ],
                     },
         "drawer":{
