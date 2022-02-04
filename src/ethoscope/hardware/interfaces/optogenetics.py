@@ -15,6 +15,4 @@ class OptogeneticsStimulator(OptoMotor):
             "pulse_off": pulse_off,
         })
 
-
-
-
+        return params
