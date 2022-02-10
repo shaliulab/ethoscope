@@ -103,7 +103,7 @@ class BackupClass(object):
 
         else:
             backup_path = os.path.join(self._results_dir, self._device_info["backup_path"])
-        
+
         return backup_path
 
     def run(self):
@@ -177,11 +177,30 @@ class BackupClass(object):
         os.chown(filename, uid, gid)
 
     def finish_backup(self):
+        logging.warning("Finishing backup")
         backup_path = self._get_backup_path()
         if os.path.exists(backup_path):
             owner = self.find_owner(backup_path)
-            if owner != "vibflysleep":
-                self.change_owner(backup_path, new_owner="vibflysleep")
+            #if owner != "vibflysleep":
+            if True:
+                experiment_folder = os.path.dirname(backup_path)
+                files = os.listdir(experiment_folder)
+                for file in files:
+                    path = os.path.join(
+                        experiment_folder,
+                        file
+                    )
+                    self.change_owner(
+                        path,
+                        new_owner="vibflysleep"
+                    )
+
+                logging.warning(f"Changing ownership of {experiment_folder}")
+                self.change_owner(experiment_folder, new_owner="vibflysleep")
+                machine_name_folder = os.path.dirname(experiment_folder)
+                self.change_owner(machine_name_folder, new_owner="vibflysleep")
+                machine_folder = os.path.dirname(machine_name_folder)
+                self.change_owner(machine_folder, new_owner="vibflysleep")
 
 
 def dummy_job(*args):
