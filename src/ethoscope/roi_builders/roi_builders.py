@@ -11,7 +11,7 @@ import time
 from ethoscope.utils.description import DescribedObject
 from ethoscope.core.roi import ROI
 from ethoscope.hardware.input.cameras import OurPiCameraAsync, FSLPiCameraAsync
-
+from ethoscope.configuration import load_config
 
 class BaseROIBuilder(DescribedObject):
     _rois_pickle_file = ''
@@ -30,10 +30,17 @@ class BaseROIBuilder(DescribedObject):
         # Capture 5 frames and take the median intensity for each pixel
         # i.e. get an image that represents the median of 5 frames
 
-        modes_min = {"target_detection": 90, "roi_builder": 20, "tracker": 0}
-        modes_n = {"target_detection": 5, "roi_builder": 5}
+
         next_mode = {"target_detection": "roi_builder", "roi_builder": "tracker"}
-        means = {"target_detection": (140, 190), "roi_builder": (20,40)}
+
+        config = load_config()
+        # modes_min = {"target_detection": 90, "roi_builder": 20, "tracker": 0}
+        # modes_n = {"target_detection": 5, "roi_builder": 5}
+        # means = {"target_detection": (140, 190), "roi_builder": (20,40)}
+
+        modes_min = config["roi_builder"]["modes_min"]
+        modes_n = config["roi_builder"]["modes_n"]
+        means = config["roi_builder"]["means"]
 
         accum = []
         if isinstance(input, np.ndarray):

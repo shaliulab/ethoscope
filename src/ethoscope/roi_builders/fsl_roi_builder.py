@@ -2,6 +2,8 @@ __author__ = 'quentin'
 
 import cv2
 import time
+import os
+import os.path
 
 try:
     CV_VERSION = int(cv2.__version__.split(".")[0])
