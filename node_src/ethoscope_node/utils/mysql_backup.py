@@ -97,6 +97,10 @@ class MySQLdbToSQlite(object):
             command = "SHOW TABLES"
             src_cur.execute(command)
             tables = [c[0] for c in src_cur]
+            roi_tables = [t for t in tables if t.startswith("ROI_")]
+            rest_tables = [t for t in tables if not t.startswith("ROI_")]
+            tables = rest_tables + roi_tables
+
             for t in tables:
                 if t == "CSV_DAM_ACTIVITY":
                     self._copy_table(t, src, conn, dump_in_csv=True)
