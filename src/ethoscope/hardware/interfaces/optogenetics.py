@@ -1,6 +1,6 @@
 from ethoscope.hardware.interfaces.optomotor import OptoMotor
 
-class OptogeneticsStimulator(OptoMotor):
+class OptogeneticHardware(OptoMotor):
     _inst_format = "R {channel} {duration} {pulse_on} {pulse_off}\r\n"
     _params = ["channel", "duration", "intensity", "pulse_on", "pulse_off"]
 

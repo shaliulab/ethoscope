@@ -6,7 +6,8 @@ __author__ = 'quentin'
 
 
 from ethoscope.stimulators.sleep_depriver_stimulators import RobustSleepDepriver
-from ethoscope.hardware.interfaces.optogenetics import OptogeneticsStimulator
+from ethoscope.hardware.interfaces.optogenetics import OptogeneticHardware
+from ethoscope.stimulators.stimulators import HasInteractedVariable
 
 import random
 import time
@@ -29,7 +30,7 @@ class OptogeneticStimulator(RobustSleepDepriver):
                 ]}
 
     _duration = 100
-    _HardwareInterfaceClass = OptogeneticsStimulator
+    _HardwareInterfaceClass = OptogeneticHardware
     def __init__(self,
                  *args,
                  pulse_on=50,
@@ -48,6 +49,43 @@ class OptogeneticStimulator(RobustSleepDepriver):
         dic["pulse_off"] = self._pulse_off
         return out, dic
 
+class OptogeneticStimulatorSystematic(OptogeneticStimulator):
+    _description = {
+        "overview": "A stimulator to sleep deprive an animal using gear motors. See https://github.com/gilestrolab/ethoscope_hardware/tree/master/modules/gear_motor_sleep_depriver. NOTE: Use  this class if you are using a SD module using the new PCB (Printed Circuit Board)",
+        "arguments": [
+            {"type": "number", "min": 1, "max": 3600*12, "step":1, "name": "interval", "description": "The recurence of the stimulus","default":120},
+            {"type": "number", "min": 10, "max": 10000 , "step": 10, "name": "pulse_duration", "description": "For how long to deliver the stimulus(ms)", "default": 1000},
+            {"type": "str", "name": "date_range",
+                "description": "A date and time range in which the device will perform (see http://tinyurl.com/jv7k826)",
+                "default": ""},
+            {"type": "number", "min": 20, "max": 1000 , "step": 1, "name": "pulse_on", "description": "duration of pulse in ms", "default": 50},
+            {"type": "number", "min": 20, "max": 1000 , "step": 1, "name": "pulse_off", "description": "resting time between pulses in ms", "default": 50},
+        ]
+    }
+
+    def __init__(
+        self, *args, interval=120, **kwargs
+    ):
+        self._interval = interval * 1000
+        super(OptogeneticStimulatorSystematic, self).__init__(*args, **kwargs)
+
+
+    def decide(self):
+        roi_id = self._tracker._roi.idx
+        try:
+            channel = self._roi_to_channel[roi_id]
+        except KeyError:
+            return HasInteractedVariable(False), {}
+        now = self._tracker.last_time_point + roi_id *100
+        if now - self._t0 > self._interval:
+            dic = {"channel": channel}
+            dic["duration"] = self._pulse_duration
+            dic["pulse_on"] = self._pulse_on
+            dic["pulse_off"] = self._pulse_off
+            self._t0 = now
+            return HasInteractedVariable(True), dic
+
+        return HasInteractedVariable(False), {}
 
 
 import numpy as np

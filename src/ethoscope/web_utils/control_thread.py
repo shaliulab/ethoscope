@@ -29,7 +29,8 @@ from ethoscope.stimulators.sleep_depriver_stimulators import SleepDepStimulator,
 from ethoscope.stimulators.odour_stimulators import DynamicOdourSleepDepriver, MiddleCrossingOdourStimulator, MiddleCrossingOdourStimulatorFlushed
 from ethoscope.stimulators.optomotor_stimulators import OptoMidlineCrossStimulator, MotoMidlineCrossStimulator, RobustMotoMidlineCrossStimulator
 from ethoscope.stimulators.dynamic_stimulators import SegmentedStimulator
-from ethoscope.stimulators.optogenetics_stimulators import OptogeneticStimulator
+from ethoscope.stimulators.optogenetics_stimulators import OptogeneticStimulator, OptogeneticStimulatorSystematic
+from ethoscope.stimulators.state_stimulators import SleepStimulator, AwakeStimulator
 
 
 from ethoscope.utils.debug import EthoscopeException
@@ -86,24 +87,27 @@ class ControlThread(Thread):
             },
         "interactor":{
                         "possible_classes":[DefaultStimulator,
-                                            SleepDepStimulator,
-                                            OptomotorSleepDepriver,
+                                            # SleepDepStimulator,
+                                            # OptomotorSleepDepriver,
                                             GearOptomotorSleepDepriver,
                                             RobustSleepDepriver,
-                                            MiddleCrossingStimulator,
-                                            #SystematicSleepDepInteractor,
-                                            ExperimentalSleepDepStimulator,
-                                            #GearMotorSleepDepStimulator,
-                                            #DynamicOdourDeliverer,
-                                            DynamicOdourSleepDepriver,
-                                            OptoMidlineCrossStimulator,
-                                            MotoMidlineCrossStimulator,
+                                            # MiddleCrossingStimulator,
+                                            # SystematicSleepDepInteractor,
+                                            # ExperimentalSleepDepStimulator,
+                                            # GearMotorSleepDepStimulator,
+                                            # DynamicOdourDeliverer,
+                                            # DynamicOdourSleepDepriver,
+                                            # OptoMidlineCrossStimulator,
+                                            # MotoMidlineCrossStimulator,
                                             RobustMotoMidlineCrossStimulator,
                                             OptomotorSleepDepriverSystematic,
-                                            MiddleCrossingOdourStimulator,
-                                            MiddleCrossingOdourStimulatorFlushed,
+                                            # MiddleCrossingOdourStimulator,
+                                            # MiddleCrossingOdourStimulatorFlushed,
                                             SegmentedStimulator,
                                             OptogeneticStimulator,
+                                            OptogeneticStimulatorSystematic,
+                                            SleepStimulator,
+                                            AwakeStimulator
                                             ],
                     },
         "drawer":{

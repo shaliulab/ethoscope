@@ -273,15 +273,15 @@ class RobustSleepDepriver(GearOptomotorSleepDepriver):
     """
     Sleep depriver using new PCB from Giorgio Gilestro.
     """
-    _description = {"overview": "A stimulator to sleep deprive an animal using gear motors. See https://github.com/gilestrolab/ethoscope_hardware/tree/master/modules/gear_motor_sleep_depriver. NOTE: Use  this class if you are using a SD module using the new PCB (Printed Circuit Board)",
-                "arguments": [
-                    {"type": "number", "min": 0.0, "max": 1.0, "step": 0.0001, "name": "velocity_correction_coef", "description": "Velocity correction coef", "default": 0.01},
-                                {"type": "number", "min": 1, "max": 3600*12, "step":1, "name": "min_inactive_time", "description": "The minimal time after which an inactive animal is awaken(s)","default":10},
-                                {"type": "number", "min": 10, "max": 10000 , "step": 10, "name": "pulse_duration", "description": "For how long to deliver the stimulus(ms)", "default": 1000},
-                                {"type": "str", "name": "date_range",
-                                 "description": "A date and time range in which the device will perform (see http://tinyurl.com/jv7k826)",
-                                 "default": ""}
-                               ]}
+    _description = {
+        "overview": "A stimulator to sleep deprive an animal using gear motors. See https://github.com/gilestrolab/ethoscope_hardware/tree/master/modules/gear_motor_sleep_depriver. NOTE: Use  this class if you are using a SD module using the new PCB (Printed Circuit Board)",
+        "arguments": [
+            {"type": "number", "min": 0.0, "max": 1.0, "step": 0.0001, "name": "velocity_correction_coef", "description": "Velocity correction coef", "default": 0.01},
+            {"type": "number", "min": 1, "max": 3600*12, "step":1, "name": "min_inactive_time", "description": "The minimal time after which an inactive animal is awaken(s)","default":10},
+            {"type": "number", "min": 10, "max": 10000 , "step": 10, "name": "pulse_duration", "description": "For how long to deliver the stimulus(ms)", "default": 1000},
+            {"type": "str", "name": "date_range", "description": "A date and time range in which the device will perform (see http://tinyurl.com/jv7k826)", "default": ""}
+        ]
+    }
 
     _HardwareInterfaceClass = SleepDepriver
     _duration = 100
@@ -474,6 +474,42 @@ class OptomotorSleepDepriverSystematic(OptomotorSleepDepriver):
             return HasInteractedVariable(True), dic
 
         return HasInteractedVariable(False), {}
+
+class RobustOptomotorSleepDepriverSystematic(OptomotorSleepDepriverSystematic):
+
+    _description = {
+        "overview": "A stimulator to sleep deprive an animal using gear motors. See https://github.com/gilestrolab/ethoscope_hardware/tree/master/modules/gear_motor_sleep_depriver",
+        "arguments": [
+            {"type": "number", "min": 1, "max": 3600*12, "step":1, "name": "interval", "description": "The recurence of the stimulus","default":120},
+            {"type": "number", "min": 500, "max": 10000 , "step": 50, "name": "pulse_duration", "description": "For how long to deliver the stimulus(ms)", "default": 1000},
+            {"type": "date_range", "name": "date_range", "description": "A date and time range in which the device will perform (see http://tinyurl.com/jv7k826)", "default": ""}
+        ]
+    }
+
+    _HardwareInterfaceClass = OptoMotor
+    _roi_to_channel_opto = {1:1, 3:3, 5:5, 7:7, 9:9,
+                            12:23, 14:21,16:19, 18:17, 20:15}
+    _roi_to_channel_moto = {1:0, 3:2, 5:4, 7:6, 9:8,
+                            12:22, 14:20, 16:18, 18:16, 20:14}
+
+
+    def __init__(self,
+                 hardware_connection,
+                 interval=120,  # s
+                 pulse_duration = 1000,  #ms
+                 date_range=""
+                 ):
+
+        self._interval = interval  *1000 # ms used internally
+
+        super(RobustOptomotorSleepDepriverSystematic, self).__init__(
+            hardware_connection,
+            pulse_duration=pulse_duration,
+            stimulus_type=None,
+            date_range=date_range
+        )
+
+        self._roi_to_channel = {1:1, 3:3, 5:5, 7:7, 9:9, 12:11, 14:13, 16:15, 18:17, 20:19}
 
 
 if __name__ == "__main__":
