@@ -1,7 +1,12 @@
+import numpy as np
+
 from ethoscope.stimulators.sleep_depriver_stimulators import RobustSleepDepriver
 from ethoscope.hardware.interfaces.optomotor import OptoMotor
 from ethoscope.stimulators.stimulators import BaseStimulator, HasInteractedVariable
+from ethoscope.hardware.interfaces.optogenetics import OptogeneticHardware
+from ethoscope.hardware.interfaces.interfaces import HardwareConnection 
 
+from ethoscope.core.roi import ROI
 
 class StaticStimulator(RobustSleepDepriver):
     """
@@ -10,11 +15,11 @@ class StaticStimulator(RobustSleepDepriver):
     """
     
     _state = None
+    _HardwareInterfaceClass = OptogeneticHardware
     _description = {
         "overview": "A stimulator to sleep deprive an animal using gear motors. See https://github.com/gilestrolab/ethoscope_hardware/tree/master/modules/gear_motor_sleep_depriver. NOTE: Use  this class if you are using a SD module using the new PCB (Printed Circuit Board)",
         "arguments": [
             {"type": "number", "min": 0.0, "max": 1.0, "step": 0.0001, "name": "velocity_correction_coef", "description": "Velocity correction coef", "default": 0.01},
-            {"type": "number", "min": 1, "max": 3600*12, "step":1, "name": "min_inactive_time", "description": "The minimal time after which an inactive animal is awaken(s)","default":10},
             {"type": "number", "min": 10, "max": 10000 , "step": 10, "name": "pulse_duration", "description": "For how long to deliver the stimulus(ms)", "default": 1000},
             {"type": "str", "name": "date_range", "description": "A date and time range in which the device will perform (see http://tinyurl.com/jv7k826)", "default": ""},
             {"type": "number", "min": 20, "max": 1000 , "step": 1, "name": "pulse_on", "description": "duration of pulse in ms", "default": 50},
@@ -23,15 +28,12 @@ class StaticStimulator(RobustSleepDepriver):
         ]
     }
 
-    _HardwareInterfaceClass = OptoMotor
-
     def __init__(self, *args, pulse_on=50, pulse_off=50, **kwargs):
 
         program = kwargs.pop("program", "")
         self._pulse_on=pulse_on
         self._pulse_off=pulse_off
         super().__init__(*args, **kwargs)
-        self._scheduler = self._schedulerClass(kwargs["date_range"], program=program)
 
     def _decide(self):
 
@@ -56,3 +58,41 @@ class SleepStimulator(StaticStimulator):
 
 class AwakeStimulator(StaticStimulator):
     _state = "awake"
+
+
+if __name__ == "__main__":
+    from ethoscope.trackers.adaptive_bg_tracker import AdaptiveBGModel
+
+    def never_moving():
+        return False
+
+    def always_moving():
+        return True
+ 
+    def main():
+        hc = HardwareConnection(AwakeStimulator._HardwareInterfaceClass, do_warm_up=False)
+        idx_dict = {1: 1, 2: 3, 3: 5, 4: 7, 5: 9, 6: 12, 7: 14, 8:16, 9: 18, 10:20}
+
+        for i in range(1, 11):
+            #stim = AwakeStimulator(
+            stim = SleepStimulator(
+                hc,
+                min_inactive_time=1000,
+                velocity_correction_coef=0.01,
+                pulse_duration=1000,
+                date_range="",
+                pulse_on=50,
+                pulse_off=50,
+            )
+    
+            #stim._has_moved = always_moving 
+            stim._has_moved = never_moving 
+            stim._t0 = 0
+            idx = idx_dict[i]
+            roi = ROI(polygon=np.array([[0, 10], [10, 10], [10, 0], [0, 0]]), idx=idx)
+            tracker = AdaptiveBGModel(roi=roi)
+            tracker._last_time_point = 30000 #ms
+            stim.bind_tracker(tracker)
+            interact, result = stim.apply()
+
+    main()
