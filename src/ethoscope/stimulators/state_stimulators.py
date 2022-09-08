@@ -16,17 +16,6 @@ class StaticStimulator(RobustSleepDepriver):
     
     _state = None
     _HardwareInterfaceClass = OptogeneticHardware
-    _description = {
-        "overview": "A stimulator to sleep deprive an animal using gear motors. See https://github.com/gilestrolab/ethoscope_hardware/tree/master/modules/gear_motor_sleep_depriver. NOTE: Use  this class if you are using a SD module using the new PCB (Printed Circuit Board)",
-        "arguments": [
-            {"type": "number", "min": 0.0, "max": 1.0, "step": 0.0001, "name": "velocity_correction_coef", "description": "Velocity correction coef", "default": 0.01},
-            {"type": "number", "min": 10, "max": 10000 , "step": 10, "name": "pulse_duration", "description": "For how long to deliver the stimulus(ms)", "default": 1000},
-            {"type": "str", "name": "date_range", "description": "A date and time range in which the device will perform (see http://tinyurl.com/jv7k826)", "default": ""},
-            {"type": "number", "min": 20, "max": 1000 , "step": 1, "name": "pulse_on", "description": "duration of pulse in ms", "default": 50},
-            {"type": "number", "min": 20, "max": 1000 , "step": 1, "name": "pulse_off", "description": "resting time between pulses in ms", "default": 50},
-
-        ]
-    }
 
     def __init__(self, *args, pulse_on=50, pulse_off=50, **kwargs):
 
@@ -41,6 +30,9 @@ class StaticStimulator(RobustSleepDepriver):
         dic["duration"] = self._pulse_duration
         dic["pulse_on"] = self._pulse_on
         dic["pulse_off"] = self._pulse_off
+        if self._tracker._roi.idx not in self._roi_to_channel:
+            return HasInteractedVariable(False), {}
+
         dic["channel"] = self._roi_to_channel[self._tracker._roi.idx]
         
         
@@ -55,9 +47,37 @@ class StaticStimulator(RobustSleepDepriver):
         
 class SleepStimulator(StaticStimulator):
     _state = "asleep"
+    _HardwareInterfaceClass = OptogeneticHardware
+    _description = {
+        "overview": "A stimulator to sleep deprive an animal using optogenetics. The animal will be stimulated for as long as it is asleep",
+        "arguments": [
+            {"type": "number", "min": 0.0, "max": 1.0, "step": 0.0001, "name": "velocity_correction_coef", "description": "Velocity correction coef", "default": 0.01},
+            {"type": "number", "min": 10, "max": 10000 , "step": 10, "name": "pulse_duration", "description": "For how long to deliver the stimulus(ms)", "default": 1000},
+            {"type": "str", "name": "date_range", "description": "A date and time range in which the device will perform (see http://tinyurl.com/jv7k826)", "default": ""},
+            {"type": "number", "min": 20, "max": 1000 , "step": 1, "name": "pulse_on", "description": "duration of pulse in ms", "default": 50},
+            {"type": "number", "min": 20, "max": 1000 , "step": 1, "name": "pulse_off", "description": "resting time between pulses in ms", "default": 50},
+
+        ]
+    }
+
+
 
 class AwakeStimulator(StaticStimulator):
     _state = "awake"
+    _HardwareInterfaceClass = OptogeneticHardware
+    _description = {
+        "overview": "A stimulator to sleep deprive an animal using optogenetics. The animal will be stimulated for as long as it is awake",
+        "arguments": [
+            {"type": "number", "min": 0.0, "max": 1.0, "step": 0.0001, "name": "velocity_correction_coef", "description": "Velocity correction coef", "default": 0.01},
+            {"type": "number", "min": 10, "max": 10000 , "step": 10, "name": "pulse_duration", "description": "For how long to deliver the stimulus(ms)", "default": 1000},
+            {"type": "str", "name": "date_range", "description": "A date and time range in which the device will perform (see http://tinyurl.com/jv7k826)", "default": ""},
+            {"type": "number", "min": 20, "max": 1000 , "step": 1, "name": "pulse_on", "description": "duration of pulse in ms", "default": 50},
+            {"type": "number", "min": 20, "max": 1000 , "step": 1, "name": "pulse_off", "description": "resting time between pulses in ms", "default": 50},
+
+        ]
+    }
+
+
 
 
 if __name__ == "__main__":

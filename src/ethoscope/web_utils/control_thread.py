@@ -80,7 +80,16 @@ class ControlThread(Thread):
     _evanescent = False
     _option_dict = {
         "roi_builder":{
-                "possible_classes":[FSLSleepMonitorWithTargetROIBuilder, SleepMonitorWithTargetROIBuilder, HighContrastTargetROIBuilder, ManualROIBuilder, DefaultROIBuilder, TargetGridROIBuilder, OlfactionAssayROIBuilder, ElectricShockAssayROIBuilder],
+                "possible_classes":[
+                    FSLSleepMonitorWithTargetROIBuilder,
+                    SleepMonitorWithTargetROIBuilder,
+                    HighContrastTargetROIBuilder,
+                    ManualROIBuilder,
+                    DefaultROIBuilder,
+                    TargetGridROIBuilder,
+                    #OlfactionAssayROIBuilder,
+                    #ElectricShockAssayROIBuilder
+                ],
             },
         "tracker":{
                 "possible_classes":[AdaptiveBGModel, RichAdaptiveBGModel],

@@ -4,6 +4,9 @@ class OptogeneticHardware(OptoMotor):
     _inst_format = "R {channel} {duration} {pulse_on} {pulse_off}\r\n"
     _params = ["channel", "duration", "intensity", "pulse_on", "pulse_off"]
 
+    def __init__(self, *args, **kwargs):
+        kwargs["do_warm_up"] = False
+        super(OptogeneticHardware, self).__init__(*args, **kwargs)
 
     def send(self, channel, duration=10000, intensity=1000, pulse_on=50, pulse_off=50):
         self.activate(channel, duration, intensity, pulse_on, pulse_off)

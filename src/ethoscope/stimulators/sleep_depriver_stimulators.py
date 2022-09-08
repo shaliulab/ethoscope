@@ -118,7 +118,6 @@ class SleepDepStimulator(IsMovingStimulator):
         try:
             channel = self._roi_to_channel[roi_id]
         except KeyError:
-            logging.warning(f"Passed ROI ({roi_id}) is not in the mapping")
             return HasInteractedVariable(False), {}
 
         has_moved = self._has_moved()
@@ -288,7 +287,43 @@ class RobustSleepDepriver(GearOptomotorSleepDepriver):
 
     def __init__(self, *args, **kwargs):
         super(RobustSleepDepriver, self).__init__(*args, **kwargs)
-        self._roi_to_channel = {1:1, 3:3, 5:5, 7:7, 9:9, 12:11, 14:13, 16:15, 18:17, 20:19}
+        self._roi_to_channel = {
+                1:1,
+                3:3,
+                5:5,
+                7:7,
+                9:9,
+                12:11,
+                14:13,
+                16:15,
+                18:17,
+                20:19
+            }
+
+
+
+#        self._roi_to_channel = {
+#                1:1,
+#                2:2,
+#                3:3,
+#                4:4,
+#                5:5,
+#                6:6,
+#                7:7,
+#                8:8,
+#                9:9,
+#                10:10,
+#                11:10,
+#                12:11,
+#                13:12
+#                14:13,
+#                15:14,
+#                16:15,
+#                17:16,
+#                18:17,
+#                19:18,
+#                20:19
+#            }
 
 
 
