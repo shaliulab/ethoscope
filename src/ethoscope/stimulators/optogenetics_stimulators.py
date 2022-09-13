@@ -53,8 +53,8 @@ class OptogeneticStimulatorSystematic(OptogeneticStimulator):
     _description = {
         "overview": "A stimulator to sleep deprive an animal using gear motors at a constant interval",
         "arguments": [
-            {"type": "number", "min": 1, "max": 3600*12, "step":1, "name": "interval", "description": "The recurence of the stimulus","default":1},
-            {"type": "number", "min": 10, "max": 10000 , "step": 10, "name": "pulse_duration", "description": "For how long to deliver the stimulus(ms). Please pass 3000 if you want a permanent stimulus (still oscilating and only within the date range)", "default": 3000},
+            {"type": "number", "min": 1, "max": 3600*12, "step":1, "name": "interval", "description": "The recurrence of the stimulus","default":1},
+            {"type": "number", "min": 10, "max": 10000 , "step": 10, "name": "pulse_duration", "description": "For how long to deliver the stimulus(ms). Please pass 3000 if you want a permanent (constant) stimulus (still oscillating and only within the date range). If you pass less, there will be brief periods without light. Check beforehand in that case.", "default": 3000},
             {"type": "str", "name": "date_range",
                 "description": "A date and time range in which the device will perform (see http://tinyurl.com/jv7k826)",
                 "default": ""},
@@ -80,7 +80,6 @@ class OptogeneticStimulatorSystematic(OptogeneticStimulator):
         now = self._tracker.last_time_point 
         if now - self._t0 > self._interval:
             dic = {"channel": channel}
-            #dic["duration"] = self._pulse_duration
             dic["pulse_on"] = self._pulse_on
             dic["pulse_off"] = self._pulse_off
             logging.warning(dic)
