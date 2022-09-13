@@ -17,7 +17,7 @@ class OptogeneticStimulator(RobustSleepDepriver):
     """
     Optogenetics stimulator using new PCB from Giorgio Gilestro.
     """
-    _description = {"overview": "A stimulator to sleep deprive an animal using gear motors. See https://github.com/gilestrolab/ethoscope_hardware/tree/master/modules/gear_motor_sleep_depriver. NOTE: Use  this class if you are using a SD module using the new PCB (Printed Circuit Board)",
+    _description = {"overview": "A stimulator to sleep deprive an animal using optogenetics",
                 "arguments": [
                     {"type": "number", "min": 0.0, "max": 1.0, "step": 0.0001, "name": "velocity_correction_coef", "description": "Velocity correction coef", "default": 0.01},
                     {"type": "number", "min": 1, "max": 3600*12, "step":1, "name": "min_inactive_time", "description": "The minimal time after which an inactive animal is awaken(s)","default":10},
@@ -51,7 +51,7 @@ class OptogeneticStimulator(RobustSleepDepriver):
 
 class OptogeneticStimulatorSystematic(OptogeneticStimulator):
     _description = {
-        "overview": "A stimulator to sleep deprive an animal using gear motors at a constant interval",
+        "overview": "A stimulator to sleep deprive an animal using optogenetics at a constant interval",
         "arguments": [
             {"type": "number", "min": 1, "max": 3600*12, "step":1, "name": "interval", "description": "The recurrence of the stimulus","default":1},
             {"type": "number", "min": 10, "max": 10000 , "step": 10, "name": "pulse_duration", "description": "For how long to deliver the stimulus(ms). Please pass 3000 if you want a permanent (constant) stimulus (still oscillating and only within the date range). If you pass less, there will be brief periods without light. Check beforehand in that case.", "default": 3000},

@@ -1,3 +1,5 @@
+import logging
+
 import numpy as np
 
 from ethoscope.stimulators.sleep_depriver_stimulators import RobustSleepDepriver
@@ -40,7 +42,7 @@ class StaticStimulator(RobustSleepDepriver):
 
         dic["channel"] = self._roi_to_channel[self._tracker._roi.idx]
 
-        now = time.time()
+        now = self._tracker.last_time_point
         has_moved = self._has_moved()
         if self._t0 is None:
             self._t0 = now
@@ -56,7 +58,7 @@ class SleepStimulator(StaticStimulator):
         "overview": f"A stimulator to sleep deprive an animal using optogenetics. The animal will be stimulated for as long as it is {_state}",
         "arguments": [
             {"type": "number", "min": 0.0, "max": 1.0, "step": 0.0001, "name": "velocity_correction_coef", "description": "Velocity correction coef", "default": 0.01},
-            {"type": "number", "min": 1, "max": 3600*12, "step":1, "name": "min_time", "description": "The minimal time after which an inactive animal is stimulated","default":10},
+            {"type": "number", "min": 1, "max": 3600*12, "step":1, "name": "min_time", "description": "The minimal time after which an inactive animal is stimulated (s)","default":10},
             {"type": "number", "min": 10, "max": 10000 , "step": 10, "name": "pulse_duration", "description": "For how long to deliver the stimulus(ms)", "default": 1000},
             {"type": "str", "name": "date_range", "description": "A date and time range in which the device will perform (see http://tinyurl.com/jv7k826)", "default": ""},
             {"type": "number", "min": 20, "max": 1000 , "step": 1, "name": "pulse_on", "description": "duration of pulse in ms", "default": 50},
@@ -65,7 +67,7 @@ class SleepStimulator(StaticStimulator):
         ]
     }
 
-    def _decide_subclass(dic, now, has_moved):
+    def _decide_subclass(self, dic, now, has_moved):
         if has_moved:
             self._t0 = now
             return HasInteractedVariable(False), {}
@@ -86,7 +88,7 @@ class AwakeStimulator(StaticStimulator):
         "overview": f"A stimulator to 'awake' deprive an animal using optogenetics. The animal will be stimulated for as long as it is {_state}. This class is a control of the SleepStimulator",
         "arguments": [
             {"type": "number", "min": 0.0, "max": 1.0, "step": 0.0001, "name": "velocity_correction_coef", "description": "Velocity correction coef", "default": 0.01},
-            {"type": "number", "min": 1, "max": 3600*12, "step":1, "name": "min_time", "description": "The minimal time after which an active animal is stimulated","default":10},
+            {"type": "number", "min": 0, "max": 3600*12, "step":1, "name": "min_time", "description": "The minimal time after which an active animal is stimulated (s)","default":0},
             {"type": "number", "min": 10, "max": 10000 , "step": 10, "name": "pulse_duration", "description": "For how long to deliver the stimulus(ms)", "default": 1000},
 
             {"type": "str", "name": "date_range", "description": "A date and time range in which the device will perform (see http://tinyurl.com/jv7k826)", "default": ""},
@@ -97,14 +99,24 @@ class AwakeStimulator(StaticStimulator):
     }
 
 
-    def _decide_subclass(dic, now, has_moved):
+    def _decide_subclass(self, dic, now, has_moved):
         if not has_moved:
             self._t0 = now
+            logging.warning(f"Channel {dic['channel']} not moving")
             return HasInteractedVariable(False), {}
         else:
             if float(now - self._t0) > self._time_threshold_ms:
+                logging.warning(f"""
+                Channel {dic['channel']} has moved, stimulating because
+                {now - self._t0} > {self._time_threshold_ms}
+                """)
                 return HasInteractedVariable(True), dic
             else:
+                logging.warning(
+                f"""
+                Channel {dic['channel']} has moved, not stimulating because
+                {now-self._t0} < {self._time_threshold_ms}
+                """)
                 return HasInteractedVariable(False), {}
 
 
