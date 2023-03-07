@@ -219,7 +219,6 @@ class OptomotorSleepDepriver(SleepDepStimulator):
         super(OptomotorSleepDepriver, self).__init__(hardware_connection, velocity_correction_coef, min_inactive_time, date_range)
 
 
-
         if stimulus_type == 2:
             self._roi_to_channel = self._roi_to_channel_moto
         elif stimulus_type == 1:
@@ -252,18 +251,7 @@ class GearOptomotorSleepDepriver(OptomotorSleepDepriver):
                                ]}
 
     _HardwareInterfaceClass = OptoMotor
-    _duration = 2000
-
-
-    def __init__(self, *args, **kwargs):
-
-        # if the user provided a duration, use that one
-        if "pulse_duration" in kwargs:
-            pass
-        else:
-            logging.warning(f"Using default pulse_duration of {self._duration} ms")
-            kwargs["pulse_duration"] = self._duration
-
+    def __init__(self, *args, pulse_duration=2000, **kwargs):
         super(GearOptomotorSleepDepriver, self).__init__(*args, **kwargs)
         self._roi_to_channel = {1:0, 3:2, 5:4, 7:6, 9:8,
                                 12:22, 14:20, 16:18, 18:16, 20:14}
@@ -299,32 +287,6 @@ class RobustSleepDepriver(GearOptomotorSleepDepriver):
                 18:17,
                 20:19
             }
-
-
-
-#        self._roi_to_channel = {
-#                1:1,
-#                2:2,
-#                3:3,
-#                4:4,
-#                5:5,
-#                6:6,
-#                7:7,
-#                8:8,
-#                9:9,
-#                10:10,
-#                11:10,
-#                12:11,
-#                13:12
-#                14:13,
-#                15:14,
-#                16:15,
-#                17:16,
-#                18:17,
-#                19:18,
-#                20:19
-#            }
-
 
 
 class ExperimentalSleepDepStimulator(SleepDepStimulator):
