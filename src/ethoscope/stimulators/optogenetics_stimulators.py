@@ -65,9 +65,10 @@ class OptogeneticStimulatorSystematic(RobustOptomotorSleepDepriverSystematic):
     _HardwareInterfaceClass = OptogeneticHardware
 
     def __init__(
-        self, *args, interval=120, **kwargs
+        self, *args, pulse_on=50, pulse_off=50, **kwargs
     ):
-        self._interval = interval * 1000
+        self._pulse_on = pulse_on
+        self._pulse_off = pulse_off
         super(OptogeneticStimulatorSystematic, self).__init__(*args, **kwargs)
         self._t0 = 0
 
@@ -99,11 +100,14 @@ def setup_roi(idx):
 
     hc = HardwareConnection(OptogeneticStimulator._HardwareInterfaceClass, do_warm_up=False)
 
-    sd = OptogeneticStimulator(
+    sd = OptogeneticStimulatorSystematic(
             hc,
-            velocity_correction_coef=0.01,
-            min_inactive_time=10,  # s
-            pulse_duration = 1000,  #ms
+            # systematic
+            interval=10,
+            # close loop
+            #min_inactive_time=10,  # s
+            #velocity_correction_coef=0.01,
+            pulse_duration = 5000,  #ms
             date_range="",
             pulse_on=50,
             pulse_off=50,
@@ -125,11 +129,19 @@ def main():
     print("Applying")
     sds = [setup_roi(idx) for idx in args.rois]
 
-    for sd in sds:
-        interact, result = sd.apply()
-        print(interact)
-        print(result)
-    
+    start_time = time.time()
+    i=0
+
+    while (time.time() - start_time) < 20:
+        print(f"Loop {i}")
+        for sd in sds:
+            interact, result = sd.apply()
+        i+=1
+        time.sleep(.5)
+        for sd in sds:
+            sd._tracker._last_time_point += 500
+
+        
     for sd in sds:
         hc = sd._hardware_connection
         while len(hc._instructions) != 0:

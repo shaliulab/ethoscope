@@ -464,7 +464,7 @@ class OptomotorSleepDepriverSystematic(OptomotorSleepDepriver):
         except KeyError:
             return HasInteractedVariable(False), {}
         now = self._tracker.last_time_point + roi_id *100
-        if now - self._t0 > self._interval:
+        if now - self._t0 > 1000 and (now % self._interval) < 100:
             dic = {"channel": channel}
             dic["duration"] = self._pulse_duration
             self._t0 = now
@@ -492,18 +492,16 @@ class RobustOptomotorSleepDepriverSystematic(OptomotorSleepDepriverSystematic):
 
     def __init__(self,
                  hardware_connection,
-                 interval=120,  # s
                  pulse_duration = 1000,  #ms
-                 date_range=""
+                 date_range="", **kwargs
                  ):
 
-        self._interval = interval  *1000 # ms used internally
 
         super(RobustOptomotorSleepDepriverSystematic, self).__init__(
             hardware_connection,
             pulse_duration=pulse_duration,
             stimulus_type=None,
-            date_range=date_range
+            date_range=date_range, **kwargs
         )
 
         self._roi_to_channel = {1:1, 3:3, 5:5, 7:7, 9:9, 12:11, 14:13, 16:15, 18:17, 20:19}
