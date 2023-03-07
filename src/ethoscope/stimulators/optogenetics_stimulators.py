@@ -5,7 +5,7 @@ any new class added here need to be added to web_utils/control_thread.py too
 __author__ = 'quentin'
 
 
-from ethoscope.stimulators.sleep_depriver_stimulators import RobustSleepDepriver
+from ethoscope.stimulators.sleep_depriver_stimulators import RobustSleepDepriver, RobustOptomotorSleepDepriverSystematic
 from ethoscope.hardware.interfaces.optogenetics import OptogeneticHardware
 from ethoscope.stimulators.stimulators import HasInteractedVariable
 
@@ -49,7 +49,7 @@ class OptogeneticStimulator(RobustSleepDepriver):
         dic["pulse_off"] = self._pulse_off
         return out, dic
 
-class OptogeneticStimulatorSystematic(OptogeneticStimulator):
+class OptogeneticStimulatorSystematic(RobustOptomotorSleepDepriverSystematic):
     _description = {
         "overview": "A stimulator to sleep deprive an animal using optogenetics at a constant interval",
         "arguments": [
@@ -72,21 +72,11 @@ class OptogeneticStimulatorSystematic(OptogeneticStimulator):
         self._t0 = 0
 
     def _decide(self):
-        roi_id = self._tracker._roi.idx
-        try:
-            channel = self._roi_to_channel[roi_id]
-        except KeyError:
-            return HasInteractedVariable(False), {}
-        now = self._tracker.last_time_point 
-        if now - self._t0 > self._interval:
-            dic = {"channel": channel}
-            dic["pulse_on"] = self._pulse_on
-            dic["pulse_off"] = self._pulse_off
-            logging.warning(dic)
-            self._t0 = now
-            return HasInteractedVariable(True), dic
+        out, dic = super(OptogeneticStimulatorSystematic, self)._decide()
+        dic["pulse_on"] = self._pulse_on
+        dic["pulse_off"] = self._pulse_off
+        return out, dic
 
-        return HasInteractedVariable(False), {}
 
 
 import numpy as np
