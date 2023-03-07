@@ -1,4 +1,5 @@
 import logging
+import time
 
 import numpy as np
 
@@ -69,10 +70,11 @@ class SleepStimulator(StaticStimulator):
 
     def _decide_subclass(self, dic, now, has_moved):
         if has_moved:
-            self._t0 = now
             return HasInteractedVariable(False), {}
         else:
             if float(now - self._t0) > self._time_threshold_ms:
+                print("Interaction: ", dic)
+                self._t0 = now
                 return HasInteractedVariable(True), dic
             else:
                 return HasInteractedVariable(False), {}
@@ -101,7 +103,6 @@ class AwakeStimulator(StaticStimulator):
 
     def _decide_subclass(self, dic, now, has_moved):
         if not has_moved:
-            self._t0 = now
             logging.warning(f"Channel {dic['channel']} not moving")
             return HasInteractedVariable(False), {}
         else:
@@ -110,6 +111,7 @@ class AwakeStimulator(StaticStimulator):
                 Channel {dic['channel']} has moved, stimulating because
                 {now - self._t0} > {self._time_threshold_ms}
                 """)
+                self._t0 = now
                 return HasInteractedVariable(True), dic
             else:
                 logging.warning(
@@ -134,12 +136,13 @@ if __name__ == "__main__":
     def main():
         hc = HardwareConnection(AwakeStimulator._HardwareInterfaceClass, do_warm_up=False)
         idx_dict = {1: 1, 2: 3, 3: 5, 4: 7, 5: 9, 6: 12, 7: 14, 8:16, 9: 18, 10:20}
+        stims = []
 
         for i in range(1, 11):
             #stim = AwakeStimulator(
             stim = SleepStimulator(
                 hc,
-                min_inactive_time=1000,
+                min_inactive_time=5,
                 velocity_correction_coef=0.01,
                 pulse_duration=1000,
                 date_range="",
@@ -155,6 +158,15 @@ if __name__ == "__main__":
             tracker = AdaptiveBGModel(roi=roi)
             tracker._last_time_point = 30000 #ms
             stim.bind_tracker(tracker)
-            interact, result = stim.apply()
+            stims.append(stim)
+
+        i=0
+        while True:
+            print(f"Loop {i}")
+            time.sleep(.5)
+            for stim in stims:
+                interact, result = stim.apply()
+                stim._tracker._last_time_point += 500
+            i+=1
 
     main()
