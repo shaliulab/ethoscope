@@ -98,7 +98,7 @@ import argparse
 def get_parser():
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--rois", nargs="+", type=int)
+    parser.add_argument("--rois", nargs="+", type=int, required=True)
     return parser
 
 def never_moving():
