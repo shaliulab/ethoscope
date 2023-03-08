@@ -53,6 +53,7 @@ class IsMovingStimulator(BaseStimulator):
 
         dt_s = abs(times[-1] - times[-2]) / 1000.0
         dist = 10.0 ** (tail_m["xy_dist_log10x1000"]/1000.0)
+        logging.warning("Distance %s" % str(dist))
         velocity = dist / dt_s
 
         velocity_corrected = velocity * dt_s / self._velocity_correction_coef
@@ -121,7 +122,6 @@ class SleepDepStimulator(IsMovingStimulator):
             return HasInteractedVariable(False), {}
 
         has_moved = self._has_moved()
-
 
         if self._t0 is None:
             self._t0 = now
@@ -252,7 +252,7 @@ class GearOptomotorSleepDepriver(OptomotorSleepDepriver):
 
     _HardwareInterfaceClass = OptoMotor
     def __init__(self, *args, pulse_duration=2000, **kwargs):
-        super(GearOptomotorSleepDepriver, self).__init__(*args, **kwargs)
+        super(GearOptomotorSleepDepriver, self).__init__(*args, pulse_duration=pulse_duration, **kwargs)
         self._roi_to_channel = {1:0, 3:2, 5:4, 7:6, 9:8,
                                 12:22, 14:20, 16:18, 18:16, 20:14}
 
@@ -271,7 +271,6 @@ class RobustSleepDepriver(GearOptomotorSleepDepriver):
     }
 
     _HardwareInterfaceClass = SleepDepriver
-    _duration = 100
 
     def __init__(self, *args, **kwargs):
         super(RobustSleepDepriver, self).__init__(*args, **kwargs)

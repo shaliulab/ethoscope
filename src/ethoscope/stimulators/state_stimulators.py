@@ -25,9 +25,12 @@ class StaticStimulator(RobustSleepDepriver):
         if not "min_inactive_time" in kwargs:
             kwargs["min_inactive_time"] = min_time
 
+        kwargs["pulse_duration"]=1000
+
         program = kwargs.pop("program", "")
         self._pulse_on=pulse_on
         self._pulse_off=pulse_off
+        self._delivering=False
         super().__init__(*args, **kwargs)
         self._time_threshold_ms = self._inactivity_time_threshold_ms
 
@@ -45,6 +48,7 @@ class StaticStimulator(RobustSleepDepriver):
 
         now = self._tracker.last_time_point
         has_moved = self._has_moved()
+       
         if self._t0 is None:
             self._t0 = now
 
@@ -60,23 +64,30 @@ class SleepStimulator(StaticStimulator):
         "arguments": [
             {"type": "number", "min": 0.0, "max": 1.0, "step": 0.0001, "name": "velocity_correction_coef", "description": "Velocity correction coef", "default": 0.01},
             {"type": "number", "min": 1, "max": 3600*12, "step":1, "name": "min_time", "description": "The minimal time after which an inactive animal is stimulated (s)","default":10},
-            {"type": "number", "min": 10, "max": 10000 , "step": 10, "name": "pulse_duration", "description": "For how long to deliver the stimulus(ms)", "default": 1000},
             {"type": "str", "name": "date_range", "description": "A date and time range in which the device will perform (see http://tinyurl.com/jv7k826)", "default": ""},
-            {"type": "number", "min": 20, "max": 1000 , "step": 1, "name": "pulse_on", "description": "duration of pulse in ms", "default": 50},
-            {"type": "number", "min": 20, "max": 1000 , "step": 1, "name": "pulse_off", "description": "resting time between pulses in ms", "default": 50},
+            {"type": "number", "min": 0, "max": 100000 , "step": 1, "name": "pulse_on", "description": "duration of pulse in ms. Set pulse_on to 1000 and pulse_off to 0 for static", "default": 50},
+            {"type": "number", "min": 0, "max": 100000 , "step": 1, "name": "pulse_off", "description": "resting time between pulses in ms. Set pulse_on to 1000 and pulse_off to 0 for static", "default": 50},
 
         ]
     }
 
     def _decide_subclass(self, dic, now, has_moved):
         if has_moved:
+            self._delivering=False
+            logging.warning("Pulse needs to stop ASAP")
+            # TODO Here we could deliver a STOP signal which is not yet implemented in Arduino
             return HasInteractedVariable(False), {}
         else:
             if float(now - self._t0) > self._time_threshold_ms:
-                print("Interaction: ", dic)
+                logging.warning("First pulse")
                 self._t0 = now
+                self._delivering = True
+                return HasInteractedVariable(True), dic
+            elif self._delivering:
+                logging.warning("Continuation pulse")
                 return HasInteractedVariable(True), dic
             else:
+                logging.warning("Not enough time")
                 return HasInteractedVariable(False), {}
 
 
@@ -91,7 +102,6 @@ class AwakeStimulator(StaticStimulator):
         "arguments": [
             {"type": "number", "min": 0.0, "max": 1.0, "step": 0.0001, "name": "velocity_correction_coef", "description": "Velocity correction coef", "default": 0.01},
             {"type": "number", "min": 0, "max": 3600*12, "step":1, "name": "min_time", "description": "The minimal time after which an active animal is stimulated (s)","default":0},
-            {"type": "number", "min": 10, "max": 10000 , "step": 10, "name": "pulse_duration", "description": "For how long to deliver the stimulus(ms)", "default": 1000},
 
             {"type": "str", "name": "date_range", "description": "A date and time range in which the device will perform (see http://tinyurl.com/jv7k826)", "default": ""},
             {"type": "number", "min": 20, "max": 1000 , "step": 1, "name": "pulse_on", "description": "duration of pulse in ms", "default": 50},
@@ -142,12 +152,11 @@ if __name__ == "__main__":
             #stim = AwakeStimulator(
             stim = SleepStimulator(
                 hc,
-                min_inactive_time=5,
+                min_inactive_time=1,
                 velocity_correction_coef=0.01,
-                pulse_duration=1000,
                 date_range="",
-                pulse_on=50,
-                pulse_off=50,
+                pulse_on=2000,
+                pulse_off=0,
             )
     
             #stim._has_moved = always_moving 
@@ -162,7 +171,6 @@ if __name__ == "__main__":
 
         i=0
         while True:
-            print(f"Loop {i}")
             time.sleep(.5)
             for stim in stims:
                 interact, result = stim.apply()
