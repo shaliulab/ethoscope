@@ -1,7 +1,13 @@
 from ethoscope.hardware.interfaces.optomotor import OptoMotor
 
+class CleanUpHardware(OptoMotor):
 
-class StaticOptogeneticHardware(OptoMotor):
+    def __del__(self):
+        super(OptoMotor, self).__del__()
+        for channel in range(self._n_channels):
+            self.send(channel, turnon=False)
+
+class StaticOptogeneticHardware(CleanUpHardware):
     _inst_format = {True: "S {channel}\r\n", False: "U {channel}\r\n"}
     _params = ["channel"]
 
@@ -16,7 +22,7 @@ class StaticOptogeneticHardware(OptoMotor):
         instruction = self._inst_format[turnon].format_map({"channel": channel}).encode("utf-8")
         return instruction
     
-class IndefiniteOptogeneticHardware(OptoMotor):
+class IndefiniteOptogeneticHardware(CleanUpHardware):
     _inst_format = {True: "S {channel} {pulse_on} {pulse_off}\r\n", False: "U {channel}\r\n"}
     _params = ["channel", "pulse_on", "pulse_off"]
 
@@ -37,7 +43,7 @@ class IndefiniteOptogeneticHardware(OptoMotor):
         instruction = self._inst_format[turnon].format_map(params).encode("utf-8")
         return instruction
 
-class OptogeneticHardware(OptoMotor):
+class OptogeneticHardware(CleanUpHardware):
     _inst_format = "R {channel} {duration} {pulse_on} {pulse_off}\r\n"
     _params = ["channel", "duration", "intensity", "pulse_on", "pulse_off"]
 
