@@ -33,7 +33,7 @@ class StateStimulator(RobustSleepDepriver):
         super().__init__(*args, **kwargs)
         self._time_threshold_ms = self._inactivity_time_threshold_ms
 
-    def _decide(self):
+    def _prepare(self):
         dic={}
         if self._tracker._roi.idx not in self._roi_to_channel:
             return HasInteractedVariable(False), {}
@@ -57,8 +57,8 @@ class StatePulseStimulator(StateStimulator):
         self._pulse_on = pulse_on
         self._pulse_off = pulse_off
 
-    def _decide(self, *args, **kwargs):
-        dic, now, has_moved = super(StatePulseStimulator, self)._decide(*args, **kwargs)
+    def _prepare(self, *args, **kwargs):
+        dic, now, has_moved = super(StatePulseStimulator, self)._prepare(*args, **kwargs)
         dic["pulse_on"]=self._pulse_on
         dic["pulse_off"]=self._pulse_off
         return dic, now, has_moved
@@ -79,7 +79,7 @@ class PulseSleepStimulator(StatePulseStimulator):
     }
 
     def _decide(self, *args, **kwargs):
-        dic, now, has_moved = super(PulseSleepStimulator, self)._decide(*args, **kwargs)
+        dic, now, has_moved = self._prepare(*args, **kwargs)
         if has_moved:
             self._delivering=False
             logging.warning("Pulse needs to stop ASAP")
@@ -114,7 +114,7 @@ class PulseAwakeStimulator(StatePulseStimulator):
     }
 
     def _decide(self, *args, **kwargs):
-        dic, now, has_moved = super(PulseAwakeStimulator, self)._decide(*args, **kwargs)
+        dic, now, has_moved = self._prepare(*args, **kwargs)
         if not has_moved:
             self._delivering=False
             logging.warning("Pulse needs to stop ASAP")
@@ -146,7 +146,7 @@ class StaticSleepStimulator(StateStimulator):
     }
 
     def _decide(self, *args, **kwargs):
-        dic, now, has_moved = super(StaticSleepStimulator, self)._decide(*args, **kwargs)
+        dic, now, has_moved = self._prepare(*args, **kwargs)
         if has_moved:
             self._delivering=False
             logging.warning("Pulse needs to stop ASAP")
@@ -179,7 +179,7 @@ class StaticAwakeStimulator(StateStimulator):
 
 
     def _decide(self, *args, **kwargs):
-        dic, now, has_moved = super(StaticAwakeStimulator, self)._decide(*args, **kwargs)
+        dic, now, has_moved = self._prepare(*args, **kwargs)
         if not has_moved:
             self._delivering=False
             logging.warning("Pulse needs to stop ASAP")
