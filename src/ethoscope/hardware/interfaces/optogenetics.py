@@ -23,7 +23,7 @@ class StaticOptogeneticHardware(CleanUpHardware):
         return instruction
     
 class IndefiniteOptogeneticHardware(CleanUpHardware):
-    _inst_format = {True: "S {channel} {pulse_on} {pulse_off}\r\n", False: "U {channel}\r\n"}
+    _inst_format = {True: "W {channel} {pulse_on} {pulse_off}\r\n", False: "U {channel}\r\n"}
     _params = ["channel", "pulse_on", "pulse_off"]
 
     def __init__(self, *args, **kwargs):
