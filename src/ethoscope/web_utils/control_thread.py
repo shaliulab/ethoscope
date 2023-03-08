@@ -30,7 +30,10 @@ from ethoscope.stimulators.odour_stimulators import DynamicOdourSleepDepriver, M
 from ethoscope.stimulators.optomotor_stimulators import OptoMidlineCrossStimulator, MotoMidlineCrossStimulator, RobustMotoMidlineCrossStimulator
 from ethoscope.stimulators.dynamic_stimulators import SegmentedStimulator
 from ethoscope.stimulators.optogenetics_stimulators import OptogeneticStimulator, OptogeneticStimulatorSystematic
-from ethoscope.stimulators.state_stimulators import SleepStimulator, AwakeStimulator
+from ethoscope.stimulators.state_stimulators import (
+    PulseAwakeStimulator, PulseSleepStimulator,
+    StaticAwakeStimulator, StaticSleepStimulator,
+)
 
 
 from ethoscope.utils.debug import EthoscopeException
@@ -115,8 +118,8 @@ class ControlThread(Thread):
                                             SegmentedStimulator,
                                             OptogeneticStimulator,
                                             OptogeneticStimulatorSystematic,
-                                            SleepStimulator,
-                                            AwakeStimulator
+                                            PulseAwakeStimulator, PulseSleepStimulator,
+                                            StaticAwakeStimulator, StaticSleepStimulator,
                                             ],
                     },
         "drawer":{
