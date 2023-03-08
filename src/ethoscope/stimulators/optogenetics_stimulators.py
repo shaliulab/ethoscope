@@ -25,8 +25,8 @@ class OptogeneticStimulator(RobustSleepDepriver):
                     {"type": "str", "name": "date_range",
                         "description": "A date and time range in which the device will perform (see http://tinyurl.com/jv7k826)",
                         "default": ""},
-                    {"type": "number", "min": 20, "max": 1000 , "step": 1, "name": "pulse_on", "description": "duration of pulse in ms", "default": 50},
-                    {"type": "number", "min": 20, "max": 1000 , "step": 1, "name": "pulse_off", "description": "resting time between pulses in ms", "default": 50},
+                    {"type": "number", "min": 0, "max": 10000 , "step": 1, "name": "pulse_on", "description": "duration of pulse in ms", "default": 50},
+                    {"type": "number", "min": 0, "max": 10000 , "step": 1, "name": "pulse_off", "description": "resting time between pulses in ms", "default": 50},
                 ]}
 
     _duration = 100
@@ -58,8 +58,8 @@ class OptogeneticStimulatorSystematic(RobustOptomotorSleepDepriverSystematic):
             {"type": "str", "name": "date_range",
                 "description": "A date and time range in which the device will perform (see http://tinyurl.com/jv7k826)",
                 "default": ""},
-            {"type": "number", "min": 20, "max": 1000 , "step": 1, "name": "pulse_on", "description": "duration of pulse in ms", "default": 50},
-            {"type": "number", "min": 20, "max": 1000 , "step": 1, "name": "pulse_off", "description": "resting time between pulses in ms", "default": 50},
+            {"type": "number", "min": 0, "max": 10000 , "step": 1, "name": "pulse_on", "description": "duration of pulse in ms", "default": 50},
+            {"type": "number", "min": 0, "max": 10000 , "step": 1, "name": "pulse_off", "description": "resting time between pulses in ms", "default": 50},
         ]
     }
     _HardwareInterfaceClass = OptogeneticHardware

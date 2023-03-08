@@ -72,7 +72,7 @@ class OptoMotor(BaseInterface):
     def _test_serial_connection(self):
         return
 
-    def val_params(self, channel, duration, intensity=None):
+    def val_params(self, channel, duration=None, intensity=None):
         """
         Make sure the parameters that will be used to make the instruction
         make sense and have the right type

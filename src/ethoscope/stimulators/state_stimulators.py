@@ -6,41 +6,35 @@ import numpy as np
 from ethoscope.stimulators.sleep_depriver_stimulators import RobustSleepDepriver
 from ethoscope.hardware.interfaces.optomotor import OptoMotor
 from ethoscope.stimulators.stimulators import BaseStimulator, HasInteractedVariable
-from ethoscope.hardware.interfaces.optogenetics import OptogeneticHardware
+from ethoscope.hardware.interfaces.optogenetics import (
+    OptogeneticHardware,
+    StaticOptogeneticHardware,
+    IndefiniteOptogeneticHardware
+)
 from ethoscope.hardware.interfaces.interfaces import HardwareConnection 
 
 from ethoscope.core.roi import ROI
 
-class StaticStimulator(RobustSleepDepriver):
+class StateStimulator(RobustSleepDepriver):
     """
     A stimulator that provides a different stimulus
     depending on the current state of the animal, for as long as needed
     """
     
     _state = None
-    _HardwareInterfaceClass = OptogeneticHardware
+    _HardwareInterfaceClass = StaticOptogeneticHardware
 
-    def __init__(self, *args, pulse_on=50, pulse_off=50, min_time=10, **kwargs):
+    def __init__(self, *args, min_time=10, **kwargs):
 
         if not "min_inactive_time" in kwargs:
             kwargs["min_inactive_time"] = min_time
 
-        kwargs["pulse_duration"]=1000
-
         program = kwargs.pop("program", "")
-        self._pulse_on=pulse_on
-        self._pulse_off=pulse_off
-        self._delivering=False
         super().__init__(*args, **kwargs)
         self._time_threshold_ms = self._inactivity_time_threshold_ms
 
-
     def _decide(self):
-
         dic={}
-        dic["duration"] = self._pulse_duration
-        dic["pulse_on"] = self._pulse_on
-        dic["pulse_off"] = self._pulse_off
         if self._tracker._roi.idx not in self._roi_to_channel:
             return HasInteractedVariable(False), {}
 
@@ -52,13 +46,27 @@ class StaticStimulator(RobustSleepDepriver):
         if self._t0 is None:
             self._t0 = now
 
-        return self._decide_subclass(dic, now, has_moved)
+        return dic, now, has_moved
+    
+class StatePulseStimulator(StateStimulator):
+    _HardwareInterfaceClass = IndefiniteOptogeneticHardware
 
-        
-        
-class SleepStimulator(StaticStimulator):
+
+    def __init__(self, *args, pulse_on=50, pulse_off=50, **kwargs):
+        super(StatePulseStimulator, self).__init__(*args, **kwargs)
+        self._pulse_on = pulse_on
+        self._pulse_off = pulse_off
+
+    def _decide(self, *args, **kwargs):
+        dic, now, has_moved = super(StatePulseStimulator, self)._decide(*args, **kwargs)
+        dic["pulse_on"]=self._pulse_on
+        dic["pulse_off"]=self._pulse_off
+        return dic, now, has_moved
+    
+
+class PulseSleepStimulator(StatePulseStimulator):
     _state = "asleep"
-    _HardwareInterfaceClass = OptogeneticHardware
+    _HardwareInterfaceClass = IndefiniteOptogeneticHardware
     _description = {
         "overview": f"A stimulator to sleep deprive an animal using optogenetics. The animal will be stimulated for as long as it is {_state}",
         "arguments": [
@@ -67,24 +75,23 @@ class SleepStimulator(StaticStimulator):
             {"type": "str", "name": "date_range", "description": "A date and time range in which the device will perform (see http://tinyurl.com/jv7k826)", "default": ""},
             {"type": "number", "min": 0, "max": 100000 , "step": 1, "name": "pulse_on", "description": "duration of pulse in ms. Set pulse_on to 1000 and pulse_off to 0 for static", "default": 50},
             {"type": "number", "min": 0, "max": 100000 , "step": 1, "name": "pulse_off", "description": "resting time between pulses in ms. Set pulse_on to 1000 and pulse_off to 0 for static", "default": 50},
-
         ]
     }
 
-    def _decide_subclass(self, dic, now, has_moved):
+    def _decide(self, *args, **kwargs):
+        dic, now, has_moved = super(PulseSleepStimulator, self)._decide(*args, **kwargs)
         if has_moved:
             self._delivering=False
             logging.warning("Pulse needs to stop ASAP")
             # TODO Here we could deliver a STOP signal which is not yet implemented in Arduino
-            return HasInteractedVariable(False), {}
+            dic["turnon"] = False
+            return HasInteractedVariable(True), dic
         else:
             if float(now - self._t0) > self._time_threshold_ms:
                 logging.warning("First pulse")
                 self._t0 = now
                 self._delivering = True
-                return HasInteractedVariable(True), dic
-            elif self._delivering:
-                logging.warning("Continuation pulse")
+                dic["turnon"] = True
                 return HasInteractedVariable(True), dic
             else:
                 logging.warning("Not enough time")
@@ -92,44 +99,103 @@ class SleepStimulator(StaticStimulator):
 
 
 
-
-
-class AwakeStimulator(StaticStimulator):
+class PulseAwakeStimulator(StatePulseStimulator):
     _state = "awake"
-    _HardwareInterfaceClass = OptogeneticHardware
+    _HardwareInterfaceClass = IndefiniteOptogeneticHardware
+    _description = {
+        "overview": f"A stimulator to awake deprive an animal using optogenetics. The animal will be stimulated for as long as it is {_state}",
+        "arguments": [
+            {"type": "number", "min": 0.0, "max": 1.0, "step": 0.0001, "name": "velocity_correction_coef", "description": "Velocity correction coef", "default": 0.01},
+            {"type": "number", "min": 1, "max": 3600*12, "step":1, "name": "min_time", "description": "The minimal time after which an inactive animal is stimulated (s)","default":10},
+            {"type": "str", "name": "date_range", "description": "A date and time range in which the device will perform (see http://tinyurl.com/jv7k826)", "default": ""},
+            {"type": "number", "min": 0, "max": 100000 , "step": 1, "name": "pulse_on", "description": "duration of pulse in ms. Set pulse_on to 1000 and pulse_off to 0 for static", "default": 50},
+            {"type": "number", "min": 0, "max": 100000 , "step": 1, "name": "pulse_off", "description": "resting time between pulses in ms. Set pulse_on to 1000 and pulse_off to 0 for static", "default": 50},
+        ]
+    }
+
+    def _decide(self, *args, **kwargs):
+        dic, now, has_moved = super(PulseAwakeStimulator, self)._decide(*args, **kwargs)
+        if not has_moved:
+            self._delivering=False
+            logging.warning("Pulse needs to stop ASAP")
+            # TODO Here we could deliver a STOP signal which is not yet implemented in Arduino
+            dic["turnon"] = False
+            return HasInteractedVariable(True), dic
+        else:
+            if float(now - self._t0) > self._time_threshold_ms:
+                logging.warning("First pulse")
+                self._t0 = now
+                self._delivering = True
+                dic["turnon"] = True
+                return HasInteractedVariable(True), dic
+            else:
+                logging.warning("Not enough time")
+                return HasInteractedVariable(False), {}
+
+
+class StaticSleepStimulator(StateStimulator):
+    _state = "asleep"
+    _HardwareInterfaceClass = StaticOptogeneticHardware
+    _description = {
+        "overview": f"A stimulator to sleep deprive an animal using optogenetics. The animal will be stimulated for as long as it is {_state}",
+        "arguments": [
+            {"type": "number", "min": 0.0, "max": 1.0, "step": 0.0001, "name": "velocity_correction_coef", "description": "Velocity correction coef", "default": 0.01},
+            {"type": "number", "min": 1, "max": 3600*12, "step":1, "name": "min_time", "description": "The minimal time after which an inactive animal is stimulated (s)","default":10},
+            {"type": "str", "name": "date_range", "description": "A date and time range in which the device will perform (see http://tinyurl.com/jv7k826)", "default": ""},
+        ]
+    }
+
+    def _decide(self, *args, **kwargs):
+        dic, now, has_moved = super(StaticSleepStimulator, self)._decide(*args, **kwargs)
+        if has_moved:
+            self._delivering=False
+            logging.warning("Pulse needs to stop ASAP")
+            dic["turnon"]=False
+            return HasInteractedVariable(True), dic
+        else:
+            if float(now - self._t0) > self._time_threshold_ms:
+                logging.warning("First pulse")
+                self._t0 = now
+                dic["turnon"]=True
+                return HasInteractedVariable(True), dic
+            else:
+                logging.warning("Not enough time")
+                return HasInteractedVariable(False), {}
+
+
+
+class StaticAwakeStimulator(StateStimulator):
+    _state = "awake"
+    _HardwareInterfaceClass = StaticOptogeneticHardware
     _description = {
         "overview": f"A stimulator to 'awake' deprive an animal using optogenetics. The animal will be stimulated for as long as it is {_state}. This class is a control of the SleepStimulator",
         "arguments": [
             {"type": "number", "min": 0.0, "max": 1.0, "step": 0.0001, "name": "velocity_correction_coef", "description": "Velocity correction coef", "default": 0.01},
             {"type": "number", "min": 0, "max": 3600*12, "step":1, "name": "min_time", "description": "The minimal time after which an active animal is stimulated (s)","default":0},
-
             {"type": "str", "name": "date_range", "description": "A date and time range in which the device will perform (see http://tinyurl.com/jv7k826)", "default": ""},
-            {"type": "number", "min": 20, "max": 1000 , "step": 1, "name": "pulse_on", "description": "duration of pulse in ms", "default": 50},
-            {"type": "number", "min": 20, "max": 1000 , "step": 1, "name": "pulse_off", "description": "resting time between pulses in ms", "default": 50},
 
         ]
     }
 
 
-    def _decide_subclass(self, dic, now, has_moved):
+    def _decide(self, *args, **kwargs):
+        dic, now, has_moved = super(StaticAwakeStimulator, self)._decide(*args, **kwargs)
         if not has_moved:
-            logging.warning(f"Channel {dic['channel']} not moving")
-            return HasInteractedVariable(False), {}
+            self._delivering=False
+            logging.warning("Pulse needs to stop ASAP")
+            # TODO Here we could deliver a STOP signal which is not yet implemented in Arduino
+            return HasInteractedVariable(True), {"channel": dic["channel"], "turnon": False}
         else:
             if float(now - self._t0) > self._time_threshold_ms:
-                logging.warning(f"""
-                Channel {dic['channel']} has moved, stimulating because
-                {now - self._t0} > {self._time_threshold_ms}
-                """)
+                logging.warning("First pulse")
                 self._t0 = now
-                return HasInteractedVariable(True), dic
+                self._delivering = True
+                return HasInteractedVariable(True), {"channel": dic["channel"], "turnon": True}
             else:
-                logging.warning(
-                f"""
-                Channel {dic['channel']} has moved, not stimulating because
-                {now-self._t0} < {self._time_threshold_ms}
-                """)
+                logging.warning("Not enough time")
                 return HasInteractedVariable(False), {}
+    
+
 
 
 
