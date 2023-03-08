@@ -7,7 +7,7 @@ class StaticOptogeneticHardware(OptoMotor):
 
     def __init__(self, *args, **kwargs):
         kwargs["do_warm_up"] = False
-        super(OptogeneticHardware, self).__init__(*args, **kwargs)
+        super(StaticOptogeneticHardware, self).__init__(*args, **kwargs)
 
     def send(self, channel, turnon):
         self.activate(channel, turnon)
@@ -22,7 +22,7 @@ class IndefiniteOptogeneticHardware(OptoMotor):
 
     def __init__(self, *args, **kwargs):
         kwargs["do_warm_up"] = False
-        super(OptogeneticHardware, self).__init__(*args, **kwargs)
+        super(IndefiniteOptogeneticHardware, self).__init__(*args, **kwargs)
 
     def send(self, channel, pulse_on, pulse_off, turnon):
         self.activate(channel, pulse_on, pulse_off, turnon)
