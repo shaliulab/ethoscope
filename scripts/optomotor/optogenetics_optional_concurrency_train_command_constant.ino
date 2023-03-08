@@ -34,7 +34,7 @@ const float VERSION = 1.0;
 #include <SerialCommand.h>
 SerialCommand SCmd;
 #define BAUD 115200 // this is what the ethoscope expects! Do not change this.
-#define N_OUTPUTS 2
+#define N_OUTPUTS 20
 // if you want concurrent interactions,
 // set CONCURRENT to 1   (simultaneous)
 // otherwise set it to 0 (sequence)
@@ -155,10 +155,7 @@ void activate(int i, int duration) {
 void set() {
    char *arg;
    int i = 0;
-   i = parse_int_variable();
-   Serial.print("Running set on pin ");
-   Serial.println(i);
-   
+   i = parse_int_variable();   
    set_array[i]=1;
    react[i] = 1;
 }
@@ -207,16 +204,18 @@ void activate_pulse_train_not_concurrent(int i, int duration, int pulse_on, int 
   //Serial.print("Activating channel: ");
   //Serial.println(channel);
   int channel = pins[i];
-  Serial.print("Pulse on: ");
-  Serial.println(pulse_on);
-
-  Serial.print("Pulse off: ");
-  Serial.println(pulse_off);
-
   int computed_freq = 1000 / (pulse_on + pulse_off);
+
+  if (DEBUG) {
+    Serial.print("Pulse on: ");
+    Serial.println(pulse_on);
+    Serial.print("Pulse off: ");
+    Serial.println(pulse_off);
   
-  Serial.print("Frequency: ");
-  Serial.println(computed_freq);
+    
+    Serial.print("Frequency: ");
+    Serial.println(computed_freq);
+  }
 
   unsigned long start = millis();
   if ((millis() - start) < duration) Serial.println("Entering loop");
@@ -227,7 +226,7 @@ void activate_pulse_train_not_concurrent(int i, int duration, int pulse_on, int 
       digitalWrite(channel, LOW);
       delay(pulse_off);
   }
-  Serial.println("Out of loop");
+
   digitalWrite(channel, LOW); 
 }
 
@@ -347,14 +346,16 @@ void train_loop() {
         react[i] = 0;
       }
     }
-    Serial.print(timers[i]);
-    Serial.print(" ");
-    Serial.print(set_array[i]);
-    Serial.print(" ");
-    Serial.print(train_on[i]);
-    Serial.print(" ");
-    Serial.println(train_off[i]);
 
+    if (DEBUG) {
+      Serial.print(timers[i]);
+      Serial.print(" ");
+      Serial.print(set_array[i]);
+      Serial.print(" ");
+      Serial.print(train_on[i]);
+      Serial.print(" ");
+      Serial.println(train_off[i]);
+    }
     //Takes care of counting down the train_off time 
     //(has the "off" section of the pulse been on long enough)
     if (train_off[i] != 0 & state[i] == 0) {
