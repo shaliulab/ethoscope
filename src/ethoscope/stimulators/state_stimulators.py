@@ -35,9 +35,6 @@ class StateStimulator(RobustSleepDepriver):
 
     def _prepare(self):
         dic={}
-        if self._tracker._roi.idx not in self._roi_to_channel:
-            return HasInteractedVariable(False), {}
-
         dic["channel"] = self._roi_to_channel[self._tracker._roi.idx]
 
         now = self._tracker.last_time_point
@@ -79,6 +76,9 @@ class PulseSleepStimulator(StatePulseStimulator):
     }
 
     def _decide(self, *args, **kwargs):
+        if self._tracker._roi.idx not in self._roi_to_channel:
+            return HasInteractedVariable(False), {}
+        
         dic, now, has_moved = self._prepare(*args, **kwargs)
         if has_moved:
             self._delivering=False
@@ -114,6 +114,9 @@ class PulseAwakeStimulator(StatePulseStimulator):
     }
 
     def _decide(self, *args, **kwargs):
+        if self._tracker._roi.idx not in self._roi_to_channel:
+            return HasInteractedVariable(False), {}
+        
         dic, now, has_moved = self._prepare(*args, **kwargs)
         if not has_moved:
             self._delivering=False
@@ -146,6 +149,9 @@ class StaticSleepStimulator(StateStimulator):
     }
 
     def _decide(self, *args, **kwargs):
+        if self._tracker._roi.idx not in self._roi_to_channel:
+            return HasInteractedVariable(False), {}
+
         dic, now, has_moved = self._prepare(*args, **kwargs)
         if has_moved:
             self._delivering=False
@@ -179,6 +185,9 @@ class StaticAwakeStimulator(StateStimulator):
 
 
     def _decide(self, *args, **kwargs):
+        if self._tracker._roi.idx not in self._roi_to_channel:
+            return HasInteractedVariable(False), {}
+
         dic, now, has_moved = self._prepare(*args, **kwargs)
         if not has_moved:
             self._delivering=False
