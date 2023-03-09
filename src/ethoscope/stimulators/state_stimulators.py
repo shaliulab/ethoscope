@@ -77,8 +77,11 @@ class PulseSleepStimulator(StatePulseStimulator):
             return HasInteractedVariable(False), {}
         dic, now, has_moved = self._prepare(*args, **kwargs)
 
+        if self._t0 is None:
+            self._t0 = now
+
         if has_moved:
-            self._delivering=False
+            self._t0 = now
             logging.warning("Pulse needs to stop ASAP")
             # TODO Here we could deliver a STOP signal which is not yet implemented in Arduino
             dic["turnon"] = False
@@ -86,7 +89,7 @@ class PulseSleepStimulator(StatePulseStimulator):
         else:
             if float(now - self._t0) > self._time_threshold_ms:
                 logging.warning("First pulse")
-                self._t0 = now
+                self._t0 = None
                 self._delivering = True
                 dic["turnon"] = True
                 return HasInteractedVariable(True), dic
@@ -114,9 +117,14 @@ class PulseAwakeStimulator(StatePulseStimulator):
         if self._tracker._roi.idx not in self._roi_to_channel:
             return HasInteractedVariable(False), {}
         
+        
         dic, now, has_moved = self._prepare(*args, **kwargs)
+
+        if self._t0 is None:
+            self._t0 = now
+
         if not has_moved:
-            self._delivering=False
+            self._t0 = now
             logging.warning("Pulse needs to stop ASAP")
             # TODO Here we could deliver a STOP signal which is not yet implemented in Arduino
             dic["turnon"] = False
@@ -124,7 +132,7 @@ class PulseAwakeStimulator(StatePulseStimulator):
         else:
             if float(now - self._t0) > self._time_threshold_ms:
                 logging.warning("First pulse")
-                self._t0 = now
+                self._t0 = None
                 self._delivering = True
                 dic["turnon"] = True
                 return HasInteractedVariable(True), dic
@@ -190,15 +198,18 @@ class StaticAwakeStimulator(StateStimulator):
             return HasInteractedVariable(False), {}
 
         dic, now, has_moved = self._prepare(*args, **kwargs)
+        if self._t0 is None:
+            self._t0 = now
+
         if not has_moved:
-            self._delivering=False
+            self._t0 = now
             logging.warning("Pulse needs to stop ASAP")
             # TODO Here we could deliver a STOP signal which is not yet implemented in Arduino
             return HasInteractedVariable(True), {"channel": dic["channel"], "turnon": False}
         else:
             if float(now - self._t0) > self._time_threshold_ms:
                 logging.warning("First pulse")
-                self._t0 = now
+                self._t0 = None
                 self._delivering = True
                 return HasInteractedVariable(True), {"channel": dic["channel"], "turnon": True}
             else:
