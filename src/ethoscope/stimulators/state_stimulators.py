@@ -40,9 +40,6 @@ class StateStimulator(RobustSleepDepriver):
         now = self._tracker.last_time_point
         has_moved = self._has_moved()
        
-        if self._t0 is None:
-            self._t0 = now
-
         return dic, now, has_moved
     
 class StatePulseStimulator(StateStimulator):
@@ -78,8 +75,8 @@ class PulseSleepStimulator(StatePulseStimulator):
     def _decide(self, *args, **kwargs):
         if self._tracker._roi.idx not in self._roi_to_channel:
             return HasInteractedVariable(False), {}
-        
         dic, now, has_moved = self._prepare(*args, **kwargs)
+
         if has_moved:
             self._delivering=False
             logging.warning("Pulse needs to stop ASAP")
@@ -153,15 +150,19 @@ class StaticSleepStimulator(StateStimulator):
             return HasInteractedVariable(False), {}
 
         dic, now, has_moved = self._prepare(*args, **kwargs)
+
+        if self._t0 is None:
+            self._t0 = now
+
         if has_moved:
-            self._delivering=False
+            self._t0 = now
             logging.warning("Pulse needs to stop ASAP")
             dic["turnon"]=False
             return HasInteractedVariable(True), dic
         else:
             if float(now - self._t0) > self._time_threshold_ms:
                 logging.warning("First pulse")
-                self._t0 = now
+                self._t0 = None
                 dic["turnon"]=True
                 return HasInteractedVariable(True), dic
             else:
