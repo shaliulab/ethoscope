@@ -58,8 +58,11 @@ class HardwareConnection(Thread):
 
     def stop(self, error=None):
         self._connection_open = False
+    
     def __del__(self):
         self.stop()
+        import ipdb; ipdb.set_trace()
+        self._interface.__del__()
 
     def __getstate__(self):
         return {

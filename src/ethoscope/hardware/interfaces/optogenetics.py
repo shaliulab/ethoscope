@@ -1,3 +1,5 @@
+import logging
+
 from ethoscope.hardware.interfaces.optomotor import OptoMotor
 
 class CleanUpHardware(OptoMotor):
@@ -5,6 +7,7 @@ class CleanUpHardware(OptoMotor):
     def __del__(self):
         super(OptoMotor, self).__del__()
         for channel in range(self._n_channels):
+            logging.warning(f"Turning off channel {channel}")
             self.send(channel, turnon=False)
 
 class StaticOptogeneticHardware(CleanUpHardware):
