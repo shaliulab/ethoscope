@@ -19,6 +19,15 @@ def backup_job(args):
         with open(info_file, "w") as f:
             f.write(device_info["id"])
 
+        # uncomment this if you plugged a particular ethoscope to the router via cable
+        # # and you want to back it up via cable
+        # if device_info["name"] == "ETHOSCOPE_016":
+        #     # figure out the ip of the ethoscope
+        #     # by running on the terminal in an ssh session in the ethoscope:
+        #     # ifconfig eth0 | grep "inet "
+        #     device_info["ip"] = "192.169.123.121"
+        #     print(device_info)
+
         backup_job = BackupClass(device_info, results_dir=results_dir, use_last_file=use_last_file)
         logging.info("Running backup for device  %s" % device_info["id"])
         backup_job.run()
