@@ -1,10 +1,10 @@
 __author__ = 'quentin'
 
+import time
 from ethoscope.utils.description import DescribedObject
 from ethoscope.core.variables import BaseIntVariable
 from ethoscope.hardware.interfaces.interfaces import DefaultInterface
 from ethoscope.utils.scheduler import Scheduler
-
 
 
 class HasInteractedVariable(BaseIntVariable):
@@ -17,7 +17,7 @@ class HasInteractedVariable(BaseIntVariable):
 
 
 
-class   BaseStimulator(DescribedObject):
+class BaseStimulator(DescribedObject):
     _tracker = None
     _HardwareInterfaceClass = None
 
@@ -37,6 +37,7 @@ class   BaseStimulator(DescribedObject):
 
         self._scheduler = Scheduler(date_range)
         self._hardware_connection = hardware_connection
+        self._last_tick = time.time()
 
     def apply(self):
         """
@@ -52,6 +53,10 @@ class   BaseStimulator(DescribedObject):
             raise ValueError("No tracker bound to this stimulator. Use `bind_tracker()` methods")
 
         if self._scheduler.check_time_range() is False:
+            now = time.time()
+            if (now - self._last_tick) > 60:
+                self._hardware_connection._interface.cleanup()
+                self._last_tick = now
             return HasInteractedVariable(False) , {}
         interact, result  = self._decide()
         if interact > 0:

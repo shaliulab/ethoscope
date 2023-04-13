@@ -96,6 +96,9 @@ class Monitor(object):
         Interrupts the `run` method. This is meant to be called by another thread to stop monitoring externally.
         """
         self._force_stop = True
+        for track_u in self._unit_trackers:
+            logging.warning(f"Clean up of tracking unit: {track_u.roi.idx}")
+            track_u.stimulator._hardware_connection._interface.cleanup()
 
     def flush(self, t, frame, frame_idx, result_writer=None, tracking_units=None):
 

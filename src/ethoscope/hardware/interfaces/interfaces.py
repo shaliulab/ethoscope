@@ -29,6 +29,7 @@ class HardwareConnection(Thread):
         self._instructions = collections.deque()
         self._connection_open = True
         super(HardwareConnection, self).__init__()
+        self._connection_closed = False
         self.start()
         
     def run(self):
@@ -42,6 +43,8 @@ class HardwareConnection(Thread):
                 instruc = self._instructions.popleft()
                 logging.warning(instruc)
                 ret = self._interface.send(**instruc)
+
+        self._connection_closed = True
 
     def send_instruction(self, instruction=None):
         """
@@ -61,7 +64,9 @@ class HardwareConnection(Thread):
     
     def __del__(self):
         self.stop()
-        self._interface.__del__()
+        while not self._connection_closed:
+            time.sleep(.1)
+        self.interface.cleanup()
 
     def __getstate__(self):
         return {

@@ -378,7 +378,11 @@ class ControlThread(Thread):
 
         quality_controller = QualityControl(result_writer)
 
-        self._monit.run(result_writer, self._drawer, quality_controller, M)
+        try:
+            self._monit.run(result_writer, self._drawer, quality_controller, M)
+        finally:
+            # make sure stuff turns off
+            self._monit.stop()
 
     def _has_pickle_file(self):
         """

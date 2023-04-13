@@ -4,7 +4,7 @@ from ethoscope.hardware.interfaces.optomotor import OptoMotor
 
 class CleanUpHardware(OptoMotor):
 
-    def __del__(self):
+    def cleanup(self):
         for channel in range(self._n_channels):
             logging.warning(f"Turning off channel {channel}")
             self.send(channel, turnon=False)
@@ -32,12 +32,14 @@ class IndefiniteOptogeneticHardware(CleanUpHardware):
         kwargs["do_warm_up"] = False
         super(IndefiniteOptogeneticHardware, self).__init__(*args, **kwargs)
 
-    def send(self, channel, pulse_on, pulse_off, turnon):
-        self.activate(channel, pulse_on, pulse_off, turnon)
+    def send(self, channel, turnon, *args, **kwargs):
+        self.activate(channel, turnon, *args, **kwargs)
 
-    def make_instruction(self, channel, pulse_on, pulse_off, turnon):
+    def make_instruction(self, channel, turnon, pulse_on=None, pulse_off=None):
 
         if turnon:
+            assert pulse_on is not None
+            assert pulse_off is not None
             params = {"channel": channel, "pulse_on": pulse_on, "pulse_off": pulse_off}
         else:
             params = {"channel": channel}
