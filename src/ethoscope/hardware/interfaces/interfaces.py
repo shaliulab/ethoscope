@@ -104,7 +104,10 @@ class BaseInterface(object):
         :param kwargs: keywords arguments
         """
         raise NotImplementedError
+    
 
+    def cleanup(self):
+        raise NotImplementedError
 
 class DefaultInterface(BaseInterface):
     """
@@ -114,6 +117,9 @@ class DefaultInterface(BaseInterface):
     def _warm_up(self):
         pass
     def send(self, **kwargs):
+        pass
+
+    def cleanup(self):
         pass
 
 class ScanException(Exception):
