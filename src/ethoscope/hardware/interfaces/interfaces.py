@@ -66,7 +66,7 @@ class HardwareConnection(Thread):
         self.stop()
         while not self._connection_closed:
             time.sleep(.1)
-        self.interface.cleanup()
+        self._interface.cleanup()
 
     def __getstate__(self):
         return {
