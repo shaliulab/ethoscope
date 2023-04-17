@@ -221,8 +221,8 @@ class PulseAwakeStimulator(StatePulseStimulator):
         "overview": f"A stimulator to awake deprive an animal using optogenetics. The animal will be stimulated for as long as it is {_state}",
         "arguments": [
             {"type": "number", "min": 0.0, "max": 1.0, "step": 0.0001, "name": "velocity_correction_coef", "description": "Velocity correction coef", "default": 0.01},
-            {"type": "number", "min": 1, "max": 3600*12, "step":1, "name": "min_time", "description": "The minimal time after which an inactive animal is stimulated (s)","default":10},
-            {"type": "number", "min": 0, "max": 3600*12, "step":1, "name": "min_time_not", "description": "The minimal time after which an inactive animal is not stimulated anymore (s)","default":0},
+            {"type": "number", "min": 1, "max": 3600*12, "step":1, "name": "min_time", "description": "The minimal time after which an active animal is stimulated (s)","default":5},
+            {"type": "number", "min": 0, "max": 3600*12, "step":1, "name": "min_time_not", "description": "The minimal time after which an inactive animal is not stimulated anymore (s)","default":5},
             {"type": "str", "name": "date_range", "description": "A date and time range in which the device will perform (see http://tinyurl.com/jv7k826)", "default": ""},
             {"type": "number", "min": 0, "max": 100000 , "step": 1, "name": "pulse_on", "description": "duration of pulse in ms. Set pulse_on to 1000 and pulse_off to 0 for static", "default": 50},
             {"type": "number", "min": 0, "max": 100000 , "step": 1, "name": "pulse_off", "description": "resting time between pulses in ms. Set pulse_on to 1000 and pulse_off to 0 for static", "default": 50},
