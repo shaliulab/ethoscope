@@ -50,7 +50,7 @@ class StateStimulator(RobustSleepDepriver):
 class MaskStimulationInterruptions:
 
     def _prepare(self):
-        dic, now, has_moved = super(StaticSleepStimulator, self)._prepare()
+        dic, now, has_moved = super(MaskStimulationInterruptions, self)._prepare()
         
         if self._state == "awake":
             if has_moved:
@@ -58,6 +58,7 @@ class MaskStimulationInterruptions:
                 self._last_time_in_stimulating_state = now
                 return dic, now, has_moved
             elif (now - self._last_time_in_stimulating_state) < self._time_threshold_not_ms:
+                logging.warning("Masking short quiescence bout")
                 # has moved is False but we
                 # pretend it's True if it's been False for a very short time
                 return dic, now, True 
@@ -70,6 +71,7 @@ class MaskStimulationInterruptions:
                 self._last_time_in_stimulating_state = now
                 return dic, now, has_moved
             elif (now - self._last_time_in_stimulating_state) < self._time_threshold_not_ms:
+                logging.warning("Masking short moving bout")
                 # has moved is True but we
                 # pretend it's False if it's been True for a very short time
                 return dic, now, False 
