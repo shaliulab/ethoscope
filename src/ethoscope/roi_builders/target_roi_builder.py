@@ -457,8 +457,12 @@ class TargetGridROIBuilder(BaseROIBuilder):
                 ct = pull_contour_h(ct, point, side)
                 
                 # apply x and y adjustments provided by the user in the ROI_OFFSETS_CONF file
-                ct[:, 0] += roi_offset_from_user[f"ROI_{i+1}"]["x"]
-                ct[:, 1] += roi_offset_from_user[f"ROI_{i+1}"]["y"]                
+                key=f"ROI_{i+1}"              
+                try:
+                    ct[:, 0] += roi_offset_from_user[key]["x"]
+                    ct[:, 1] += roi_offset_from_user[key]["y"]
+                except KeyError:
+                    pass
                 
                 cv2.drawContours(img, [ct.reshape((1, 4, 2))], -1, (255, 0, 0), 1, LINE_AA)
                 rois.append(ROI(ct, idx=i+1))
