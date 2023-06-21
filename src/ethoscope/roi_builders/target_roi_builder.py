@@ -22,8 +22,29 @@ from ethoscope.core.roi import ROI
 from ethoscope.utils.debug import EthoscopeException
 import itertools
 import os
+import json
 from ethoscope.roi_builders.helpers import *
+ROI_OFFSETS_CONF="/etc/roi_offsets.conf"
+TARGET_COORD_FILE="/etc/target_coordinates.conf"
 
+
+def read_roi_offsets():
+    roi_adjustments = {
+        f"ROI_{i}": {"x": 0, "y":0}
+        for i in range(1, 21)
+    }    
+    try:
+        with open(ROI_OFFSETS_CONF, "r") as filehandle:
+            roi_adjustments = json.load(filehandle)
+    except FileNotFoundError:
+        logging.warning(f"{ROI_OFFSETS_CONF} not found")
+        pass
+
+    except json.decoder.JSONDecodeError as error:
+        logging.error(f"You have a problem in the json file under {ROI_OFFSETS_CONF} Please make sure it's correct")
+        raise error
+    
+    return roi_adjustments
 
 class TargetGridROIBuilder(BaseROIBuilder):
 
@@ -40,7 +61,7 @@ class TargetGridROIBuilder(BaseROIBuilder):
     _inside_pad = 0.0
     _outside_pad = 0.0
 
-    _target_coord_file = "/etc/target_coordinates.conf"
+    _target_coord_file = TARGET_COORD_FILE
     #_rois_pickle_file = "rois.pickle"
 
     _description = {"overview": "A flexible ROI builder that allows users to select parameters for the ROI layout."
@@ -418,18 +439,26 @@ class TargetGridROIBuilder(BaseROIBuilder):
             side = "left"
             point = self._sorted_src_pts[2]
 
+            roi_offset_from_user = read_roi_offsets()
+
             for i, r in enumerate(rectangles):
                 if i > 9:
                     side = "right"
                     point = self._sorted_src_pts[1]
-
+                
                 r = np.append(r, np.zeros((4, 1)), axis=1)
                 mapped_rectangle = np.dot(wrap_mat, r.T).T
                 mapped_rectangle -= shift
+
                 ct = mapped_rectangle.astype(np.int32)
                 # logging.warning(i)
                 ct, _, _, _ = refine_contour(ct, img, rotate=False)
                 ct = pull_contour_h(ct, point, side)
+                
+                # apply x and y adjustments provided by the user in the ROI_OFFSETS_CONF file
+                ct[:, 0] += roi_offset_from_user[f"ROI_{i+1}"]["x"]
+                ct[:, 1] += roi_offset_from_user[f"ROI_{i+1}"]["y"]                
+                
                 cv2.drawContours(img, [ct.reshape((1, 4, 2))], -1, (255, 0, 0), 1, LINE_AA)
                 rois.append(ROI(ct, idx=i+1))
 
