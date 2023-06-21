@@ -38,7 +38,8 @@ def read_roi_offsets():
             roi_adjustments = json.load(filehandle)
     except FileNotFoundError:
         logging.warning(f"{ROI_OFFSETS_CONF} not found")
-        pass
+        with open(ROI_OFFSETS_CONF, "w") as filehandle:
+            json.dump(roi_adjustments, filehandle)
 
     except json.decoder.JSONDecodeError as error:
         logging.error(f"You have a problem in the json file under {ROI_OFFSETS_CONF} Please make sure it's correct")
