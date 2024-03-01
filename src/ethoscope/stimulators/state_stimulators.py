@@ -105,16 +105,16 @@ class StaticSleepStimulator(MaskStimulationInterruptions, StateStimulator):
             self._t0 = now
             logging.warning("Pulse needs to stop ASAP")
             dic["turnon"]=False
-            return HasInteractedVariable(True), dic
+            return HasInteractedVariable(-1), dic
         else:
             if float(now - self._t0) > self._time_threshold_ms:
                 logging.warning("First pulse")
                 self._t0 = None
                 dic["turnon"]=True
-                return HasInteractedVariable(True), dic
+                return HasInteractedVariable(1), dic
             else:
                 logging.warning("Not enough time")
-                return HasInteractedVariable(False), {}
+                return HasInteractedVariable(0), {}
 
 
 class StaticAwakeStimulator(MaskStimulationInterruptions, StateStimulator):
@@ -132,7 +132,7 @@ class StaticAwakeStimulator(MaskStimulationInterruptions, StateStimulator):
         
     def _decide(self, *args, **kwargs):
         if self._tracker._roi.idx not in self._roi_to_channel:
-            return HasInteractedVariable(False), {}
+            return HasInteractedVariable(0), {}
 
         dic, now, has_moved = self._prepare(*args, **kwargs)
         if self._t0 is None:
@@ -142,16 +142,16 @@ class StaticAwakeStimulator(MaskStimulationInterruptions, StateStimulator):
             self._t0 = now
             logging.warning("Pulse needs to stop ASAP")
             # TODO Here we could deliver a STOP signal which is not yet implemented in Arduino
-            return HasInteractedVariable(True), {"channel": dic["channel"], "turnon": False}
+            return HasInteractedVariable(-1), {"channel": dic["channel"], "turnon": False}
         else:
             if float(now - self._t0) > self._time_threshold_ms:
                 logging.warning("First pulse")
                 self._t0 = None
                 self._delivering = True
-                return HasInteractedVariable(True), {"channel": dic["channel"], "turnon": True}
+                return HasInteractedVariable(1), {"channel": dic["channel"], "turnon": True}
             else:
                 logging.warning("Not enough time")
-                return HasInteractedVariable(False), {}
+                return HasInteractedVariable(0), {}
     
 
 
@@ -200,17 +200,17 @@ class PulseSleepStimulator(StatePulseStimulator):
             logging.warning("Pulse needs to stop ASAP")
             # TODO Here we could deliver a STOP signal which is not yet implemented in Arduino
             dic["turnon"] = False
-            return HasInteractedVariable(True), dic
+            return HasInteractedVariable(-1), dic
         else:
             if float(now - self._t0) > self._time_threshold_ms:
                 logging.warning("First pulse")
                 self._t0 = None
                 self._delivering = True
                 dic["turnon"] = True
-                return HasInteractedVariable(True), dic
+                return HasInteractedVariable(1), dic
             else:
                 logging.warning("Not enough time")
-                return HasInteractedVariable(False), {}
+                return HasInteractedVariable(0), {}
 
 
 
@@ -231,7 +231,7 @@ class PulseAwakeStimulator(StatePulseStimulator):
 
     def _decide(self, *args, **kwargs):
         if self._tracker._roi.idx not in self._roi_to_channel:
-            return HasInteractedVariable(False), {}
+            return HasInteractedVariable(0), {}
         
         
         dic, now, has_moved = self._prepare(*args, **kwargs)
@@ -244,17 +244,17 @@ class PulseAwakeStimulator(StatePulseStimulator):
             logging.warning("Pulse needs to stop ASAP")
             # TODO Here we could deliver a STOP signal which is not yet implemented in Arduino
             dic["turnon"] = False
-            return HasInteractedVariable(True), dic
+            return HasInteractedVariable(-1), dic
         else:
             if float(now - self._t0) > self._time_threshold_ms:
                 logging.warning("First pulse")
                 self._t0 = None
                 self._delivering = True
                 dic["turnon"] = True
-                return HasInteractedVariable(True), dic
+                return HasInteractedVariable(1), dic
             else:
                 logging.warning("Not enough time")
-                return HasInteractedVariable(False), {}
+                return HasInteractedVariable(0), {}
 
 
 
@@ -274,47 +274,3 @@ if __name__ == "__main__":
     print(stimulator.__class__.__mro__)
     stimulator._hardware_connection.stop()
     sys.exit(0)
-
-#     from ethoscope.trackers.adaptive_bg_tracker import AdaptiveBGModel
-
-#     def never_moving():
-#         return False
-
-#     def always_moving():
-#         return True
- 
-#     def main():
-#         hc = HardwareConnection(AwakeStimulator._HardwareInterfaceClass, do_warm_up=False)
-#         idx_dict = {1: 1, 2: 3, 3: 5, 4: 7, 5: 9, 6: 12, 7: 14, 8:16, 9: 18, 10:20}
-#         stims = []
-
-#         for i in range(1, 11):
-#             #stim = AwakeStimulator(
-#             stim = SleepStimulator(
-#                 hc,
-#                 min_inactive_time=1,
-#                 velocity_correction_coef=0.01,
-#                 date_range="",
-#                 pulse_on=2000,
-#                 pulse_off=0,
-#             )
-    
-#             #stim._has_moved = always_moving 
-#             stim._has_moved = never_moving 
-#             stim._t0 = 0
-#             idx = idx_dict[i]
-#             roi = ROI(polygon=np.array([[0, 10], [10, 10], [10, 0], [0, 0]]), idx=idx)
-#             tracker = AdaptiveBGModel(roi=roi)
-#             tracker._last_time_point = 30000 #ms
-#             stim.bind_tracker(tracker)
-#             stims.append(stim)
-
-#         i=0
-#         while True:
-#             time.sleep(.5)
-#             for stim in stims:
-#                 interact, result = stim.apply()
-#                 stim._tracker._last_time_point += 500
-#             i+=1
-
-#     main()

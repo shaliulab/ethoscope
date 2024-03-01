@@ -463,7 +463,7 @@ class OptomotorSleepDepriverSystematic(OptomotorSleepDepriver):
         except KeyError:
             return HasInteractedVariable(False), {}
         now = self._tracker.last_time_point + roi_id *100
-        if now - self._t0 > 1000 and (now % self._interval) < 100:
+        if (now - self._t0) > self._interval:
             dic = {"channel": channel}
             dic["duration"] = self._pulse_duration
             self._t0 = now
