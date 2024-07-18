@@ -24,9 +24,9 @@ app = bottle.Bottle()
 STATIC_DIR = "../static"
 
 #names of the backup services
-SYSTEM_DAEMONS = {"ethoscope_node": {'description' : 'The main Ethoscope node server interface. It is used to control the ethoscopes.'}, 
-                  "ethoscope_backup" : {'description' : 'The service that collects data from the ethoscopes and syncs them with the node.'}, 
-                  "ethoscope_video_backup" : {'description' : 'The service that collects VIDEOs from the ethoscopes and syncs them with the node'}, 
+SYSTEM_DAEMONS = {"ethoscope_node": {'description' : 'The main Ethoscope node server interface. It is used to control the ethoscopes.'},
+                  "ethoscope_backup" : {'description' : 'The service that collects data from the ethoscopes and syncs them with the node.'},
+                  "ethoscope_video_backup" : {'description' : 'The service that collects VIDEOs from the ethoscopes and syncs them with the node'},
                   "ethoscope_update_node" : {'description' : 'The service used to update the nodes and the ethoscopes.'},
                   "git-daemon.socket" : {'description' : 'The GIT server that handles git updates for the node and ethoscopes.'},
                   "ntpd" : {'description': 'The NTPd service is syncing time with the ethoscopes.'},
@@ -157,7 +157,7 @@ def sensors():
 @warning_decorator
 def get_device_info(id):
     device = device_scanner.get_device(id)
-    
+
     # if we fail to access directly the device, we try the old info map
     if not device:
         try:
@@ -231,7 +231,7 @@ def get_device_dbg_img(id):
 @app.get('/device/<id>/stream')
 @error_decorator
 def get_device_stream(id):
-  
+
     device = device_scanner.get_device(id)
     bottle.response.set_header('Content-type', 'multipart/x-mixed-replace; boundary=frame')
     return device.relay_stream()
@@ -244,7 +244,7 @@ def force_device_backup(id):
     '''
     results_dir = CFG.content['folders']['results']['path']
     device_info = get_device_info(id)
-    
+
     try:
         logging.info("Initiating backup for device  %s" % device_info["id"])
         backup_job = BackupClass(device_info, results_dir=results_dir)
@@ -360,10 +360,10 @@ def download(what):
 @error_decorator
 def node_info(req):#, device):
     if req == 'info':
-       
+
         with os.popen('df %s -h' % RESULTS_DIR) as df:
             disk_free = df.read()
-        
+
         disk_usage = RESULTS_DIR+" Not Found on disk"
 
         CARDS = {}
@@ -379,22 +379,22 @@ def node_info(req):#, device):
             for ad in adapters_list:
                 CARDS [ ad[0] ] = {'MAC' : ad[1], 'IP' : ad[2]}
                 IPs.append (ad[2])
-            
-           
+
+
             with os.popen('git rev-parse --abbrev-ref HEAD') as df:
                 GIT_BRANCH = df.read() or "Not detected"
             #df = subprocess.Popen(['git', 'rev-parse', '--abbrev-ref', 'HEAD'], stdout=subprocess.PIPE)
             #GIT_BRANCH = df.communicate()[0].decode('utf-8')
-            
+
             with os.popen('git status -s -uno') as df:
                 NEEDS_UPDATE = df.read() != ""
 
             #df = subprocess.Popen(['git', 'status', '-s', '-uno'], stdout=subprocess.PIPE)
             #NEEDS_UPDATE = df.communicate()[0].decode('utf-8') != ""
-            
+
             with os.popen('systemctl status ethoscope_node.service') as df:
                 try:
-                    ACTIVE_SINCE = df.read().split("\n")[2] 
+                    ACTIVE_SINCE = df.read().split("\n")[2]
                 except:
                     ACTIVE_SINCE = "Not running through systemd"
 
@@ -402,22 +402,22 @@ def node_info(req):#, device):
             logging.error(e)
 
         return {'active_since': ACTIVE_SINCE, 'disk_usage': disk_usage, 'IPs' : IPs , 'CARDS': CARDS, 'GIT_BRANCH': GIT_BRANCH, 'NEEDS_UPDATE': NEEDS_UPDATE}
-                
+
     elif req == 'time':
         return {'time':datetime.datetime.now().isoformat()}
-        
+
     elif req == 'timestamp':
         return {'timestamp': datetime.datetime.now().timestamp() }
-    
+
     elif req == 'log':
         with os.popen("journalctl -u ethoscope_node -rb") as log:
             l = log.read()
         return {'log': l}
-    
+
     elif req == 'daemons':
         #returns active or inactive
         for daemon_name in SYSTEM_DAEMONS.keys():
-        
+
             with os.popen("systemctl is-active %s" % daemon_name) as df:
                 SYSTEM_DAEMONS[daemon_name]['active'] = df.read().strip()
         return SYSTEM_DAEMONS
@@ -430,7 +430,7 @@ def node_info(req):#, device):
 
     elif req == 'incubators':
         return CFG.content['incubators']
-        
+
     elif req == 'sensors':
         return sensor_scanner.get_all_devices_info()
 
@@ -441,50 +441,50 @@ def node_info(req):#, device):
 @error_decorator
 def node_actions():
     action = bottle.request.json
-    
+
     if action['action'] == 'restart':
         logging.info('User requested a service restart.')
         with os.popen("sleep 1; systemctl restart ethoscope_node.service") as po:
             r = po.read()
-        
+
         return r
-            
+
     elif action['action'] == 'close':
         close()
-    
+
     elif action['action'] == 'adduser':
         return CFG.addUser(action['userdata'])
 
     elif action['action'] == 'addincubator':
         return CFG.addIncubator(action['incubatordata'])
-    
+
     elif action['action'] == 'addsensor':
         return CFG.addSensor(action['sensordata'])
-    
+
     elif action['action'] == 'updatefolders':
         for folder in action['folders'].keys():
-            if os.path.exists(action['folders'][folder]['path']): 
+            if os.path.exists(action['folders'][folder]['path']):
                 CFG.content['folders'][folder]['path'] = action['folders'][folder]['path']
                 CFG.save()
-                
+
         return CFG.content['folders']
-        
-    
+
+
     elif action['action'] == 'toggledaemon':
 
         if action['status'] == True:
             cmd = "systemctl start %s" % action['daemon_name']
             logging.info ("Starting daemon %s" % action['daemon_name'])
-            
+
         elif  action['status'] == False:
             cmd = "systemctl stop %s" % action['daemon_name']
             logging.info ("Stopping daemon %s" % action['daemon_name'])
-            
+
         with os.popen(cmd) as po:
             r = po.read()
-           
+
         return r
-    
+
     else:
         raise NotImplementedError()
 
@@ -510,7 +510,7 @@ def redirection_to_list(type):
 #@app.get('/more')
 #def redirection_to_more():
 #    return bottle.redirect('/#/more/')
-    
+
 @app.get('/ethoscope/<id>')
 def redirection_to_ethoscope(id):
     return bottle.redirect('/#/ethoscope/'+id)
@@ -578,17 +578,19 @@ if __name__ == '__main__':
     try:
         device_scanner = EthoscopeScanner(results_dir=RESULTS_DIR)
         device_scanner.start()
-        
+        #device_scanner.add("192.169.123.70", "ETHOSCOPE_020")
+        #device_scanner.add("192.169.123.66", "ETHOSCOPE_016")
+
         sensor_scanner = SensorScanner()
         sensor_scanner.start()
-        
+
         edb = ExperimentalDB()
-        
+
 #        #manually adds the sensors saved in the configuration file
 #        for sensor in CFG.content['sensors']:
 #            if CFG.content['sensors'][sensor]['active']:
 #                sensor_scanner.add(CFG.content['sensors'][sensor]['name'], CFG.content['sensors'][sensor]['URL'])
-        
+
         #######TO be remove when bottle changes to version 0.13
         server = "cherrypy"
         try:
