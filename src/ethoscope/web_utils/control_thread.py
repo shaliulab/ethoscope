@@ -25,7 +25,12 @@ from ethoscope.trackers.adaptive_bg_tracker import AdaptiveBGModel
 from ethoscope.trackers.rich_adaptive_bg_tracker import RichAdaptiveBGModel
 from ethoscope.hardware.interfaces.interfaces import HardwareConnection, EthoscopeSensor
 from ethoscope.stimulators.stimulators import DefaultStimulator
-from ethoscope.stimulators.sleep_depriver_stimulators import SleepDepStimulator, OptomotorSleepDepriver, ExperimentalSleepDepStimulator, MiddleCrossingStimulator, OptomotorSleepDepriverSystematic, GearOptomotorSleepDepriver, RobustSleepDepriver
+from ethoscope.stimulators.sleep_depriver_stimulators import (
+    SleepDepStimulator, OptomotorSleepDepriver, ExperimentalSleepDepStimulator,
+    MiddleCrossingStimulator, OptomotorSleepDepriverSystematic,
+    GearOptomotorSleepDepriver, RobustSleepDepriver,
+    PWMRobustSleepDepriver,
+)
 from ethoscope.stimulators.odour_stimulators import DynamicOdourSleepDepriver, MiddleCrossingOdourStimulator, MiddleCrossingOdourStimulatorFlushed
 from ethoscope.stimulators.optomotor_stimulators import OptoMidlineCrossStimulator, MotoMidlineCrossStimulator, RobustMotoMidlineCrossStimulator
 from ethoscope.stimulators.dynamic_stimulators import SegmentedStimulator
@@ -90,6 +95,7 @@ class ControlThread(Thread):
                                             OptomotorSleepDepriver,
                                             GearOptomotorSleepDepriver,
                                             RobustSleepDepriver,
+                                            PWMRobustSleepDepriver,
                                             MiddleCrossingStimulator,
                                             #SystematicSleepDepInteractor,
                                             ExperimentalSleepDepStimulator,
