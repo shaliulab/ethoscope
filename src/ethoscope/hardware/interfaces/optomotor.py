@@ -148,6 +148,13 @@ class SleepDepriver(OptoMotor):
     _n_channels = 20
 
 
+class PWMSleepDepriver(SleepDepriver):
+
+    def set_pwm(self, value):
+        # TODO Arduino code to set pwm to some value
+        o = self._serial.write(f"I {value}\r\n")
+        return o
+
 if __name__ == "__main__":
     found = False
     port = 0

@@ -407,6 +407,7 @@ class ControlThread(Thread):
         logging.warning(StimulatorClass)
         logging.warning(StimulatorClass.__dict__)
         HardWareInterfaceClass = StimulatorClass.__dict__["_HardwareInterfaceClass"]
+        HardWareConnectionClass = StimulatorClass.__dict__.get("_HardWareConnectionClass", HardwareConnection)
 
         TrackerClass = self._option_dict["tracker"]["class"]
         tracker_kwargs = self._option_dict["tracker"]["kwargs"]
@@ -453,7 +454,7 @@ class ControlThread(Thread):
         self._info["time"] = cam.start_time
 
         #here the hardwareconnection call the interface class without passing any argument!
-        hardware_connection = HardwareConnection(HardWareInterfaceClass)
+        hardware_connection = HardWareConnectionClass(HardWareInterfaceClass)
 
         #creates a unique tracking id to label this tracking run
         self._info["experimental_info"]["run_id"] = secrets.token_hex(8)

@@ -1,6 +1,7 @@
 __author__ = 'quentin'
 
 from threading import Thread
+import random
 import time
 import collections
 
@@ -72,6 +73,56 @@ class HardwareConnection(Thread):
         kwargs["do_warm_up"] = False
         self.__init__(state["interface_class"],
                       *state["interface_args"], **kwargs)
+        
+
+class DynamicPWMHardwareconnection(HardwareConnection):
+
+
+    def __init__(self, *args, **kwargs):
+        super(HardwareConnection).__init__(*args, **kwargs)
+        self.last_pwm_change=None
+
+    def decide_pwm_change(self):
+        raise NotImplementedError()
+
+    def run(self):
+        """
+        Infinite loop that send instructions to the hardware interface
+        Do not call directly, used the ``start()`` method instead.
+        """
+
+        self.last_pwm_change=None
+
+        while self._connection_open:
+            time.sleep(.1)
+        
+            self.decide_pwm_change()
+    
+            while len(self._instructions) > 0 and self._connection_open:
+                instruc = self._instructions.popleft()
+                logging.warning(instruc)
+                ret = self._interface.send(**instruc)
+            
+class SystematicPWMHardwareconnection(DynamicPWMHardwareconnection):
+
+    min_time_pwm=1        # mins
+    strategy="random"
+
+    def get_next_pwm_value(self):
+        # TODO Write logic to pick a pwm_value
+        if self.strategy == "random":
+            value = int(random.random() * 255)
+
+        return value
+
+    def decide_pwm_change(self):
+        if last_pwm_change is None:
+            last_pwm_change = time.time()
+
+        if time.time() - last_time > self.min_time_pwm * 60:
+            pwm_value=self.get_next_pwm_value()
+            self._interface.set_pwm(pwm_value)
+            last_time=time.time()
 
 
 class BaseInterface(object):

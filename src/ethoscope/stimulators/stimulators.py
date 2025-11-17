@@ -17,7 +17,7 @@ class HasInteractedVariable(BaseIntVariable):
 
 
 
-class   BaseStimulator(DescribedObject):
+class BaseStimulator(DescribedObject):
     _tracker = None
     _HardwareInterfaceClass = None
 
