@@ -313,7 +313,7 @@ class PWMRobustSleepDepriver(RobustSleepDepriver):
     def __init__(self, hardware_connection, *args, min_time_pwm=1, strategy = "random", **kwargs):
         hardware_connection.min_time_pwm = min_time_pwm
         hardware_connection.strategy = strategy      
-        super(PWMRobustSleepDepriver).__init__(hardware_connection, *args, **kwargs)
+        super(PWMRobustSleepDepriver, self).__init__(hardware_connection, *args, **kwargs)
 
 
 
