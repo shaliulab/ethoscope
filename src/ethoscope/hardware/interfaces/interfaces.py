@@ -79,7 +79,7 @@ class DynamicPWMHardwareconnection(HardwareConnection):
 
 
     def __init__(self, *args, **kwargs):
-        super(HardwareConnection).__init__(*args, **kwargs)
+        super(DynamicPWMHardwareconnection).__init__(*args, **kwargs)
         self.last_pwm_change=None
 
     def decide_pwm_change(self):
