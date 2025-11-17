@@ -152,7 +152,10 @@ class PWMSleepDepriver(SleepDepriver):
 
     def set_pwm(self, value):
         # TODO Arduino code to set pwm to some value
-        o = self._serial.write(f"I {value}\r\n")
+        logging.warning("Setting PWM to %s", value)
+        msg=f"I {value}\r\n"
+        logging.warning(msg)
+        o = self._serial.write(msg)
         return o
 
 if __name__ == "__main__":
