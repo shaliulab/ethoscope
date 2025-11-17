@@ -75,8 +75,7 @@ class HardwareConnection(Thread):
                       *state["interface_args"], **kwargs)
         
 
-class DynamicPWMHardwareconnection(HardwareConnection):
-
+class DynamicPWMHardwareConnection(HardwareConnection):
 
     def __init__(self, *args, **kwargs):
         super(DynamicPWMHardwareConnection, self).__init__(*args, **kwargs)
@@ -103,7 +102,7 @@ class DynamicPWMHardwareconnection(HardwareConnection):
                 logging.warning(instruc)
                 ret = self._interface.send(**instruc)
             
-class SystematicPWMHardwareconnection(DynamicPWMHardwareconnection):
+class SystematicPWMHardwareConnection(DynamicPWMHardwareConnection):
 
     min_time_pwm=1        # mins
     strategy="random"

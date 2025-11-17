@@ -459,7 +459,7 @@ class ControlThread(Thread):
         self._info["experimental_info"] = ExpInfoClass(**exp_info_kwargs).info_dic
         self._info["time"] = cam.start_time
 
-        #here the hardwareconnection call the interface class without passing any argument!
+        #here the hardwareConnection call the interface class without passing any argument!
         hardware_connection = HardWareConnectionClass(HardWareInterfaceClass)
 
         #creates a unique tracking id to label this tracking run

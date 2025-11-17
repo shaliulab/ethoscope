@@ -10,7 +10,7 @@ from ethoscope.stimulators.stimulators import BaseStimulator, HasInteractedVaria
 from ethoscope.hardware.interfaces.interfaces import  DefaultInterface
 from ethoscope.hardware.interfaces.sleep_depriver_interface import SleepDepriverInterface, SleepDepriverInterfaceCR
 from ethoscope.hardware.interfaces.optomotor import OptoMotor, SleepDepriver, PWMSleepDepriver
-from ethoscope.hardware.interfaces.interfaces import HardwareConnection, SystematicPWMHardwareconnection 
+from ethoscope.hardware.interfaces.interfaces import HardwareConnection, SystematicPWMHardwareConnection 
 
 
 import random
@@ -306,7 +306,7 @@ class PWMRobustSleepDepriver(RobustSleepDepriver):
                                  "default": "random"},
                                ]}
 
-    _HardWareConnectionClass = SystematicPWMHardwareconnection
+    _HardWareConnectionClass = SystematicPWMHardwareConnection
     _HardwareInterfaceClass = PWMSleepDepriver
 
 
