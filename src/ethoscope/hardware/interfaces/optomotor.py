@@ -155,7 +155,7 @@ class PWMSleepDepriver(SleepDepriver):
         logging.warning("Setting PWM to %s", value)
         msg=f"I {value}\r\n"
         logging.warning(msg)
-        o = self._serial.write(msg)
+        o = self._serial.write(msg.encode("utf-8"))
         return o
 
 if __name__ == "__main__":
