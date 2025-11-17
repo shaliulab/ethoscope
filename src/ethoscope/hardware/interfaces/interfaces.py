@@ -115,13 +115,13 @@ class SystematicPWMHardwareConnection(DynamicPWMHardwareConnection):
         return value
 
     def decide_pwm_change(self):
-        if last_pwm_change is None:
-            last_pwm_change = time.time()
+        if self.last_pwm_change is None:
+            self.last_pwm_change = time.time()
 
-        if time.time() - last_time > self.min_time_pwm * 60:
+        if time.time() - self.last_pwm_change > self.min_time_pwm * 60:
             pwm_value=self.get_next_pwm_value()
             self._interface.set_pwm(pwm_value)
-            last_time=time.time()
+            self.last_pwm_change=time.time()
 
 
 class BaseInterface(object):
