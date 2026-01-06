@@ -1,5 +1,6 @@
 import logging
 import time
+from typing import Any, Protocol
 
 import numpy as np
 
@@ -19,6 +20,11 @@ class StateStimulator(RobustSleepDepriver):
     """
     A stimulator that provides a different stimulus
     depending on the current state of the animal, for as long as needed
+
+    Arguments:
+        min_time: minimum amount of time in the state before the stimulator responds to it (s)
+        min_time_not: minimum amount of time in the opposite (not) state before the stimulator responds to it (s)
+        **kwargs: other arguments to RobustSleepDepriver
     """
     
     _state = None
@@ -29,12 +35,11 @@ class StateStimulator(RobustSleepDepriver):
         if not "min_inactive_time" in kwargs:
             kwargs["min_inactive_time"] = min_time
 
-        program = kwargs.pop("program", "")
         super().__init__(*args, **kwargs)
         self._time_threshold_ms = self._inactivity_time_threshold_ms
         self._time_threshold_not_ms = min_time_not*1000
 
-        self._last_time_in_stimulating_state = 0
+        self._last_time_in_stimulating_state = None
 
 
     def _prepare(self):
@@ -47,39 +52,76 @@ class StateStimulator(RobustSleepDepriver):
         return dic, now, has_moved
 
 
-class MaskStimulationInterruptions:
+class _PrepareParent(Protocol):
+    # Minimal contract this mixin relies on.
+    _state: str
+    _time_threshold_not_ms: float
+    _last_time_in_stimulating_state: int | None
 
-    def _prepare(self):
-        dic, now, has_moved = super(MaskStimulationInterruptions, self)._prepare()
-        
+    def _prepare(self) -> tuple[dict[str, Any], int, bool]: ...
+
+class MaskStimulationInterruptionsMixin:
+    """
+    Mixin that masks brief interruptions of the stimulating state
+    (i.e., short 'not-state' bouts), implementing a hysteresis on has_moved.
+    """
+
+    _state: str  # must be "awake" or "asleep"
+    _time_threshold_not_ms: float
+    _last_time_in_stimulating_state: int | None
+
+    def _prepare(self: _PrepareParent) -> tuple[dict[str, Any], int, bool]:
+        dic, now, has_moved = super()._prepare()
+
+        if self._state not in ("awake", "asleep"):
+            raise ValueError(f"_state must be 'awake' or 'asleep', got {self._state!r}")
+
+        # Initialize reference time on first call
+        if self._last_time_in_stimulating_state is None:
+            self._last_time_in_stimulating_state = now
+
+        # “Stimulating state” definition:
+        #   awake  -> has_moved == True
+        #   asleep -> has_moved == False
         if self._state == "awake":
-            if has_moved:
-                # has moved is True
-                self._last_time_in_stimulating_state = now
-                return dic, now, has_moved
-            elif (now - self._last_time_in_stimulating_state) < self._time_threshold_not_ms:
-                logging.warning("Masking short quiescence bout")
-                # has moved is False but we
-                # pretend it's True if it's been False for a very short time
-                return dic, now, True 
-            else:
-                # has moved is False
-                return dic, now, has_moved
-        elif self._state == "asleep":
-            if not has_moved:
-                # has moved is False
-                self._last_time_in_stimulating_state = now
-                return dic, now, has_moved
-            elif (now - self._last_time_in_stimulating_state) < self._time_threshold_not_ms:
-                logging.warning("Masking short moving bout")
-                # has moved is True but we
-                # pretend it's False if it's been True for a very short time
-                return dic, now, False 
-            else:
-                # has moved is True
-                return dic, now, has_moved
+            in_stim_state = has_moved
+        elif self.state_=="asleep":
+            in_stim_state = not has_moved
 
-class StaticSleepStimulator(MaskStimulationInterruptions, StateStimulator):
+        if in_stim_state:
+            self._last_time_in_stimulating_state = now
+            return dic, now, has_moved
+
+        else:
+            # Not in stimulating state; potentially mask short interruptions
+            if (now - self._last_time_in_stimulating_state) < self._time_threshold_not_ms:
+                logging.warning(
+                    "Masking short %s bout",
+                    "quiescence" if self._state == "awake" else "moving",
+                )
+                if self._state == "awake":
+                    # pretend the fly is still moving although it is not (mask)
+                    masked_has_moved = True
+                elif self._state == "asleep":
+                    # pretend the fly is still not moving although it has started moving (mask)
+                    masked_has_moved = False
+                return dic, now, masked_has_moved
+
+            else:
+                return dic, now, has_moved
+    
+
+
+class StaticSleepStimulator(MaskStimulationInterruptionsMixin, StateStimulator):
+    """
+    A stimulator that delivers the stimulus for as long as the fly is asleep
+
+    Arguments:
+        min_time: minimum amount of time asleep before the stimulator responds to it (s)
+        min_time_not: minimum amount of time awake before the stimulator responds to it (s)
+        **kwargs: other arguments to RobustSleepDepriver
+    """
+
     _state = "asleep"
     _HardwareInterfaceClass = StaticOptogeneticHardware
     _description = {
@@ -91,6 +133,14 @@ class StaticSleepStimulator(MaskStimulationInterruptions, StateStimulator):
             {"type": "str", "name": "date_range", "description": "A date and time range in which the device will perform (see http://tinyurl.com/jv7k826)", "default": ""},
         ]
     }
+
+    def __init__(self, args, **kwargs):
+
+        # t0 = last time that the stimulator ran _decide
+        # None if in the last step it sent a stimulus
+        self._t0 = None
+        self._tracker=None
+        super(StaticSleepStimulator, self).__init__(*args, **kwargs)
         
     def _decide(self, *args, **kwargs):
         if self._tracker._roi.idx not in self._roi_to_channel:
@@ -113,11 +163,11 @@ class StaticSleepStimulator(MaskStimulationInterruptions, StateStimulator):
                 dic["turnon"]=True
                 return HasInteractedVariable(1), dic
             else:
-                logging.warning("Not enough time")
+                logging.warning("Not enough time in state")
                 return HasInteractedVariable(0), {}
 
 
-class StaticAwakeStimulator(MaskStimulationInterruptions, StateStimulator):
+class StaticAwakeStimulator(MaskStimulationInterruptionsMixin, StateStimulator):
     _state = "awake"
     _HardwareInterfaceClass = StaticOptogeneticHardware
     _description = {
@@ -129,7 +179,22 @@ class StaticAwakeStimulator(MaskStimulationInterruptions, StateStimulator):
             {"type": "str", "name": "date_range", "description": "A date and time range in which the device will perform (see http://tinyurl.com/jv7k826)", "default": ""},
         ]
     }
-        
+    """
+    A stimulator that delivers the stimulus for as long as the fly is awake
+
+    Arguments:
+        min_time: minimum amount of time awake before the stimulator responds to it (s)
+        min_time_not: minimum amount of time asleep before the stimulator responds to it (s)
+        **kwargs: other arguments to RobustSleepDepriver
+    """
+    def __init__(self, args, **kwargs):
+
+        # t0 = last time that the stimulator ran _decide
+        # None if in the last step it sent a stimulus
+        self._t0 = None
+        self._tracker=None
+        super(StaticAwakeStimulator, self).__init__(*args, **kwargs)
+
     def _decide(self, *args, **kwargs):
         if self._tracker._roi.idx not in self._roi_to_channel:
             return HasInteractedVariable(0), {}
@@ -142,22 +207,25 @@ class StaticAwakeStimulator(MaskStimulationInterruptions, StateStimulator):
             self._t0 = now
             logging.warning("Pulse needs to stop ASAP")
             # TODO Here we could deliver a STOP signal which is not yet implemented in Arduino
-            return HasInteractedVariable(-1), {"channel": dic["channel"], "turnon": False}
+            dic["turnon"]=False
+            return HasInteractedVariable(-1), dic
         else:
             if float(now - self._t0) > self._time_threshold_ms:
                 logging.warning("First pulse")
                 self._t0 = None
-                self._delivering = True
-                return HasInteractedVariable(1), {"channel": dic["channel"], "turnon": True}
+                dic["turnon"]=True
+                return HasInteractedVariable(1), dic
             else:
-                logging.warning("Not enough time")
+                logging.warning("Not enough time in state")
                 return HasInteractedVariable(0), {}
-    
 
 
-class StatePulseStimulator(MaskStimulationInterruptions, StateStimulator):
+class StatePulseStimulator(MaskStimulationInterruptionsMixin, StateStimulator):
+    """
+    Like the StateStimulator but with a frequency pulse at a given frequency
+    """
+
     _HardwareInterfaceClass = IndefiniteOptogeneticHardware
-
 
     def __init__(self, *args, pulse_on=50, pulse_off=50, **kwargs):
         super(StatePulseStimulator, self).__init__(*args, **kwargs)
@@ -169,8 +237,7 @@ class StatePulseStimulator(MaskStimulationInterruptions, StateStimulator):
         dic["pulse_on"]=self._pulse_on
         dic["pulse_off"]=self._pulse_off
         return dic, now, has_moved
-    
-   
+
 
 class PulseSleepStimulator(StatePulseStimulator):
     _state = "asleep"
@@ -187,6 +254,14 @@ class PulseSleepStimulator(StatePulseStimulator):
         ]
     }
 
+    def __init__(self, args, **kwargs):
+
+        # t0 = last time that the stimulator ran _decide
+        # None if in the last step it sent a stimulus
+        self._t0 = None
+        self._tracker=None
+        super(PulseSleepStimulator, self).__init__(*args, **kwargs)
+        
     def _decide(self, *args, **kwargs):
         if self._tracker._roi.idx not in self._roi_to_channel:
             return HasInteractedVariable(False), {}
@@ -205,7 +280,6 @@ class PulseSleepStimulator(StatePulseStimulator):
             if float(now - self._t0) > self._time_threshold_ms:
                 logging.warning("First pulse")
                 self._t0 = None
-                self._delivering = True
                 dic["turnon"] = True
                 return HasInteractedVariable(1), dic
             else:
@@ -229,6 +303,14 @@ class PulseAwakeStimulator(StatePulseStimulator):
         ]
     }
 
+    def __init__(self, args, **kwargs):
+
+        # t0 = last time that the stimulator ran _decide
+        # None if in the last step it sent a stimulus
+        self._t0 = None
+        self._tracker=None
+        super(PulseAwakeStimulator, self).__init__(*args, **kwargs)
+    
     def _decide(self, *args, **kwargs):
         if self._tracker._roi.idx not in self._roi_to_channel:
             return HasInteractedVariable(0), {}
@@ -249,13 +331,11 @@ class PulseAwakeStimulator(StatePulseStimulator):
             if float(now - self._t0) > self._time_threshold_ms:
                 logging.warning("First pulse")
                 self._t0 = None
-                self._delivering = True
                 dic["turnon"] = True
                 return HasInteractedVariable(1), dic
             else:
                 logging.warning("Not enough time")
                 return HasInteractedVariable(0), {}
-
 
 
 if __name__ == "__main__":
