@@ -122,7 +122,7 @@ class StaticSleepStimulator(MaskStimulationInterruptionsMixin, StateStimulator):
         ]
     }
 
-    def __init__(self, args, **kwargs):
+    def __init__(self, *args, **kwargs):
 
         # t0 = last time that the stimulator ran _decide
         # None if in the last step it sent a stimulus
@@ -175,7 +175,7 @@ class StaticAwakeStimulator(MaskStimulationInterruptionsMixin, StateStimulator):
         min_time_not: minimum amount of time asleep before the stimulator responds to it (s)
         **kwargs: other arguments to RobustSleepDepriver
     """
-    def __init__(self, args, **kwargs):
+    def __init__(self, *args, **kwargs):
 
         # t0 = last time that the stimulator ran _decide
         # None if in the last step it sent a stimulus
@@ -242,7 +242,7 @@ class PulseSleepStimulator(StatePulseStimulator):
         ]
     }
 
-    def __init__(self, args, **kwargs):
+    def __init__(self, *args, **kwargs):
 
         # t0 = last time that the stimulator ran _decide
         # None if in the last step it sent a stimulus
@@ -291,7 +291,7 @@ class PulseAwakeStimulator(StatePulseStimulator):
         ]
     }
 
-    def __init__(self, args, **kwargs):
+    def __init__(self, *args, **kwargs):
 
         # t0 = last time that the stimulator ran _decide
         # None if in the last step it sent a stimulus
