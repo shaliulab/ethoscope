@@ -34,7 +34,7 @@ const float VERSION = 1.0;
 #include <SerialCommand.h>
 SerialCommand SCmd;
 #define BAUD 115200 // this is what the ethoscope expects! Do not change this.
-#define N_OUTPUTS 2
+#define N_OUTPUTS 20
 // if you want concurrent interactions,
 // set CONCURRENT to 1   (simultaneous)
 // otherwise set it to 0 (sequence)
@@ -408,3 +408,4 @@ void loop() {
   train_loop();
   
 }
+
