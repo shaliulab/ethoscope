@@ -1,6 +1,6 @@
 import logging
 import time
-from typing import Any, Protocol
+from typing import Any
 
 import numpy as np
 
@@ -52,25 +52,13 @@ class StateStimulator(RobustSleepDepriver):
         return dic, now, has_moved
 
 
-class _PrepareParent(Protocol):
-    # Minimal contract this mixin relies on.
-    _state: str
-    _time_threshold_not_ms: float
-    _last_time_in_stimulating_state: int | None
-
-    def _prepare(self) -> tuple[dict[str, Any], int, bool]: ...
-
 class MaskStimulationInterruptionsMixin:
     """
     Mixin that masks brief interruptions of the stimulating state
     (i.e., short 'not-state' bouts), implementing a hysteresis on has_moved.
     """
 
-    _state: str  # must be "awake" or "asleep"
-    _time_threshold_not_ms: float
-    _last_time_in_stimulating_state: int | None
-
-    def _prepare(self: _PrepareParent) -> tuple[dict[str, Any], int, bool]:
+    def _prepare(self):
         dic, now, has_moved = super()._prepare()
 
         if self._state not in ("awake", "asleep"):
