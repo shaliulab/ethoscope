@@ -38,7 +38,10 @@ class StateStimulator(RobustSleepDepriver):
 
         super().__init__(*args, **kwargs)
         self._time_threshold_ms = self._inactivity_time_threshold_ms
-        self._time_threshold_not_ms = min_time_not*1000
+        if self._state == "awake":
+            self._time_threshold_not_ms = min_time_not*1000
+        elif self._state == "asleep":
+            self._time_threshold_not_ms=0
 
         self._last_time_in_stimulating_state = None
 
@@ -56,7 +59,13 @@ class StateStimulator(RobustSleepDepriver):
 class MaskStimulationInterruptionsMixin:
     """
     Mixin that masks brief interruptions of the stimulating state
+    i.e. you ignore brief bouts of the opposite state
     (i.e., short 'not-state' bouts), implementing a hysteresis on has_moved.
+    If _time_threshold_not_ms = 0, no mask is applied, this is good in the case of the sleep stimulator
+    because you dont want to ignore "brief" bouts of activity
+    But you need a mask (_time_threshold_not_ms > 0) in the awake stimulator
+    to mask events when the fly does not move from one frame to next
+    even if it is moving in other neighboring frames
     """
 
     def _prepare(self):
@@ -167,6 +176,11 @@ class StaticAwakeStimulator(MaskStimulationInterruptionsMixin, StateStimulator):
             {"type": "str", "name": "date_range", "description": "A date and time range in which the device will perform (see http://tinyurl.com/jv7k826)", "default": ""},
         ]
     }
+
+   _roi_to_channel = {
+        1: 1,
+    }
+
     """
     A stimulator that delivers the stimulus for as long as the fly is awake
 
@@ -235,7 +249,6 @@ class PulseSleepStimulator(StatePulseStimulator):
         "arguments": [
             {"type": "number", "min": 0.0, "max": 1.0, "step": 0.0001, "name": "velocity_correction_coef", "description": "Velocity correction coef", "default": 0.01},
             {"type": "number", "min": 1, "max": 3600*12, "step":1, "name": "min_time", "description": "The minimal time after which an inactive animal is stimulated (s)","default":10},
-            {"type": "number", "min": 0, "max": 3600*12, "step":1, "name": "min_time_not", "description": "The minimal time after which an active animal is not stimulated anymore (s)","default":0},
             {"type": "str", "name": "date_range", "description": "A date and time range in which the device will perform (see http://tinyurl.com/jv7k826)", "default": ""},
             {"type": "number", "min": 0, "max": 100000 , "step": 1, "name": "pulse_on", "description": "duration of pulse in ms. Set pulse_on to 1000 and pulse_off to 0 for static", "default": 50},
             {"type": "number", "min": 0, "max": 100000 , "step": 1, "name": "pulse_off", "description": "resting time between pulses in ms. Set pulse_on to 1000 and pulse_off to 0 for static", "default": 50},
@@ -291,12 +304,20 @@ class PulseAwakeStimulator(StatePulseStimulator):
         ]
     }
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, min_time_not=10, **kwargs):
 
         # t0 = last time that the stimulator ran _decide
         # None if in the last step it sent a stimulus
         self._t0 = None
         self._tracker=None
+
+        assert min_time_not > 0, """
+          Please enter a non-zero min_time_not
+          to prevent the stimulator to not turn on
+          the lights because of brief inactivity.
+          Only if the inactivity is continuous for > min_time_not seconds
+          will the stimulator stop the lights
+        """
         super(PulseAwakeStimulator, self).__init__(*args, **kwargs)
 
     def _decide(self, *args, **kwargs):

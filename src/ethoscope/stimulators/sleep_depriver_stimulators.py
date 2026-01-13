@@ -53,7 +53,7 @@ class IsMovingStimulator(BaseStimulator):
 
         dt_s = abs(times[-1] - times[-2]) / 1000.0
         dist = 10.0 ** (tail_m["xy_dist_log10x1000"]/1000.0)
-        logging.warning("Distance %s" % str(dist))
+        logging.debug("Distance %s" % str(dist))
         velocity = dist / dt_s
 
         velocity_corrected = velocity * dt_s / self._velocity_correction_coef
@@ -107,7 +107,7 @@ class SleepDepStimulator(IsMovingStimulator):
 
         self._inactivity_time_threshold_ms = min_inactive_time *1000 #so we use ms internally
         self._t0 = None
-        
+
         super(SleepDepStimulator, self).__init__(hardware_connection, velocity_correction_coef, date_range=date_range)
 
 
@@ -170,7 +170,7 @@ class SleepDepStimulatorCR(SleepDepStimulator):
 
         self._inactivity_time_threshold_ms = min_inactive_time *1000 #so we use ms internally
         self._t0 = None
-        
+
         super(SleepDepStimulator, self).__init__(hardware_connection, velocity_correction_coef, date_range=date_range)
 
 
@@ -321,7 +321,7 @@ class ExperimentalSleepDepStimulator(SleepDepStimulator):
 
         self._t0 = None
 
-        
+
         # the inactive time depends on the chanel here
         super(ExperimentalSleepDepStimulator, self).__init__(hardware_connection, velocity_correction_coef, 0, date_range)
         self._inactivity_time_threshold_ms = None
@@ -370,17 +370,17 @@ class MiddleCrossingStimulator(BaseStimulator):
         if chip == 1:
             self._roi_to_channel = {1:1, 3:3, 5:5, 7:7, 9:9,
                        12:11, 14:13, 16:15, 18:17, 20:19}
- 
+
         elif chip == 0:
             self._roi_to_channel = {1:0, 3:2, 5:4, 7:6, 9:8,
                        12:22, 14:20, 16:18, 18:16, 20:14}
-            
+
 
 
         self._last_stimulus_time = 0
         self._p = p
         self._refractory_period = refractory_period
-        
+
         super(MiddleCrossingStimulator, self).__init__(hardware_connection,  date_range=date_range)
 
     def _decide(self):
@@ -510,7 +510,7 @@ if __name__ == "__main__":
 
     import numpy as np
     from ethoscope.trackers.adaptive_bg_tracker import AdaptiveBGModel
-    from ethoscope.core.roi import ROI 
+    from ethoscope.core.roi import ROI
     from ethoscope.hardware.interfaces.interfaces import HardwareConnection
 
     def never_moving():
