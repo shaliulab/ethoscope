@@ -54,7 +54,7 @@ class OptogeneticHardware(CleanUpHardware):
         kwargs["do_warm_up"] = False
         super(OptogeneticHardware, self).__init__(*args, **kwargs)
 
-    def send(self, channel, duration=10000, intensity=1000, pulse_on=50, pulse_off=50):
+    def send(self, channel, duration=10000, intensity=1000, pulse_on=50, pulse_off=50, turnon=True):
         self.activate(channel, duration, intensity, pulse_on, pulse_off)
 
     def val_params(self, channel=None, duration=None, intensity=None, pulse_on=None, pulse_off=None):
