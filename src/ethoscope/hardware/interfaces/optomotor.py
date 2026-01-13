@@ -37,20 +37,8 @@ class OptoMotor(BaseInterface):
         else:
             self._port = port
 
-        # self._serial = serial.Serial(self._port, self._baud, timeout=2)
-        self._serial = serial.Serial(
-            self._port, self._baud, timeout=2,
-            rtscts=False,
-            dsrdtr=False,
-            xonxoff=False,
-        )
 
-        # Prevent auto-reset on open (works for your case)
-        self._serial.dtr = False
-        time.sleep(0.2)
-        self._serial.reset_input_buffer()
-        self._serial.reset_output_buffer()
-
+        self._serial = serial.Serial(self._port, self._baud, timeout=2)
         time.sleep(2)
         self._test_serial_connection()
         super(OptoMotor, self).__init__(*args, **kwargs)
