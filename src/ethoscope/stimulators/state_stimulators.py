@@ -331,7 +331,7 @@ class PulseAwakeStimulator(StatePulseStimulator):
             self._t0 = now
 
 
-        logger.warning("%s : %s", now, has_moved)
+        logging.warning("%s : %s", now, has_moved)
 
         if not has_moved:
             self._t0 = now
