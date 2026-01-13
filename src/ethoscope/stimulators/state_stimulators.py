@@ -248,6 +248,7 @@ class PulseSleepStimulator(StatePulseStimulator):
             {"type": "str", "name": "date_range", "description": "A date and time range in which the device will perform (see http://tinyurl.com/jv7k826)", "default": ""},
             {"type": "number", "min": 0, "max": 100000 , "step": 1, "name": "pulse_on", "description": "duration of pulse in ms. Set pulse_on to 1000 and pulse_off to 0 for static", "default": 50},
             {"type": "number", "min": 0, "max": 100000 , "step": 1, "name": "pulse_off", "description": "resting time between pulses in ms. Set pulse_on to 1000 and pulse_off to 0 for static", "default": 50},
+            {"type": "number", "min": 500, "max": 10000 , "step": 50, "name": "pulse_duration", "description": "For how long to deliver the stimulus(ms)", "default": 1000},
         ]
     }
 
@@ -297,6 +298,7 @@ class PulseAwakeStimulator(StatePulseStimulator):
             {"type": "str", "name": "date_range", "description": "A date and time range in which the device will perform (see http://tinyurl.com/jv7k826)", "default": ""},
             {"type": "number", "min": 0, "max": 100000 , "step": 1, "name": "pulse_on", "description": "duration of pulse in ms. Set pulse_on to 1000 and pulse_off to 0 for static", "default": 50},
             {"type": "number", "min": 0, "max": 100000 , "step": 1, "name": "pulse_off", "description": "resting time between pulses in ms. Set pulse_on to 1000 and pulse_off to 0 for static", "default": 50},
+            {"type": "number", "min": 500, "max": 10000 , "step": 50, "name": "pulse_duration", "description": "For how long to deliver the stimulus(ms)", "default": 1000},
         ]
     }
 
