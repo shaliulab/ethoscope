@@ -330,20 +330,22 @@ class PulseAwakeStimulator(StatePulseStimulator):
         if self._t0 is None:
             self._t0 = now
 
+
+        logger.warning("%s : %s", now, has_moved)
+
         if not has_moved:
             self._t0 = now
-            logging.warning("Pulse needs to stop ASAP")
-            # TODO Here we could deliver a STOP signal which is not yet implemented in Arduino
             dic["turnon"] = False
             return HasInteractedVariable(-1), dic
         else:
-            if float(now - self._t0) > self._time_threshold_ms:
+            diff = float(now - self._t0)
+            if diff  > self._time_threshold_ms:
                 logging.warning("First pulse")
                 self._t0 = None
                 dic["turnon"] = True
                 return HasInteractedVariable(1), dic
             else:
-                logging.warning("Not enough time")
+                logging.warning("Not enough time: %s", diff)
                 return HasInteractedVariable(0), {}
 
 
