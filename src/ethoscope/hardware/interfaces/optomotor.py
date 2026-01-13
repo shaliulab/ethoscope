@@ -37,7 +37,20 @@ class OptoMotor(BaseInterface):
         else:
             self._port = port
 
-        self._serial = serial.Serial(self._port, self._baud, timeout=2)
+        # self._serial = serial.Serial(self._port, self._baud, timeout=2)
+        self._serial = serial.Serial(
+            self._port, self._baud, timeout=2,
+            rtscts=False,
+            dsrdtr=False,
+            xonxoff=False,
+        )
+
+        # Prevent auto-reset on open (works for your case)
+        self._serial.dtr = False
+        time.sleep(0.2)
+        self._serial.reset_input_buffer()
+        self._serial.reset_output_buffer()
+
         time.sleep(2)
         self._test_serial_connection()
         super(OptoMotor, self).__init__(*args, **kwargs)
@@ -93,7 +106,7 @@ class OptoMotor(BaseInterface):
     # but they actually should never be None
     def make_instruction(self, *args, **kwargs):
         """
-        Produce an instruction that can be passed to the serial handler write method (i.e. to Arduino) 
+        Produce an instruction that can be passed to the serial handler write method (i.e. to Arduino)
         :param channel: the chanel idx to be activated
         :type channel: int
         :param duration: the time (ms) the stimulus should last for
