@@ -63,6 +63,7 @@ class OptogeneticHardware(CleanUpHardware):
             "pulse_on": pulse_on,
             "pulse_off": pulse_off,
         })
+        return params
 
     def make_instruction(self, *args, **kwargs):
         params = self.val_params(*args, **kwargs)
