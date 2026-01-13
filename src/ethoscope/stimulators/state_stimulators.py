@@ -49,6 +49,7 @@ class StateStimulator(RobustSleepDepriver):
     def _prepare(self):
         dic={}
         dic["channel"] = self._roi_to_channel[self._tracker._roi.idx]
+        dic["duration"]=self._pulse_duration
 
         now = self._tracker.last_time_point
         has_moved = self._has_moved()
