@@ -23,7 +23,7 @@ class StaticOptogeneticHardware(CleanUpHardware):
     def make_instruction(self, channel, turnon):
         instruction = self._inst_format[turnon].format_map({"channel": channel}).encode("utf-8")
         return instruction
-    
+
 class IndefiniteOptogeneticHardware(CleanUpHardware):
     _inst_format = {True: "W {channel} {pulse_on} {pulse_off}\r\n", False: "U {channel}\r\n"}
     _params = ["channel", "pulse_on", "pulse_off"]
@@ -48,7 +48,6 @@ class IndefiniteOptogeneticHardware(CleanUpHardware):
         return instruction
 
 class OptogeneticHardware(CleanUpHardware):
-    _inst_format = "R {channel} {duration} {pulse_on} {pulse_off}\r\n"
     _params = ["channel", "duration", "intensity", "pulse_on", "pulse_off"]
 
     def __init__(self, *args, **kwargs):
@@ -64,5 +63,19 @@ class OptogeneticHardware(CleanUpHardware):
             "pulse_on": pulse_on,
             "pulse_off": pulse_off,
         })
+
+    def make_instruction(self, *args, **kwargs):
+        params = self.val_params(*args, **kwargs)
+
+        if params["pulse_on"] is None and params["pulse_off"] is None:
+            inst_format = "P {channel} {duration}\r\n"
+        else:
+            inst_format = "R {channel} {duration} {pulse_on} {pulse_off}\r\n"
+        try:
+            instruction = inst_format.format_map(params).encode("utf-8")
+        except TypeError as error:
+            logging.error(f"You have passed the wrong amount of things to complete the instruction. You need {len(self._params)} but you passed {len(params)}")
+            raise error
+        return instruction
 
         return params

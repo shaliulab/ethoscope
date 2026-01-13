@@ -12,7 +12,7 @@ from ethoscope.hardware.interfaces.optogenetics import (
     StaticOptogeneticHardware,
     IndefiniteOptogeneticHardware
 )
-from ethoscope.hardware.interfaces.interfaces import HardwareConnection 
+from ethoscope.hardware.interfaces.interfaces import HardwareConnection
 
 from ethoscope.core.roi import ROI
 
@@ -26,14 +26,15 @@ class StateStimulator(RobustSleepDepriver):
         min_time_not: minimum amount of time in the opposite (not) state before the stimulator responds to it (s)
         **kwargs: other arguments to RobustSleepDepriver
     """
-    
+
     _state = None
     _HardwareInterfaceClass = StaticOptogeneticHardware
 
     def __init__(self, *args, min_time=10, min_time_not=0, **kwargs):
 
-        if not "min_inactive_time" in kwargs:
-            kwargs["min_inactive_time"] = min_time
+        assert min_time > 0 # we need a refractory period to prevent hardware malfunction?
+
+        kwargs["min_inactive_time"] = min_time
 
         super().__init__(*args, **kwargs)
         self._time_threshold_ms = self._inactivity_time_threshold_ms
@@ -48,7 +49,7 @@ class StateStimulator(RobustSleepDepriver):
 
         now = self._tracker.last_time_point
         has_moved = self._has_moved()
-       
+
         return dic, now, has_moved
 
 
@@ -68,7 +69,6 @@ class MaskStimulationInterruptionsMixin:
         if self._last_time_in_stimulating_state is None:
             self._last_time_in_stimulating_state = now
 
-        # “Stimulating state” definition:
         #   awake  -> has_moved == True
         #   asleep -> has_moved == False
         if self._state == "awake":
@@ -97,7 +97,7 @@ class MaskStimulationInterruptionsMixin:
 
             else:
                 return dic, now, has_moved
-    
+
 
 
 class StaticSleepStimulator(MaskStimulationInterruptionsMixin, StateStimulator):
@@ -129,7 +129,7 @@ class StaticSleepStimulator(MaskStimulationInterruptionsMixin, StateStimulator):
         self._t0 = None
         self._tracker=None
         super(StaticSleepStimulator, self).__init__(*args, **kwargs)
-        
+
     def _decide(self, *args, **kwargs):
         if self._tracker._roi.idx not in self._roi_to_channel:
             return HasInteractedVariable(False), {}
@@ -213,7 +213,7 @@ class StatePulseStimulator(MaskStimulationInterruptionsMixin, StateStimulator):
     Like the StateStimulator but with a frequency pulse at a given frequency
     """
 
-    _HardwareInterfaceClass = IndefiniteOptogeneticHardware
+    _HardwareInterfaceClass = OptogeneticHardware
 
     def __init__(self, *args, pulse_on=50, pulse_off=50, **kwargs):
         super(StatePulseStimulator, self).__init__(*args, **kwargs)
@@ -229,7 +229,7 @@ class StatePulseStimulator(MaskStimulationInterruptionsMixin, StateStimulator):
 
 class PulseSleepStimulator(StatePulseStimulator):
     _state = "asleep"
-    _HardwareInterfaceClass = IndefiniteOptogeneticHardware
+    _HardwareInterfaceClass = OptogeneticHardware
     _description = {
         "overview": f"A stimulator to sleep deprive an animal using optogenetics. The animal will be stimulated for as long as it is {_state}",
         "arguments": [
@@ -249,7 +249,7 @@ class PulseSleepStimulator(StatePulseStimulator):
         self._t0 = None
         self._tracker=None
         super(PulseSleepStimulator, self).__init__(*args, **kwargs)
-        
+
     def _decide(self, *args, **kwargs):
         if self._tracker._roi.idx not in self._roi_to_channel:
             return HasInteractedVariable(False), {}
@@ -278,7 +278,7 @@ class PulseSleepStimulator(StatePulseStimulator):
 
 class PulseAwakeStimulator(StatePulseStimulator):
     _state = "awake"
-    _HardwareInterfaceClass = IndefiniteOptogeneticHardware
+    _HardwareInterfaceClass = OptogeneticHardware
     _description = {
         "overview": f"A stimulator to awake deprive an animal using optogenetics. The animal will be stimulated for as long as it is {_state}",
         "arguments": [
@@ -298,12 +298,12 @@ class PulseAwakeStimulator(StatePulseStimulator):
         self._t0 = None
         self._tracker=None
         super(PulseAwakeStimulator, self).__init__(*args, **kwargs)
-    
+
     def _decide(self, *args, **kwargs):
         if self._tracker._roi.idx not in self._roi_to_channel:
             return HasInteractedVariable(0), {}
-        
-        
+
+
         dic, now, has_moved = self._prepare(*args, **kwargs)
 
         if self._t0 is None:
@@ -337,7 +337,7 @@ if __name__ == "__main__":
         min_time_not = 0,
         date_range = "",
         pulse_on=50,
-        pulse_off=50,    
+        pulse_off=50,
     )
     print(stimulator.__class__.__mro__)
     stimulator._hardware_connection.stop()
