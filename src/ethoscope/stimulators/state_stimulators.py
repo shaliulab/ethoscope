@@ -177,7 +177,7 @@ class StaticAwakeStimulator(MaskStimulationInterruptionsMixin, StateStimulator):
         ]
     }
 
-   _roi_to_channel = {
+    _roi_to_channel = {
         1: 1,
     }
 
