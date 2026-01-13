@@ -177,10 +177,6 @@ class StaticAwakeStimulator(MaskStimulationInterruptionsMixin, StateStimulator):
         ]
     }
 
-    _roi_to_channel = {
-        1: 1,
-    }
-
     """
     A stimulator that delivers the stimulus for as long as the fly is awake
 
