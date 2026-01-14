@@ -83,7 +83,7 @@ class MaskStimulationInterruptionsMixin:
         #   asleep -> has_moved == False
         if self._state == "awake":
             in_stim_state = has_moved
-        elif self.state_=="asleep":
+        elif self._state =="asleep":
             in_stim_state = not has_moved
 
         if in_stim_state:
