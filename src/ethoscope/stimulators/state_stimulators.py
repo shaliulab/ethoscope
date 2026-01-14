@@ -219,7 +219,7 @@ class StaticAwakeStimulator(MaskStimulationInterruptionsMixin, StateStimulator):
                 return HasInteractedVariable(0), {}
 
 
-class StatePulseStimulator(MaskStimulationInterruptionsMixin, StateStimulator):
+class StatePulseStimulator(StateStimulator):
     """
     Like the StateStimulator but with a frequency pulse at a given frequency
     """
@@ -238,7 +238,7 @@ class StatePulseStimulator(MaskStimulationInterruptionsMixin, StateStimulator):
         return dic, now, has_moved
 
 
-class PulseSleepStimulator(StatePulseStimulator):
+class PulseSleepStimulator(MaskStimulationInterruptionsMixin, StatePulseStimulator):
     _state = "asleep"
     _HardwareInterfaceClass = OptogeneticHardware
     _description = {
@@ -287,7 +287,7 @@ class PulseSleepStimulator(StatePulseStimulator):
 
 
 
-class PulseAwakeStimulator(StatePulseStimulator):
+class PulseAwakeStimulator(MaskStimulationInterruptionsMixin, StatePulseStimulator):
     _state = "awake"
     _HardwareInterfaceClass = OptogeneticHardware
     _description = {
