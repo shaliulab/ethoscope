@@ -106,11 +106,18 @@ class SystematicPWMHardwareConnection(DynamicPWMHardwareConnection):
 
     min_time_pwm=1        # mins
     strategy="random"
+    
+    """
+    Specify min value for random numbers that can be used
+    Too low values might not be able to move motor
+    """
+    MINVAL = 30
 
     def get_next_pwm_value(self):
         # TODO Write logic to pick a pwm_value
         if self.strategy == "random":
             value = int(random.random() * 255)
+            value = min(value,self.MINVAL)
 
         return value
 
