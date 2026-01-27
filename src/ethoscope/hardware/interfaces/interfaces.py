@@ -75,60 +75,60 @@ class HardwareConnection(Thread):
                       *state["interface_args"], **kwargs)
         
 
-class DynamicPWMHardwareConnection(HardwareConnection):
+# class DynamicPWMHardwareConnection(HardwareConnection):
 
-    def __init__(self, *args, **kwargs):
-        super(DynamicPWMHardwareConnection, self).__init__(*args, **kwargs)
-        self.last_pwm_change=None
+#     def __init__(self, *args, **kwargs):
+#         super(DynamicPWMHardwareConnection, self).__init__(*args, **kwargs)
+#         self.last_pwm_change=None
 
-    def decide_pwm_change(self):
-        raise NotImplementedError()
+#     def decide_pwm_change(self):
+#         raise NotImplementedError()
 
-    def run(self):
-        """
-        Infinite loop that send instructions to the hardware interface
-        Do not call directly, used the ``start()`` method instead.
-        """
+#     def run(self):
+#         """
+#         Infinite loop that send instructions to the hardware interface
+#         Do not call directly, used the ``start()`` method instead.
+#         """
 
-        self.last_pwm_change=None
+#         self.last_pwm_change=None
 
-        while self._connection_open:
-            time.sleep(.1)
+#         while self._connection_open:
+#             time.sleep(.1)
         
-            self.decide_pwm_change()
+#             self.decide_pwm_change()
     
-            while len(self._instructions) > 0 and self._connection_open:
-                instruc = self._instructions.popleft()
-                logging.warning(instruc)
-                ret = self._interface.send(**instruc)
+#             while len(self._instructions) > 0 and self._connection_open:
+#                 instruc = self._instructions.popleft()
+#                 logging.warning(instruc)
+#                 ret = self._interface.send(**instruc)
             
-class SystematicPWMHardwareConnection(DynamicPWMHardwareConnection):
+# class SystematicPWMHardwareConnection(DynamicPWMHardwareConnection):
 
-    min_time_pwm=1        # mins
-    strategy="random"
+#     min_time_pwm=1        # mins
+#     strategy="random"
     
-    """
-    Specify min value for random numbers that can be used
-    Too low values might not be able to move motor
-    """
-    MINVAL = 30
+#     """
+#     Specify min value for random numbers that can be used
+#     Too low values might not be able to move motor
+#     """
+#     MINVAL = 30
 
-    def get_next_pwm_value(self):
-        # TODO Write logic to pick a pwm_value
-        if self.strategy == "random":
-            value = int(random.random() * 255)
-            value = min(value,self.MINVAL)
+#     def get_next_pwm_value(self):
+#         # TODO Write logic to pick a pwm_value
+#         if self.strategy == "random":
+#             value = int(random.random() * 255)
+#             value = min(value,self.MINVAL)
 
-        return value
+#         return value
 
-    def decide_pwm_change(self):
-        if self.last_pwm_change is None:
-            self.last_pwm_change = time.time()
+#     def decide_pwm_change(self):
+#         if self.last_pwm_change is None:
+#             self.last_pwm_change = time.time()
 
-        if time.time() - self.last_pwm_change > self.min_time_pwm * 60:
-            pwm_value=self.get_next_pwm_value()
-            self._interface.set_pwm(pwm_value)
-            self.last_pwm_change=time.time()
+#         if time.time() - self.last_pwm_change > self.min_time_pwm * 60:
+#             pwm_value=self.get_next_pwm_value()
+#             self._interface.set_pwm(pwm_value)
+#             self.last_pwm_change=time.time()
 
 
 class BaseInterface(object):

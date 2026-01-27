@@ -29,8 +29,8 @@ from ethoscope.stimulators.sleep_depriver_stimulators import (
     SleepDepStimulator, OptomotorSleepDepriver, ExperimentalSleepDepStimulator,
     MiddleCrossingStimulator, OptomotorSleepDepriverSystematic,
     GearOptomotorSleepDepriver, RobustSleepDepriver,
-    PWMRobustSleepDepriver,
 )
+from ethoscope.stimulators.pwm_stimulators import PWMPlannedSleepDepriver, RandomPWMRobustSleepDepriver
 from ethoscope.stimulators.odour_stimulators import DynamicOdourSleepDepriver, MiddleCrossingOdourStimulator, MiddleCrossingOdourStimulatorFlushed
 from ethoscope.stimulators.optomotor_stimulators import OptoMidlineCrossStimulator, MotoMidlineCrossStimulator, RobustMotoMidlineCrossStimulator
 from ethoscope.stimulators.dynamic_stimulators import SegmentedStimulator
@@ -95,7 +95,8 @@ class ControlThread(Thread):
                                             OptomotorSleepDepriver,
                                             GearOptomotorSleepDepriver,
                                             RobustSleepDepriver,
-                                            PWMRobustSleepDepriver,
+                                            RandomPWMRobustSleepDepriver,
+                                            PWMPlannedSleepDepriver,
                                             MiddleCrossingStimulator,
                                             #SystematicSleepDepInteractor,
                                             ExperimentalSleepDepStimulator,
@@ -348,10 +349,12 @@ class ControlThread(Thread):
 
 
     def _start_tracking(self, camera, result_writer, rois, M, TrackerClass, tracker_kwargs,
-                        hardware_connection, StimulatorClass, stimulator_kwargs):
+                        hardware_connection, StimulatorClass, stimulator_args, stimulator_kwargs):
+        
 
+    
         #Here the stimulator passes args. Hardware connection was previously open as thread.
-        stimulators = [StimulatorClass(hardware_connection, **stimulator_kwargs) for _ in rois]
+        stimulators = [StimulatorClass(hardware_connection, *stimulator_args, **stimulator_kwargs) for _ in rois]
 
         kwargs = self._monit_kwargs.copy()
         kwargs.update(tracker_kwargs)
@@ -382,13 +385,16 @@ class ControlThread(Thread):
                 time.sleep(15)
                 return pickle.load(f)
 
-    def _save_pickled_state(self, camera, result_writer, rois, M, TrackerClass, tracker_kwargs, hardware_connection, StimulatorClass, stimulator_kwargs, running_info):
+    def _save_pickled_state(self, camera, result_writer, rois, M, TrackerClass, tracker_kwargs, hardware_connection, StimulatorClass, stimulator_args, stimulator_kwargs, running_info):
         """
         note that cv2.videocapture is not a serializable object and cannot be pickled
         """
 
-        tpl = (camera, result_writer, rois, M, TrackerClass, tracker_kwargs,
-                        hardware_connection, StimulatorClass, stimulator_kwargs, running_info)
+        tpl = (
+            camera, result_writer, rois, M, TrackerClass, tracker_kwargs,
+            hardware_connection, StimulatorClass,
+            stimulator_args, stimulator_kwargs, running_info
+        )
 
 
         if not os.path.exists(os.path.dirname(self._persistent_state_file)):
@@ -462,6 +468,12 @@ class ControlThread(Thread):
         #here the hardwareConnection call the interface class without passing any argument!
         hardware_connection = HardWareConnectionClass(HardWareInterfaceClass)
 
+        # 
+        if getattr(StimulatorClass, "get_args", None) is None:
+            stimulator_args = []
+        else:
+            stimulator_args=StimulatorClass.get_args()
+
         #creates a unique tracking id to label this tracking run
         self._info["experimental_info"]["run_id"] = secrets.token_hex(8)
 
@@ -491,7 +503,7 @@ class ControlThread(Thread):
         # hardware_interface is a running thread
         rw = ResultWriterClass(self._db_credentials, rois, metadata=self._metadata, sensor=sensor, **result_writer_kwargs)
         return  (cam, rw, rois, M, TrackerClass, tracker_kwargs,
-                        hardware_connection, StimulatorClass, stimulator_kwargs)
+                        hardware_connection, StimulatorClass, stimulator_args, stimulator_kwargs)
 
     def run(self):
         cam = None
@@ -504,23 +516,23 @@ class ControlThread(Thread):
             self._last_info_t_stamp = 0
             self._last_info_frame_idx = 0
 
-
+            # TODO Make sure _set_tracking_from_pickled and _set_tracking_from_scratch return stimulator_args
             if self._has_pickle_file():
                 try:
-                    cam, rw, rois, M, TrackerClass, tracker_kwargs, hardware_connection, StimulatorClass, stimulator_kwargs, self._info = self._set_tracking_from_pickled()
+                    cam, rw, rois, M, TrackerClass, tracker_kwargs, hardware_connection, StimulatorClass, stimulator_args, stimulator_kwargs, self._info = self._set_tracking_from_pickled()
 
                 except Exception as e:
                     logging.error("Could not load previous state for unexpected reason:")
                     raise e
 
             else:
-                cam, rw, rois, M, TrackerClass, tracker_kwargs, hardware_connection, StimulatorClass, stimulator_kwargs = self._set_tracking_from_scratch()
+                cam, rw, rois, M, TrackerClass, tracker_kwargs, hardware_connection, StimulatorClass, stimulator_args, stimulator_kwargs = self._set_tracking_from_scratch()
                         # return  (cam, rw, rois, M, TrackerClass, tracker_kwargs,
                         # hardware_connection, StimulatorClass, stimulator_kwargs)
 
             with rw as result_writer:
                 if cam.canbepickled:
-                    self._save_pickled_state(cam, rw, rois, M, TrackerClass, tracker_kwargs, hardware_connection, StimulatorClass, stimulator_kwargs, self._info)
+                    self._save_pickled_state(cam, rw, rois, M, TrackerClass, tracker_kwargs, hardware_connection, StimulatorClass, stimulator_args, stimulator_kwargs, self._info)
 
 
                 if M is not None:
@@ -531,7 +543,7 @@ class ControlThread(Thread):
                     logging.info('M is None!')
 
                 self._start_tracking(cam, result_writer, rois, M, TrackerClass, tracker_kwargs,
-                                     hardware_connection, StimulatorClass, stimulator_kwargs)
+                                     hardware_connection, StimulatorClass, stimulator_args, stimulator_kwargs)
             self.stop()
 
         except EthoscopeException as e:

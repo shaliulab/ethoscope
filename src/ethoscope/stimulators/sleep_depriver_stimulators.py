@@ -10,8 +10,6 @@ from ethoscope.stimulators.stimulators import BaseStimulator, HasInteractedVaria
 from ethoscope.hardware.interfaces.interfaces import  DefaultInterface
 from ethoscope.hardware.interfaces.sleep_depriver_interface import SleepDepriverInterface, SleepDepriverInterfaceCR
 from ethoscope.hardware.interfaces.optomotor import OptoMotor, SleepDepriver, PWMSleepDepriver
-from ethoscope.hardware.interfaces.interfaces import HardwareConnection, SystematicPWMHardwareConnection 
-
 
 import random
 import time
@@ -289,31 +287,6 @@ class RobustSleepDepriver(GearOptomotorSleepDepriver):
     def __init__(self, *args, **kwargs):
         super(RobustSleepDepriver, self).__init__(*args, **kwargs)
         self._roi_to_channel = {1:1, 3:3, 5:5, 7:7, 9:9, 12:11, 14:13, 16:15, 18:17, 20:19}
-
-
-class PWMRobustSleepDepriver(RobustSleepDepriver):
-    _description = {"overview": "Stimulator with motor that experience a variable PWM",
-                "arguments": [
-                    {"type": "number", "min": 0.0, "max": 1.0, "step": 0.0001, "name": "velocity_correction_coef", "description": "Velocity correction coef", "default": 0.01},
-                                {"type": "number", "min": 1, "max": 3600*12, "step":1, "name": "min_inactive_time", "description": "The minimal time after which an inactive animal is awaken(s)","default":10},
-                                {"type": "number", "min": 10, "max": 10000 , "step": 10, "name": "pulse_duration", "description": "For how long to deliver the stimulus(ms)", "default": 1000},
-                                {"type": "str", "name": "date_range",
-                                 "description": "A date and time range in which the device will perform (see http://tinyurl.com/jv7k826)",
-                                 "default": ""},
-                                {"type": "number", "min": 1, "max": 720 , "step": 1, "name": "min_time_pwm", "description": "For how long to keep the pwm value, in mins", "default": 1},
-                                 {"type": "str", "name": "strategy",
-                                 "description": "PWM value selection strategy",
-                                 "default": "random"},
-                               ]}
-
-    _HardWareConnectionClass = SystematicPWMHardwareConnection
-    _HardwareInterfaceClass = PWMSleepDepriver
-
-
-    def __init__(self, hardware_connection, *args, min_time_pwm=1, strategy = "random", **kwargs):
-        hardware_connection.min_time_pwm = min_time_pwm
-        hardware_connection.strategy = strategy      
-        super(PWMRobustSleepDepriver, self).__init__(hardware_connection, *args, **kwargs)
 
 
 
