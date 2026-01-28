@@ -10,7 +10,6 @@ from ethoscope.stimulators.sleep_depriver_stimulators import RobustSleepDepriver
 import random
 import time
 import logging
-import pandas as pd
 import sys
 if sys.version_info[0] < 3: 
     from StringIO import StringIO
@@ -18,6 +17,16 @@ else:
     from io import StringIO
 
 logger=logging.getLogger(__name__)
+
+def merge_asof(d, x):
+    hits = np.where(d["time"] < x)
+    if len(hits)>=1:
+        hit = hits[-1]
+    else:
+        hit = 0
+    
+    result = {k: [d[k][hit]] for k in d}
+    return result
 
 
 class PWMChecker:
@@ -106,9 +115,16 @@ class PWMSleepDepriverStimulator(RobustSleepDepriver):
     @staticmethod
     def parse_pwm_program(pwm_program):
 
-        user_plan = StringIO(pwm_program)
-        pwm_program = pd.read_csv(user_plan, sep=",")
-        
+        with StringIO(pwm_program) as handle:
+            csvfile = csv.reader(handle)
+            data=list(iter(csvfile))
+
+        pwm_program={k: [] for k in data[0]}
+        for i in range(1, len(data)):
+            for j, k in enumerate(data[0]):
+                pwm_program[k].append(data[i][j])
+
+       
         # TODO check if any() is same as ().any()#
         # check that the user passed a table which is sorted by time
         if (pwm_program["time"].diff() < 0).any():
@@ -152,14 +168,11 @@ class PWMSleepDepriverStimulator(RobustSleepDepriver):
         # Check which idx val current time would point to
         try:
             t = self.get_time_since_sd()
-            hit=pd.merge_asof(
-                pd.DataFrame({"time": [t]}),
-                self.checker.pwm_program,
-                on = "time",
-                direction="backward",
-                tolerance = None
-            )
-            t, val = hit[["time", "pwm"]].values.flatten()
+
+            row = merge_asof(self.checker.pwm_program, t)
+
+            val=row["pwm"][0]
+            t=row["time"][0]
 
         except Exception as error:
             logger.error(error)
