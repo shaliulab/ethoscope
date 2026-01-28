@@ -119,7 +119,7 @@ class PWMSleepDepriverStimulator(RobustSleepDepriver):
             {"type": "str", "name": "date_range",
                 "description": "A date and time range in which the device will perform (see http://tinyurl.com/jv7k826)",
                 "default": ""},
-            {"type": "bigtext", "name": "pwm_program", "description": "CSV style info for what PWM value to use for a given timepoint from start of SD", "default": "time,pwm\n0,255"},
+            {"type": "bigtext", "name": "pwm_program", "description": "CSV style info for what PWM value to use for a given timepoint from start of SD. Time in min", "default": "time,pwm\n0,255"},
             ]}
 
     # Found in optomotor.py - has instructions to send Arduino serial command with set_pwm
@@ -169,10 +169,12 @@ class PWMSleepDepriverStimulator(RobustSleepDepriver):
 
     def get_time_since_sd(self):
         t0, t1=self._scheduler._parse_date_range()
-
-        sec_since_sd_start = time.time() - t0
         if time.time()-t1>0:
             raise Exception("SD should have finished")
+            
+        sec_since_sd_start = time.time() - t0
+        sec_since_sd_start/=60
+
         return sec_since_sd_start
     
     
