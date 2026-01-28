@@ -30,7 +30,7 @@ from ethoscope.stimulators.sleep_depriver_stimulators import (
     MiddleCrossingStimulator, OptomotorSleepDepriverSystematic,
     GearOptomotorSleepDepriver, RobustSleepDepriver,
 )
-from ethoscope.stimulators.pwm_stimulators import PWMPlannedSleepDepriver, RandomPWMRobustSleepDepriver
+from ethoscope.stimulators.pwm_stimulators import PWMSleepDepriverStimulator, RandomPWMSleepDepriverStimulator
 from ethoscope.stimulators.odour_stimulators import DynamicOdourSleepDepriver, MiddleCrossingOdourStimulator, MiddleCrossingOdourStimulatorFlushed
 from ethoscope.stimulators.optomotor_stimulators import OptoMidlineCrossStimulator, MotoMidlineCrossStimulator, RobustMotoMidlineCrossStimulator
 from ethoscope.stimulators.dynamic_stimulators import SegmentedStimulator
@@ -95,8 +95,8 @@ class ControlThread(Thread):
                                             OptomotorSleepDepriver,
                                             GearOptomotorSleepDepriver,
                                             RobustSleepDepriver,
-                                            RandomPWMRobustSleepDepriver,
-                                            PWMPlannedSleepDepriver,
+                                            RandomPWMSleepDepriverStimulator,
+                                            PWMSleepDepriverStimulator,
                                             MiddleCrossingStimulator,
                                             #SystematicSleepDepInteractor,
                                             ExperimentalSleepDepStimulator,
