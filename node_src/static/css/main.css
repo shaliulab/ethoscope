@@ -83,6 +83,11 @@ input[type="number"] {
 width: 75px;
 }
 
+.bigtext-box {
+    min-height: 200px;
+    width: 100%;
+    resize: vertical;
+}
 
 label {
     display: block;
