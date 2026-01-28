@@ -3,7 +3,7 @@ from ethoscope.stimulators.stimulators import BaseStimulator, HasInteractedVaria
 from ethoscope.hardware.interfaces.interfaces import  DefaultInterface
 from ethoscope.hardware.interfaces.sleep_depriver_interface import SleepDepriverInterface, SleepDepriverInterfaceCR
 from ethoscope.hardware.interfaces.optomotor import OptoMotor, SleepDepriver, PWMSleepDepriver
-from ethoscope.hardware.interfaces.interfaces import HardwareConnection, DynamicPWMHardwareConnection
+# from ethoscope.hardware.interfaces.interfaces import HardwareConnection, DynamicPWMHardwareConnection
 
 from ethoscope.stimulators.sleep_depriver_stimulators import RobustSleepDepriver
 
