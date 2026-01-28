@@ -20,40 +20,6 @@ else:
 logger=logging.getLogger(__name__)
 
 
-# class RandomPWMChecker:
-    
-#     # Minimum PWM value to use in random generator
-#     MINVAL = 30
-
-#     def __init__(self, min_time_pwm):
-#         self.min_time_pwm = min_time_pwm
-
-#     # Method to return random PWM value, floor limited by MINVAL to ensure enough intensity to still stimulate
-#     def get_random_pwm_value(self):
-#         value = int(random.random() * 255)
-#         value = max(value,self.MINVAL)
-#         return value
-
-#     # Decide if min time without update has been passed, if yes, then update PWM value
-#     def decide_pwm_change(self):
-#         if self.last_pwm_change is None:
-#             self.last_pwm_change = time.time()
-
-#         if time.time() - self.last_pwm_change > self.min_time_pwm * 60:
-#             pwm_value=self.get_random_pwm_value()
-#             self._interface.set_pwm(pwm_value)
-#             self.last_pwm_change=time.time()
-
-#     # Send command via interface to actally change PWM value to what was decided
-#     def _decide(self, *args, **kwargs):
-#         out = super(RandomPWMRobustSleepDepriver, self)._decide(*args, **kwargs)
-        
-#         # self.decide_pwm_change()
-#         type(self).decide_pwm_change(self)
-
-#         return out
-
-
 class PWMChecker:
     """
     Share a notion of last_time and last_val across different stimulators so that
