@@ -124,6 +124,9 @@ class PWMSleepDepriverStimulator(RobustSleepDepriver):
             for j, k in enumerate(data[0]):
                 pwm_program[k].append(data[i][j])
 
+        for k in pwm_program:
+            pwm_program[k]=np.array(pwm_program[k])
+
        
         # TODO check if any() is same as ().any()#
         # check that the user passed a table which is sorted by time
