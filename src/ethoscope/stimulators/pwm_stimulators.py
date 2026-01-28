@@ -19,7 +19,7 @@ else:
 logger=logging.getLogger(__name__)
 
 def merge_asof(d, x):
-    hits = np.where(d["time"] < x)
+    hits = np.where(np.array(d["time"]) < x)[0]
     if len(hits)>=1:
         hit = hits[-1]
     else:
