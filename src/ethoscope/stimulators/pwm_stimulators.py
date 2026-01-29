@@ -150,7 +150,7 @@ class PWMSleepDepriverStimulator(RobustSleepDepriver):
                             """
             )
 
-        if pwm_program.shape[0] > 1 and (np.diff(b) == 0).any():
+        if len(a) > 1 and (np.diff(b) == 0).any():
             logger.warning("You passed two or more consecutive pwm values that are the same")
         return pwm_program
     
