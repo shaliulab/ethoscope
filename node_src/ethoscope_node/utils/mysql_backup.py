@@ -18,7 +18,9 @@ class MySQLdbToSQlite(object):
                  remote_host="localhost",
                  remote_user="ethoscope",
                  remote_pass="ethoscope",
-                 overwrite=False):
+                 overwrite=False,
+                 replace=False,
+                ):
         """
 
         A class to backup remote psv MySQL data base into a local sqlite3 one.
@@ -40,6 +42,7 @@ class MySQLdbToSQlite(object):
         self._remote_pass = remote_pass
         self._remote_db_name = remote_db_name
 
+        self._replace=replace
         src = mysql.connector.connect(host=self._remote_host,
                                       user=self._remote_user,
                                       passwd=self._remote_pass,
@@ -128,7 +131,7 @@ class MySQLdbToSQlite(object):
         except sqlite3.OperationalError:
             logging.debug("Table %s exists, not copying it" % table_name)
             return
-            
+
         if table_name == "IMG_SNAPSHOTS":
             self._replace_img_snapshot_table(table_name, src, dst)
         else:
@@ -165,7 +168,7 @@ class MySQLdbToSQlite(object):
 
             for table in ["IMG_SNAPSHOTS", "SENSORS"]:
                 try:
-                    self._update_table(table, src, dst)
+                    self._update_table(table, src, dst, replace=self._replace)
 
                 except Exception as e:
                     logging.error("Cannot mirror the '%s' table" % table)
@@ -300,7 +303,7 @@ class MySQLdbToSQlite(object):
 
             #retrieve only new data
             src_command = "SELECT * FROM %s WHERE id > %d" % (table_name, last_id_in_dst)
-        
+
         if replace:
 
             #retrieve all data, not just the new ones
@@ -312,7 +315,7 @@ class MySQLdbToSQlite(object):
         for sc in src_cur:
             nv = len(sc)
             command = "INSERT INTO " + table_name + " VALUES(" + ','.join(['?']*nv) + ");"
-            
+
             args = []
             #populate args taking datatype into account
             for d,k in zip(sc, h):
@@ -320,7 +323,7 @@ class MySQLdbToSQlite(object):
                     args.append(sqlite3.Binary(d))
                 else:
                     args.append(d)
-            
-            #and add them row by row to destination 
+
+            #and add them row by row to destination
             dst_cur.execute(command, args)
             dst.commit()

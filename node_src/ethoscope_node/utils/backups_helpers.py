@@ -20,7 +20,6 @@ n_parallel_threads = 8
 
 def filter_by_regex(devices, regex):
     pattern = re.compile(regex)
-    #ipdb.set_trace()
     if type(devices) is dict:
         new_devices = {}
         for key, value in devices.items():
@@ -86,12 +85,13 @@ class BackupClass(object):
         return backup_path
 
 
-    def __init__(self, device_info, results_dir, use_last_file=False):
+    def __init__(self, device_info, results_dir, use_last_file=False, replace=False):
 
         self._device_info = device_info
         self._database_ip = os.path.basename(self._device_info["ip"])
         self._results_dir = results_dir
         self._use_last_file = use_last_file
+        self._replace=replace
 
     def _get_backup_path(self):
         if "backup_path" not in self._device_info:
@@ -116,7 +116,9 @@ class BackupClass(object):
             mirror= MySQLdbToSQlite(backup_path, self._db_credentials["name"],
                             remote_host=self._database_ip,
                             remote_pass=self._db_credentials["password"],
-                            remote_user=self._db_credentials["user"])
+                            remote_user=self._db_credentials["user"],
+                            replace=self._replace
+                        )
 
             mirror.update_roi_tables()
 
@@ -143,7 +145,8 @@ class BackupClass(object):
                         mirror= MySQLdbToSQlite(backup_path, self._db_credentials["name"],
                                         remote_host=self._database_ip,
                                         remote_pass=self._db_credentials["password"],
-                                        remote_user=self._db_credentials["user"])
+                                        remote_user=self._db_credentials["user"],
+                                        replace=self._replace)
 
                         mirror.update_roi_tables()
                     elif answer == 'N':
@@ -208,7 +211,7 @@ def dummy_job(*args):
 
 
 class GenericBackupWrapper(object):
-    def __init__(self, backup_job, results_dir, safe, server, regex=None, use_last_file=False):
+    def __init__(self, backup_job, results_dir, safe, server, regex=None, use_last_file=False, replace=False):
         self._TICK = 1.0  # s
         self._BACKUP_DT = 5 * 60  # 5min
         # self._BACKUP_DT = 5
@@ -218,6 +221,7 @@ class GenericBackupWrapper(object):
         self._server = server
         self._regex = regex
         self._use_last_file = use_last_file
+        self._replace=replace
 
         # for safety, starts device scanner too in case the node will go down at later stage
         self._device_scanner = EthoscopeScanner(results_dir = results_dir, regex = regex)
@@ -265,7 +269,7 @@ class GenericBackupWrapper(object):
                 args = []
                 for d in list(devices.values()):
                     if d["status"] not in ["not_in_use", "offline"] and d["name"] not in backup_off:
-                        args.append((d, self._results_dir, self._use_last_file))
+                        args.append((d, self._results_dir, self._use_last_file, self._replace))
 
                 logging.warning(args)
                 logging.info("Found %s devices online" % len(args))
