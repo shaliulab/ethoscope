@@ -143,7 +143,7 @@ class PWMSleepDepriverStimulator(RobustSleepDepriver):
         if (np.diff(a) < 0).any():
             raise Exception("Time table is not chronologically ordered")
         
-        if pwm_program[1, 0]!=0:
+        if a[0]!=0:
             raise Exception("""
                             Please pass always in the first row the pwm value desired at time 0" \
                             i.e. start your table with time=0
