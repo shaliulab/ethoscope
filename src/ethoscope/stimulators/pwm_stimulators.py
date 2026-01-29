@@ -204,8 +204,8 @@ class PWMSleepDepriverStimulator(RobustSleepDepriver):
 
     def connect_checker(self, checker):
         self.checker=checker
-        if self.checker.min_time_pwm is None:
-            self.checker.min_time_pwm=self.min_time_pwm
+        #if self.checker.min_time_pwm is None:
+        #    self.checker.min_time_pwm=self.min_time_pwm
         if self.checker._interface is None:
            self.checker._interface=self._hardware_connection._interface
         if self.checker.pwm_program is None:
