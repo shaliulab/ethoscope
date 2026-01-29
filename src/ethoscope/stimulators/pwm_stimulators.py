@@ -163,7 +163,7 @@ class PWMSleepDepriverStimulator(RobustSleepDepriver):
 
 
     def get_time_since_sd(self):
-        t0, t1=self._scheduler._parse_date_range()
+        t0, t1=self._scheduler._parse_date_range(self._scheduler.date_range_str)
         if time.time()-t1>0:
             raise Exception("SD should have finished")
             
