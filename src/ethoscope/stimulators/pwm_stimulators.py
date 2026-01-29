@@ -118,6 +118,7 @@ class PWMSleepDepriverStimulator(RobustSleepDepriver):
         super(PWMSleepDepriverStimulator, self).__init__(hardware_connection, *args, **kwargs)
         self.pwm_program=self.parse_pwm_program(pwm_program)
         self.connect_checker(checker)
+        assert len(self._date_ranges)<2
     
 
     @staticmethod
@@ -163,7 +164,7 @@ class PWMSleepDepriverStimulator(RobustSleepDepriver):
 
 
     def get_time_since_sd(self):
-        t0, t1=self._scheduler._parse_date_range(self._scheduler.date_range_str)
+        t0, t1=self._scheduler._date_ranges[0]
         if time.time()-t1>0:
             raise Exception("SD should have finished")
             
@@ -240,6 +241,8 @@ class RandomPWMSleepDepriverStimulator(PWMSleepDepriverStimulator):
             ]}
 
     def __init__(self, *args, min_time_pwm=1, **kwargs):
+
+        raise NotImplementedError()
         
         t0, t1=self._scheduler._parse_date_range()
 
