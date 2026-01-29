@@ -286,7 +286,7 @@
                                 <input ng-if="arg.type == 'date_range'" class="form-control" type=text  ng-model="selected_options.tracking[name]['arguments'][arg.name].formatted" > 
                                 <span class="input-group-addon"><i class="glyphicon glyphicon-calendar" onclick="$('#input-drp').data('daterangepicker').show();"></i></span>
                             </div>
-
+                            <textarea ng-show="arg.type == 'bigtext'" id="input-{{arg.name}}" name="{{arg.name}}" ng-model="selected_options.tracking[name]['arguments'][arg.name]" ng-trim="false" rows="10" cols="80"></textarea>
                             <div ng-if="arg.type == 'datetime'" class="input-group">
                                 <input ng-if="arg.type == 'datetime'" date-range-picker class="form-control date-picker" name={{arg.name}} id="input-{{arg.name}}" type=text  ng-model="selected_options.tracking[name]['arguments'][arg.name]" options="{singleDatePicker: true, timePicker: true, timePicker24Hour : true, timePickerIncrement: 30, drops: up , autoApply : true , autoUpdateInput : true, locale: { format: 'YYYY-MM-DD HH:mm:ss' }}" > 
                                 <span class="input-group-addon"><i class="glyphicon glyphicon-calendar"></i></span>
