@@ -138,7 +138,8 @@ class PWMSleepDepriverStimulator(RobustSleepDepriver):
        
         # TODO check if any() is same as ().any()#
         # check that the user passed a table which is sorted by time
-        if (np.diff(pwm_program["time"]) < 0).any():
+        a = pwm_program["time"].astype(float)
+        if (np.diff(a) < 0).any():
             raise Exception("Time table is not chronologically ordered")
         
         if pwm_program["time"].iloc[0]!=0:
