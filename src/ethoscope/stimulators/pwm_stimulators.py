@@ -138,7 +138,7 @@ class PWMSleepDepriverStimulator(RobustSleepDepriver):
        
         # TODO check if any() is same as ().any()#
         # check that the user passed a table which is sorted by time
-        if (pwm_program["time"].diff() < 0).any():
+        if (np.diff(pwm_program["time"]) < 0).any():
             raise Exception("Time table is not chronologically ordered")
         
         if pwm_program["time"].iloc[0]!=0:
@@ -148,7 +148,7 @@ class PWMSleepDepriverStimulator(RobustSleepDepriver):
                             """
             )
 
-        if pwm_program.shape[0] > 1 and (pwm_program["pwm"].diff() == 0).any():
+        if pwm_program.shape[0] > 1 and (np.diff(pwm_program["pwm"]) == 0).any():
             logger.warning("You passed two or more consecutive pwm values that are the same")
         return pwm_program
     
