@@ -6,6 +6,7 @@ from ethoscope.hardware.interfaces.optomotor import OptoMotor, SleepDepriver, PW
 # from ethoscope.hardware.interfaces.interfaces import HardwareConnection, DynamicPWMHardwareConnection
 
 from ethoscope.stimulators.sleep_depriver_stimulators import RobustSleepDepriver
+import csv
 import numpy as np
 import random
 import time
