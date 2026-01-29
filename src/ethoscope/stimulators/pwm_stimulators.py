@@ -6,6 +6,7 @@ from ethoscope.hardware.interfaces.optomotor import OptoMotor, SleepDepriver, PW
 # from ethoscope.hardware.interfaces.interfaces import HardwareConnection, DynamicPWMHardwareConnection
 
 from ethoscope.stimulators.sleep_depriver_stimulators import RobustSleepDepriver
+import csv
 import numpy as np
 import random
 import time
@@ -19,6 +20,9 @@ else:
 logger=logging.getLogger(__name__)
 
 def merge_asof(d, x):
+    """
+
+    """
     hits = np.where(np.array(d["time"]) < x)[0]
     if len(hits)>=1:
         hit = hits[-1]
@@ -85,17 +89,24 @@ class PWMChecker:
 
 
 
+# {"type": "bigtext", "name": "pwm_program", "description": "CSV style info for what PWM value to use for a given timepoint from start of SD. Time in min", "default": "time,pwm\n0,255"},
 class PWMSleepDepriverStimulator(RobustSleepDepriver):
     _description = {"overview": "Stimulator with motor that experience a variable PWM and timings can be programmed by user",
         "arguments": [
             {"type": "number", "min": 0.0, "max": 1.0, "step": 0.0001, "name": "velocity_correction_coef", "description": "Velocity correction coef", "default": 0.01},
             {"type": "number", "min": 1, "max": 3600*12, "step":1, "name": "min_inactive_time", "description": "The minimal time after which an inactive animal is awaken(s)","default":10},
             {"type": "number", "min": 10, "max": 10000 , "step": 10, "name": "pulse_duration", "description": "For how long to deliver the stimulus(ms)", "default": 1000},
-            {"type": "str", "name": "date_range",
+            {
+                "type": "str", "name": "date_range",
                 "description": "A date and time range in which the device will perform (see http://tinyurl.com/jv7k826)",
-                "default": ""},
-            {"type": "bigtext", "name": "pwm_program", "description": "CSV style info for what PWM value to use for a given timepoint from start of SD. Time in min", "default": "time,pwm\n0,255"},
-            ]}
+                "default": ""
+            },
+            {
+                "type": "bigtext", "name": "pwm_program",
+                "description": "CSV style info for what PWM value to use for a given timepoint from start of SD. Time in min",
+                "default": "time,pwm\n0,255"
+            },
+        ]}
 
     # Found in optomotor.py - has instructions to send Arduino serial command with set_pwm
     _HardwareInterfaceClass = PWMSleepDepriver
@@ -104,12 +115,10 @@ class PWMSleepDepriverStimulator(RobustSleepDepriver):
     def __init__(self, hardware_connection, checker, *args, pwm_program = "time,pwm\n0,255", **kwargs):
         # UserPlan is the CSV type of string that the user provides with timepoint and PWM val
         # we then convert it to a dataframe, assuming separators are commas
-
-        
-        self.connect_checker(checker)
-
-        self.pwm_program=self.parse_pwm_program(pwm_program)
         super(PWMSleepDepriverStimulator, self).__init__(hardware_connection, *args, **kwargs)
+        self.pwm_program=self.parse_pwm_program(pwm_program)
+        self.connect_checker(checker)
+        assert len(self._scheduler._date_ranges)<2
     
 
     @staticmethod
@@ -131,17 +140,19 @@ class PWMSleepDepriverStimulator(RobustSleepDepriver):
        
         # TODO check if any() is same as ().any()#
         # check that the user passed a table which is sorted by time
-        if (pwm_program["time"].diff() < 0).any():
+        a = pwm_program["time"].astype(float)
+        b = pwm_program["pwm"].astype(float)
+        if (np.diff(a) < 0).any():
             raise Exception("Time table is not chronologically ordered")
         
-        if pwm_program["time"].iloc[0]!=0:
+        if a[0]!=0:
             raise Exception("""
                             Please pass always in the first row the pwm value desired at time 0" \
                             i.e. start your table with time=0
                             """
             )
 
-        if pwm_program.shape[0] > 1 and (pwm_program["pwm"].diff() == 0).any():
+        if len(a) > 1 and (np.diff(b) == 0).any():
             logger.warning("You passed two or more consecutive pwm values that are the same")
         return pwm_program
     
@@ -154,7 +165,7 @@ class PWMSleepDepriverStimulator(RobustSleepDepriver):
 
 
     def get_time_since_sd(self):
-        t0, t1=self._scheduler._parse_date_range()
+        t0, t1=self._scheduler._date_ranges[0]
         if time.time()-t1>0:
             raise Exception("SD should have finished")
             
@@ -197,8 +208,8 @@ class PWMSleepDepriverStimulator(RobustSleepDepriver):
 
     def connect_checker(self, checker):
         self.checker=checker
-        if self.checker.min_time_pwm is None:
-            self.checker.min_time_pwm=self.min_time_pwm
+        #if self.checker.min_time_pwm is None:
+        #    self.checker.min_time_pwm=self.min_time_pwm
         if self.checker._interface is None:
            self.checker._interface=self._hardware_connection._interface
         if self.checker.pwm_program is None:
@@ -231,6 +242,8 @@ class RandomPWMSleepDepriverStimulator(PWMSleepDepriverStimulator):
             ]}
 
     def __init__(self, *args, min_time_pwm=1, **kwargs):
+
+        raise NotImplementedError()
         
         t0, t1=self._scheduler._parse_date_range()
 
