@@ -118,7 +118,7 @@ class PWMSleepDepriverStimulator(RobustSleepDepriver):
         super(PWMSleepDepriverStimulator, self).__init__(hardware_connection, *args, **kwargs)
         self.pwm_program=self.parse_pwm_program(pwm_program)
         self.connect_checker(checker)
-        assert len(self._date_ranges)<2
+        assert len(self._scheduler._date_ranges)<2
     
 
     @staticmethod
