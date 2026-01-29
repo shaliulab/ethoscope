@@ -114,10 +114,9 @@ class PWMSleepDepriverStimulator(RobustSleepDepriver):
     def __init__(self, hardware_connection, checker, *args, pwm_program = "time,pwm\n0,255", **kwargs):
         # UserPlan is the CSV type of string that the user provides with timepoint and PWM val
         # we then convert it to a dataframe, assuming separators are commas
-        
+        super(PWMSleepDepriverStimulator, self).__init__(hardware_connection, *args, **kwargs)
         self.connect_checker(checker)
         self.pwm_program=self.parse_pwm_program(pwm_program)
-        super(PWMSleepDepriverStimulator, self).__init__(hardware_connection, *args, **kwargs)
     
 
     @staticmethod
