@@ -115,8 +115,8 @@ class PWMSleepDepriverStimulator(RobustSleepDepriver):
         # UserPlan is the CSV type of string that the user provides with timepoint and PWM val
         # we then convert it to a dataframe, assuming separators are commas
         super(PWMSleepDepriverStimulator, self).__init__(hardware_connection, *args, **kwargs)
-        self.connect_checker(checker)
         self.pwm_program=self.parse_pwm_program(pwm_program)
+        self.connect_checker(checker)
     
 
     @staticmethod
