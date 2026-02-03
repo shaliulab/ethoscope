@@ -131,6 +131,7 @@ class PWMSleepDepriverStimulator(RobustSleepDepriver):
         pwm_program={k: [] for k in data[0]}
         for i in range(1, len(data)):
             for j, k in enumerate(data[0]):
+                # assumes every data in the table is numbers (may be decimal)
                 pwm_program[k].append(float(data[i][j]))
 
         for k in pwm_program:
