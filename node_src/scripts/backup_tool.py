@@ -13,7 +13,7 @@ info_file = "/var/run/ethoscope_backup"
 def backup_job(args):
     try:
         logging.warning(args)
-        device_info, results_dir, use_last_file = args
+        device_info, results_dir, use_last_file, replace = args
         logging.info("Initiating backup for device  %s" % device_info["id"])
 
         with open(info_file, "w") as f:
@@ -28,7 +28,7 @@ def backup_job(args):
         #     device_info["ip"] = "192.169.123.121"
         #     print(device_info)
 
-        backup_job = BackupClass(device_info, results_dir=results_dir, use_last_file=use_last_file)
+        backup_job = BackupClass(device_info, results_dir=results_dir, use_last_file=use_last_file, replace=replace)
         logging.info("Running backup for device  %s" % device_info["id"])
         backup_job.run()
         logging.info("Backup done for for device  %s" % device_info["id"])
@@ -56,6 +56,7 @@ if __name__ == '__main__':
         parser.add_option("-u", "--use-last-file", dest="use", default=False, help="Set last file if backup path cannot be found", action="store_true")
         parser.add_option("-e", "--ethoscope", dest="ethoscope", help="Force backup of given ethoscope number (eg: 007)")
         parser.add_option("--regex", dest="regex", help="Only backup ethoscopes whose ethoscope_name matches this regex. All are matched by default. Example ^ETHOSCOPE_\d{3}$", default=None)
+        parser.add_option("--replace", dest="replace", default=False, help="Replace db tables", action="store_true")
 
         (options, args) = parser.parse_args()
         option_dict = vars(options)
@@ -65,6 +66,7 @@ if __name__ == '__main__':
         ethoscope = option_dict["ethoscope"]
         server = option_dict["server"]
         regex = option_dict["regex"]
+        REPLACE = option_dict["replace"]
 
         logging.warning("####################################################")
         logging.warning(f"PLEASE NOTE: ETHOSCOPE_DIR is set to {RESULTS_DIR}")
@@ -84,7 +86,7 @@ if __name__ == '__main__':
 
                 if condition:
                     print(f"Forcing backup for ethoscope ETHOSCOPE_{ethoscope}")
-                    bj = backup_job((all_devices[devID], RESULTS_DIR, USE_LAST_FILE))
+                    bj = backup_job((all_devices[devID], RESULTS_DIR, USE_LAST_FILE, REPLACE))
             if bj == None: exit(f"ETHOSCOPE_{ethoscope} is not online or not detected")
 
         else:
@@ -94,7 +96,7 @@ if __name__ == '__main__':
                                        SAFE_MODE,
                                        server,
                                        regex,
-                                       USE_LAST_FILE)
+                                       USE_LAST_FILE, replace=REPLACE)
             gbw.run()
 
     except Exception as e:
