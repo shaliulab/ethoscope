@@ -28,7 +28,7 @@ class IsMovingStimulator(BaseStimulator):
         """
         self._velocity_correction_coef = velocity_correction_coef
         self._last_active = 0
-        super(IsMovingStimulator, self).__init__(hardware_connection, date_range)
+        super(IsMovingStimulator, self).__init__(hardware_connection, date_range=date_range)
 
 
     def _has_moved(self):
@@ -216,7 +216,7 @@ class OptomotorSleepDepriver(SleepDepStimulator):
         self._t0 = None
 
         # the inactive time depends on the chanel here
-        super(OptomotorSleepDepriver, self).__init__(hardware_connection, velocity_correction_coef, min_inactive_time, date_range)
+        super(OptomotorSleepDepriver, self).__init__(hardware_connection, velocity_correction_coef, min_inactive_time, date_range=date_range)
 
 
         if stimulus_type == 2:
@@ -323,7 +323,7 @@ class ExperimentalSleepDepStimulator(SleepDepStimulator):
 
 
         # the inactive time depends on the chanel here
-        super(ExperimentalSleepDepStimulator, self).__init__(hardware_connection, velocity_correction_coef, 0, date_range)
+        super(ExperimentalSleepDepStimulator, self).__init__(hardware_connection, velocity_correction_coef, 0, date_range=date_range)
         self._inactivity_time_threshold_ms = None
 
     # here we override bind tracker so that we also define inactive time for this stimulator
@@ -452,7 +452,7 @@ class OptomotorSleepDepriverSystematic(OptomotorSleepDepriver):
 
         super(OptomotorSleepDepriverSystematic, self).__init__(hardware_connection, 0,0,
                                                                pulse_duration, stimulus_type,
-                                                               date_range)
+                                                               date_range=date_range)
 
         self._t0 = 0
 
