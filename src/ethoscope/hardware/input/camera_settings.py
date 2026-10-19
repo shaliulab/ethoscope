@@ -31,7 +31,7 @@ def configure_camera(camera, mode, resolution=None, fps=None):
     ps_roi_builder.cross_verify()
 
 
-    ps_tracker = variables.ParameterSet({"awb_mode": "off", "awb_gains": (.5, .5), "exposure_mode": "off", "shutter_speed": 70000, "analog_gain": 2.5, "digital_gain": 1, "color_effects": (128, 128)})
+    ps_tracker = variables.ParameterSet({"awb_mode": "off", "awb_gains": (.5, .5), "exposure_mode": "off", "shutter_speed": 400_000, "analog_gain": 2.5, "digital_gain": 1, "color_effects": (128, 128)})
     ps_tracker.validate()
     ps_tracker.cross_verify()
 

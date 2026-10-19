@@ -34,9 +34,6 @@ class BaseROIBuilder(DescribedObject):
         next_mode = {"target_detection": "roi_builder", "roi_builder": "tracker"}
 
         config = load_config()
-        # modes_min = {"target_detection": 90, "roi_builder": 20, "tracker": 0}
-        # modes_n = {"target_detection": 5, "roi_builder": 5}
-        # means = {"target_detection": (140, 190), "roi_builder": (20,40)}
 
         modes_min = config["roi_builder"]["modes_min"]
         modes_n = config["roi_builder"]["modes_n"]
