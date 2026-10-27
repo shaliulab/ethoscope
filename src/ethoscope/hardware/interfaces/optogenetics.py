@@ -55,6 +55,10 @@ class OptogeneticHardware(CleanUpHardware):
         super(OptogeneticHardware, self).__init__(*args, **kwargs)
 
     def send(self, channel, duration=10000, intensity=1000, pulse_on=50, pulse_off=50, turnon=True):
+        # cleanup() calls send(channel, turnon=False) outside the date range.
+        # Pulses are time-limited and stop on their own, so there is nothing to turn off
+        if not turnon:
+            return
         self.activate(channel, duration, intensity, pulse_on, pulse_off)
 
     def val_params(self, channel=None, duration=None, intensity=None, pulse_on=None, pulse_off=None):
