@@ -547,6 +547,14 @@ class FSLSleepMonitorWithTargetROIBuilder(TargetGridROIBuilder):
                                                                )
 
 
+class HighContrastROIBuilder(FSLSleepMonitorWithTargetROIBuilder):
+
+    _description = {"overview": "The default sleep monitor arena with ten rows of two tubes, tracked with a longer camera exposure to increase contrast.",
+                    "arguments": []}
+
+    tracker_camera_mode = "tracker_high_contrast"
+
+
 
 class OlfactionAssayROIBuilder(TargetGridROIBuilder):
     _description = {"overview": "The default odor assay roi layout with ten rows of single tubes.",

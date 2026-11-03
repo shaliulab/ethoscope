@@ -14,8 +14,7 @@ import secrets
 
 import trace
 from ethoscope.hardware.input.cameras import OurPiCameraAsync, MovieVirtualCamera, DummyPiCameraAsync, V4L2Camera, FSLVirtualCamera, FSLPiCameraAsync
-from ethoscope.roi_builders.target_roi_builder import OlfactionAssayROIBuilder, FSLSleepMonitorWithTargetROIBuilder, SleepMonitorWithTargetROIBuilder, TargetGridROIBuilder, ElectricShockAssayROIBuilder
-from ethoscope.roi_builders.fsl_roi_builder import HighContrastTargetROIBuilder
+from ethoscope.roi_builders.target_roi_builder import OlfactionAssayROIBuilder, FSLSleepMonitorWithTargetROIBuilder, HighContrastROIBuilder, SleepMonitorWithTargetROIBuilder, TargetGridROIBuilder, ElectricShockAssayROIBuilder
 from ethoscope.roi_builders.manual_roi_builder import ManualROIBuilder
 from ethoscope.roi_builders.roi_builders import  DefaultROIBuilder
 from ethoscope.core.monitor import Monitor
@@ -86,7 +85,7 @@ class ControlThread(Thread):
                 "possible_classes":[
                     FSLSleepMonitorWithTargetROIBuilder,
                     SleepMonitorWithTargetROIBuilder,
-                    HighContrastTargetROIBuilder,
+                    HighContrastROIBuilder,
                     ManualROIBuilder,
                     DefaultROIBuilder,
                     TargetGridROIBuilder,
@@ -449,13 +448,11 @@ class ControlThread(Thread):
         logging.info(roi_builder_kwargs)
 
         roi_builder = ROIBuilderClass(args=(), kwargs=roi_builder_kwargs)
+        cam.set_tracker_mode(roi_builder.tracker_camera_mode)
 
         try:
-            if roi_builder.__class__.__name__ == "HighContrastTargetROIBuilder":
-                img, M, rois = roi_builder.build(cam)
-            else:
-                rois = roi_builder.build(cam)
-                M = None
+            rois = roi_builder.build(cam)
+            M = None
 
         except EthoscopeException as e:
             cam._close()

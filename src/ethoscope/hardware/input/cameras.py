@@ -133,6 +133,9 @@ class BaseCamera(object):
     def set_tracker(self):
         pass
 
+    def set_tracker_mode(self, mode):
+        pass
+
     def set_roi_builder(self):
         pass
 
@@ -571,7 +574,7 @@ class PiFrameGrabber(threading.Thread):
 
 class DualPiFrameGrabber(PiFrameGrabber):
 
-    def __init__(self, exposure_queue, *args, **kwargs):
+    def __init__(self, exposure_queue, *args, tracker_mode="tracker", **kwargs):
         """
         Class to grab frames from pi camera. Designed to be used within :class:`~ethoscope.hardware.camreras.camreras.OurPiCameraAsync`
         This allows to get frames asynchronously as acquisition is a bottleneck.
@@ -588,11 +591,14 @@ class DualPiFrameGrabber(PiFrameGrabber):
         :type queue: :class:`~multiprocessing.JoinableQueue`
         :param stop_queue: a queue that can stop the async acquisition
         :type stop_queue: :class:`~multiprocessing.JoinableQueue`
+        :param tracker_mode: the mode of :func:`~ethoscope.hardware.input.camera_settings.configure_camera` to apply when tracking starts
+        :type tracker_mode: str
         :param args: additional arguments
         :param kwargs: additional keyword arguments
         """
 
         self._exposure_queue = exposure_queue
+        self.tracker_mode = tracker_mode
         self._tracker_event = multiprocessing.Event()
         self._roi_builder_event = multiprocessing.Event()
         super().__init__(*args, **kwargs)
@@ -680,7 +686,7 @@ class DualPiFrameGrabber(PiFrameGrabber):
                                 logging.info('Success switching to roi_builder mode')
  
                             if self._tracker_event.is_set() and not tracker_event:
-                                capture = configure_camera(capture, mode="tracker")
+                                capture = configure_camera(capture, mode=self.tracker_mode)
                                 tracker_event = True
                                 logging.info('Success switching to tracker mode')
     
@@ -943,6 +949,12 @@ class FSLPiCameraAsync(OurPiCameraAsync):
 
     def set_tracker(self):
         self._p._tracker_event.set()
+
+    def set_tracker_mode(self, mode):
+        # _kwargs is what __setstate__ rebuilds the camera from, so the mode
+        # is kept when an interrupted run resumes from the pickled state
+        self._kwargs["tracker_mode"] = mode
+        self._p.tracker_mode = mode
 
     def change_gain(self, mean_intensity, means, mode, i=0):
         

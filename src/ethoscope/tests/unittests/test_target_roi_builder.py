@@ -10,7 +10,6 @@ import sys
 from ethoscope.utils.debug import EthoscopeException
 
 from ethoscope.roi_builders.target_roi_builder import FSLSleepMonitorWithTargetROIBuilder, SleepMonitorWithTargetROIBuilder
-from ethoscope.roi_builders.fsl_roi_builder import HighContrastTargetROIBuilder
 from ethoscope.roi_builders.helpers import place_dots
 print(os.getcwd())
 
@@ -81,10 +80,7 @@ class TestTargetROIBuilder(unittest.TestCase):
 
 
         try:
-            if self.roi_builder.__class__.__name__ == "HighContrastTargetRoiBuilder":
-                img, M, rois = self.roi_builder.build(img)
-            else:
-                rois = self.roi_builder.build(img)
+            rois = self.roi_builder.build(img)
 
 
         except EthoscopeException:

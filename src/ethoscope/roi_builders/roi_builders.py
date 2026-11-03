@@ -16,6 +16,8 @@ from ethoscope.configuration import load_config
 class BaseROIBuilder(DescribedObject):
     _rois_pickle_file = ''
     _target_coord_file = ''
+    # mode of hardware.input.camera_settings.configure_camera used during tracking
+    tracker_camera_mode = "tracker"
 
     def __init__(self):
         """
@@ -34,9 +36,6 @@ class BaseROIBuilder(DescribedObject):
         next_mode = {"target_detection": "roi_builder", "roi_builder": "tracker"}
 
         config = load_config()
-        # modes_min = {"target_detection": 90, "roi_builder": 20, "tracker": 0}
-        # modes_n = {"target_detection": 5, "roi_builder": 5}
-        # means = {"target_detection": (140, 190), "roi_builder": (20,40)}
 
         modes_min = config["roi_builder"]["modes_min"]
         modes_n = config["roi_builder"]["modes_n"]
@@ -88,11 +87,8 @@ class BaseROIBuilder(DescribedObject):
         accum = self.fetch_frames(input, mode="target_detection")
 
         try:
-            if self.__class__.__name__ == "HighContrastTargetRoiBuilder":
-                img, M, rois = self._rois_from_img(accum, camera=input)
-            else:
-                rois = self._rois_from_img(accum)
-                img = accum
+            rois = self._rois_from_img(accum)
+            img = accum
 
 
             try:
@@ -118,12 +114,7 @@ class BaseROIBuilder(DescribedObject):
         else:
             rois = self._value_sorting(rois)
 
-        if self.__class__.__name__ == "FSLTargetROIBuilder":
-            result = (img, M, rois)
-        else:
-            result = rois
-
-        return result
+        return rois
 
 
 
